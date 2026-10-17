@@ -123,6 +123,7 @@
 
   function checkNick(n) {
     if (!NICK_RE.test(n)) return '한글·영문·숫자·밑줄(_) 2~12자로 정해 주세요';
+    if (RESERVED.includes(n.toLowerCase())) return '쓸 수 없는 닉네임입니다';
     return '';
   }
   function openNickname(first) {
@@ -140,14 +141,14 @@
       t = setTimeout(async () => { const { data, error } = await sb.rpc('nickname_available', { n }); if (inp.value.trim() !== n) return;
         if (error) { hint.textContent = '확인 실패: ' + error.message; hint.className = 'cl-hint cl-bad'; return; }
         const mine = profile && profile.nickname.toLowerCase() === n.toLowerCase();
-        hint.textContent = (data || mine) ? '쓸 수 있는 닉네임입니다' : (RESERVED.includes(n.toLowerCase()) ? '운영용으로 남겨 둔 닉네임입니다' : '이미 쓰는 닉네임입니다'); hint.className = 'cl-hint ' + ((data || mine) ? 'cl-ok' : 'cl-bad'); }, 350);
+        hint.textContent = (data || mine) ? '쓸 수 있는 닉네임입니다' : '이미 쓰는 닉네임입니다'; hint.className = 'cl-hint ' + ((data || mine) ? 'cl-ok' : 'cl-bad'); }, 350);
     };
     ok.onclick = async () => {
       const n = inp.value.trim(); const bad = checkNick(n); if (bad) { hint.textContent = bad; hint.className = 'cl-hint cl-bad'; return; }
       ok.disabled = true;
       const { error } = await sb.from('profiles').upsert({ id: user.id, nickname: n }, { onConflict: 'id' });
       ok.disabled = false;
-      if (error) { hint.textContent = error.code === '23505' ? '이미 쓰는 닉네임입니다' : error.code === '23514' ? '운영용으로 남겨 둔 닉네임입니다' : '저장 실패: ' + error.message; hint.className = 'cl-hint cl-bad'; return; }
+      if (error) { hint.textContent = error.code === '23505' ? '이미 쓰는 닉네임입니다' : '저장 실패: ' + error.message; hint.className = 'cl-hint cl-bad'; return; }
       profile = { nickname: n }; renderAcct(); m.remove(); say(`닉네임 "${n}"(으)로 저장했습니다`, 'ok');
     };
     setTimeout(() => inp.focus(), 50);
@@ -315,11 +316,11 @@
       let t = 0;
       inp.oninput = () => { const n = inp.value.trim(), bad = checkNick(n); hint.className = 'cl-hint sub ' + (bad ? 'cl-bad' : ''); hint.textContent = bad || '확인 중…'; clearTimeout(t); if (bad) return;
         t = setTimeout(async () => { const { data, error } = await sb.rpc('nickname_available', { n }); if (inp.value.trim() !== n) return;
-          hint.textContent = error ? '확인하지 못했습니다: ' + error.message : (data ? '쓸 수 있는 닉네임입니다' : (RESERVED.includes(n.toLowerCase()) ? '운영용으로 남겨 둔 닉네임입니다' : '이미 쓰는 닉네임입니다')); hint.className = 'cl-hint sub ' + (!error && data ? 'cl-ok' : 'cl-bad'); }, 350); };
+          hint.textContent = error ? '확인하지 못했습니다: ' + error.message : (data ? '쓸 수 있는 닉네임입니다' : '이미 쓰는 닉네임입니다'); hint.className = 'cl-hint sub ' + (!error && data ? 'cl-ok' : 'cl-bad'); }, 350); };
       inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') go.click(); };
       go.onclick = async () => { const n = inp.value.trim(), bad = checkNick(n); if (bad) { hint.textContent = bad; hint.className = 'cl-hint sub cl-bad'; return; }
         go.disabled = true; const { error } = await sb.from('profiles').insert({ id: user.id, nickname: n }); go.disabled = false;
-        if (error) { hint.textContent = error.code === '23505' ? '이미 쓰는 닉네임입니다' : error.code === '23514' ? '운영용으로 남겨 둔 닉네임입니다' : '저장하지 못했습니다: ' + error.message; hint.className = 'cl-hint sub cl-bad'; return; }
+        if (error) { hint.textContent = error.code === '23505' ? '이미 쓰는 닉네임입니다' : '저장하지 못했습니다: ' + error.message; hint.className = 'cl-hint sub cl-bad'; return; }
         profile = { nickname: n }; renderAcct(); gate('off'); say(`환영합니다, ${n}님`, 'ok'); pullSettings(); runImport(); };
       setTimeout(() => inp.focus(), 60);
     }
