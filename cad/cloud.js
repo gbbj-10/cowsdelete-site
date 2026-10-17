@@ -89,7 +89,7 @@
     const panelBtn = document.getElementById('bPanel');
     bar.insertBefore(bHome, panelBtn);
     bar.insertBefore($('span', { class: 'sep' }), panelBtn);
-    if (READY) { bar.insertBefore(bCloudSave, panelBtn); bar.insertBefore(bMine, panelBtn); bar.insertBefore(bShare, panelBtn); bar.insertBefore(bComm, panelBtn); }
+    if (READY) { bar.insertBefore(bMine, panelBtn); bar.insertBefore(bShare, panelBtn); bar.insertBefore(bComm, panelBtn); }
     bar.insertBefore(bFeedback, panelBtn);
     bar.insertBefore(acct, panelBtn);
     bar.insertBefore($('span', { class: 'sep' }), panelBtn);
@@ -286,6 +286,52 @@
   if (bNew) { const o = bNew.onclick; bNew.onclick = e => { cur = null; return o && o.call(bNew, e); }; }
   if (fileIn) { const o = fileIn.onchange; fileIn.onchange = e => { cur = null; return o && o.call(fileIn, e); }; }
   bCloudSave.onclick = () => cloudSave(false);
+
+  /* ---------- [저장 ▾]: 클라우드 저장 · JSON 파일 저장을 하나로 ---------- */
+  (function saveMenu() {
+    const bs = document.getElementById('bSave'); if (!bs) return;
+    const st = document.createElement('style');
+    st.textContent = `.svMenu{min-width:290px}
+.svMenu button{flex-direction:column;align-items:flex-start;gap:2px;padding:8px 14px}
+.svMenu .row{display:flex;justify-content:space-between;align-items:center;width:100%;gap:18px}
+.svMenu .d{font-size:11.5px;color:var(--ink-dim);line-height:1.45;white-space:normal}
+.svMenu button:hover .d,.svMenu button:focus-visible .d{color:#dfe8ff}
+.svMenu hr{border:0;border-top:1px solid #3a414c;margin:4px 0}
+.svWrap{position:relative;display:inline-flex}
+#bSaveMenu[aria-expanded="true"]{background:var(--rule,#333a44)}`;
+    document.head.appendChild(st);
+    const b = $('button', { class: 'tbtn', id: 'bSaveMenu', title: '저장 — 클라우드(내 계정) 또는 JSON 파일(내 PC)', 'aria-haspopup': 'menu', 'aria-expanded': 'false', text: '저장 ▾' });
+    const m = $('div', { class: 'outMenu svMenu', role: 'menu' }); m.hidden = true;
+    const item = (label, key, desc, run) => {
+      const row = $('span', { class: 'row' }, $('span', { text: label })); if (key) row.append($('span', { class: 'k', text: key }));
+      const mi = $('button', { role: 'menuitem', tabindex: '-1' }, row, $('span', { class: 'd', text: desc }));
+      mi.onclick = () => { close(); run(); }; return mi;
+    };
+    function build() {
+      m.textContent = '';
+      if (READY) {
+        m.append(item('도면 클라우드 저장', 'Ctrl+Shift+S', cur ? `"${cur.name}"에 덮어쓰기 · 어느 PC에서든 [내 도면]으로 열기` : '내 계정에 저장 · 어느 PC에서든 [내 도면]으로 열기' + (user ? '' : ' (로그인 필요)'), () => cloudSave(false)));
+        if (cur) m.append(item('클라우드에 새 도면으로 저장', '', '지금 도면을 다른 이름으로 하나 더 저장', () => cloudSave(true)));
+        m.append($('hr'));
+      }
+      m.append(item('JSON 파일로 저장', '', '내 PC에 .json 파일로 내려받기 · [열기]로 다시 불러오기', () => bs.click()));
+    }
+    const place = () => { const r = b.getBoundingClientRect(); m.style.left = Math.max(4, Math.min(r.left, innerWidth - m.offsetWidth - 4)) + 'px'; m.style.top = (r.bottom + 4) + 'px'; };
+    function open(first) { build(); m.hidden = false; b.setAttribute('aria-expanded', 'true'); place(); if (first) { const f = m.querySelector('button'); if (f) f.focus(); } }
+    function close() { if (m.hidden) return; m.hidden = true; b.setAttribute('aria-expanded', 'false'); }
+    b.onclick = e => { e.stopPropagation(); m.hidden ? open(e.detail === 0) : close(); };
+    b.addEventListener('keydown', e => { if (e.key === 'ArrowDown') { e.preventDefault(); open(true); } });
+    m.addEventListener('keydown', e => { const bs2 = [...m.querySelectorAll('button')], i = bs2.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown') { e.preventDefault(); bs2[(i + 1) % bs2.length].focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); bs2[(i - 1 + bs2.length) % bs2.length].focus(); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); b.focus(); }
+      else if (e.key === 'Tab') close(); });
+    document.addEventListener('pointerdown', e => { if (!m.hidden && !m.contains(e.target) && e.target !== b) close(); }, true);
+    addEventListener('resize', close); addEventListener('blur', close);
+    const wrap = $('span', { class: 'svWrap' }); bs.before(wrap); wrap.append(b); document.body.appendChild(m);
+    bs.style.display = 'none';
+  })();
+
   bMine.onclick = openMine;
   document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'S' || e.key === 's') && READY) { e.preventDefault(); cloudSave(false); } }, true);
 
