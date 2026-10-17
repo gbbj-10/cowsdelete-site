@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>커뮤니티 — 공유 블록·도면 | 무카 CAD</title>
+<meta name="description" content="무카 CAD 사용자들이 공유한 블록과 도면. 찾아보고 내 캐드로 바로 가져오세요.">
+<meta name="theme-color" content="#0a1220">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+.head{padding-top:44px;padding-bottom:26px}
+.head h1{font-size:clamp(30px,4.4vw,48px);letter-spacing:-.035em;line-height:1.15;margin:0 0 10px}
+.head p{color:var(--ink-2);margin:0 0 24px;max-width:42em}
+.tools{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;margin-bottom:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--ink-2);font:500 14px var(--sans);padding:11px 14px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--plate-2);color:var(--ink)}
+.count{color:var(--ink-3);font-size:14px;margin:6px 0 18px}
+.list-sec{padding:0 0 80px}
+.more{display:flex;justify-content:center;margin-top:22px}
+.detail{display:grid;grid-template-columns:1.35fr 1fr;gap:18px}
+.detail .pic{background:#111418 center/contain no-repeat;border:1px solid var(--line);border-radius:8px;aspect-ratio:16/10}
+.detail h4{margin:0 0 6px;font-size:20px;line-height:1.35}
+.detail .by{color:var(--ink-3);font-size:14px;margin-bottom:12px}
+.detail .desc{color:var(--ink-2);white-space:pre-wrap;margin:0 0 12px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.tags a{font-size:13px;color:var(--sky);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+.lic{font-size:13px;color:var(--ink-3);margin:14px 0 0}
+.mine-del{margin-top:10px}
+@media (max-width:760px){.tools{grid-template-columns:1fr}.detail{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="site-top"><div class="wrap">
+  <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법</span></a>
+  <nav class="site-nav">
+    <a href="/cad/">무카 CAD</a>
+    <a href="/community/" aria-current="page">커뮤니티</a>
+    <a href="/requests/">요청</a>
+    <span class="who" data-who></span>
+  </nav>
+</div></header>
+
+<main>
+<div class="wrap head">
+  <h1>공유 블록 · 도면</h1>
+  <p>무카 CAD 사용자가 직접 올린 블록과 도면입니다. 마음에 들면 [내 캐드로 가져오기]로 바로 씁니다. 내가 만든 블록은 무카 CAD 상단 [공유]로 올릴 수 있어요. 찾는 게 없으면 <a href="/requests/">요청 게시판</a>에 올려 주세요.</p>
+  <div class="wallet" id="wallet" hidden></div>
+  <form class="tools" id="q">
+    <div class="cmdline"><span class="pfx">찾기:</span><input name="q" id="qIn" type="search" placeholder="M10 볼트, 플랜지, 표제란 양식" aria-label="찾을 이름이나 태그"></div>
+    <div class="seg" role="group" aria-label="종류">
+      <button type="button" data-kind="" aria-pressed="true">전체</button>
+      <button type="button" data-kind="block" aria-pressed="false">블록</button>
+      <button type="button" data-kind="drawing" aria-pressed="false">도면</button>
+    </div>
+    <select id="sort" aria-label="정렬">
+      <option value="created_at">최근 올라온 순</option>
+      <option value="copies">많이 가져간 순</option>
+      <option value="likes">좋아요 순</option>
+      <option value="mine">내가 올린 것</option>
+    </select>
+  </form>
+  <p class="count" id="count" aria-live="polite"></p>
+</div>
+<section class="list-sec"><div class="wrap">
+  <div class="shelf" id="list"></div>
+  <div class="more"><button class="btn line" id="more" hidden>더 보기</button></div>
+</div></section>
+</main>
+
+<footer class="titleblock"><div class="wrap">
+  <div class="tb">
+    <div><span class="h">도명</span>무카 커뮤니티</div>
+    <div><span class="h">무카 CAD</span><a href="/cad/">열기</a></div>
+    <div><span class="h">안내</span><a href="/beta/">베타 이용 안내</a><br><a href="/privacy/">개인정보처리방침</a></div>
+    <div><span class="h">채널</span><a href="https://www.youtube.com/@cowsdelete" target="_blank" rel="noopener">YouTube @cowsdelete</a></div>
+  </div>
+</div></footer>
+
+<script src="/assets/config.js"></script>
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/site.js"></script>
+<script>
+(async function(){
+  'use strict';
+  const S=window.COWS, sb=S.sb, esc=S.esc, PAGE=24;
+  const list=document.getElementById('list'), more=document.getElementById('more'), count=document.getElementById('count');
+  const qIn=document.getElementById('qIn'), sortSel=document.getElementById('sort');
+  const params=new URLSearchParams(location.search);
+  let kind='', q=params.get('q')||'', page=0;
+  qIn.value=q;
+  await S.ready;
+  if(!sb){list.innerHTML='<div class="empty">지금은 커뮤니티를 불러올 수 없습니다.</div>';return}
+
+  function card(r){return `<button class="item" data-id="${r.id}"><span class="pic" style="${S.thumb(r.thumb)}"><span class="kind ${r.kind}">${r.kind==='block'?'블록':'도면'}</span></span><span class="meta"><p class="t">${esc(r.title)}</p><span class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · 가져감 ${r.copies} · ♥ ${r.likes}</span></span></button>`}
+
+  async function load(reset){
+    if(reset){page=0;list.innerHTML='';}
+    const mine=sortSel.value==='mine';
+    if(mine&&!S.user){list.innerHTML='<div class="empty">내가 올린 것을 보려면 로그인하세요.</div>';count.textContent='';more.hidden=true;return}
+    let qb=sb.from('shared_items').select('id,kind,title,author_nick,author_grade,thumb,copies,likes,created_at,status',{count:'exact'});
+    if(mine)qb=qb.eq('owner',S.user.id);else qb=qb.eq('status','public');
+    if(kind)qb=qb.eq('kind',kind);
+    const term=q.trim().replace(/[,()*%]/g,' ').trim();
+    if(term)qb=qb.or(`title.ilike.*${term}*,description.ilike.*${term}*,tags.cs.{\"${term}\"}`);
+    qb=qb.order(mine?'created_at':sortSel.value,{ascending:false}).range(page*PAGE,page*PAGE+PAGE-1);
+    const res=await qb, data=res.data, error=res.error;
+    const n=res.count!=null?res.count:(data?page*PAGE+data.length+(data.length===PAGE?1:0):0);
+    if(error){list.innerHTML=`<div class="empty">불러오지 못했습니다: ${esc(error.message)}</div>`;return}
+    if(reset&&!data.length){list.innerHTML=term?`<div class="empty">"${esc(term)}"은(는) 아직 없습니다. 직접 그려서 처음으로 공유하면 크레딧 +2를 더 받습니다. <br><br><a class="btn primary sm" href="/cad/">무카 CAD에서 그리기</a> <a class="btn line sm" href="/requests/?new=${encodeURIComponent(term)}">요청 게시판에 올리기</a></div>`:'<div class="empty">아직 공유된 항목이 없습니다. 무카 CAD 상단 [공유]로 첫 블록을 올려 주세요.</div>';}
+    else list.insertAdjacentHTML('beforeend',data.map(card).join(''));
+    count.textContent=term?`"${term}" ${n||0}개`:`${n||0}개`;
+    more.hidden=(page+1)*PAGE>=(n||0);
+    if(reset&&term&&!data.length){sb.from('events').insert({kind:'search_miss',payload:{q:term.slice(0,40)},page:'community'}).then(()=>{},()=>{})}
+  }
+
+  async function open(id){
+    const {data:r,error}=await sb.from('shared_items').select('id,owner,kind,title,description,tags,author_nick,author_grade,thumb,copies,likes,created_at,size_bytes,status').eq('id',id).maybeSingle();
+    if(error||!r){alert('찾을 수 없는 항목입니다.');return}
+    let liked=false;
+    if(S.user){const {data:l}=await sb.from('shared_likes').select('item').eq('item',id).maybeSingle();liked=!!l}
+    const mine=S.user&&S.user.id===r.owner;
+    const d=document.createElement('div');d.className='dlg';
+    d.innerHTML=`<div class="box" role="dialog" aria-modal="true" aria-label="${esc(r.title)}"><header><h3>${r.kind==='block'?'블록':'도면'}</h3><button class="x" data-x>닫기</button></header>
+      <div class="in detail"><div class="pic" style="${S.thumb(r.thumb)}"></div>
+      <div><h4>${esc(r.title)}</h4><div class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · ${new Date(r.created_at).toLocaleDateString('ko-KR')} · 가져감 ${r.copies}</div>
+      ${r.description?`<p class="desc">${esc(r.description)}</p>`:''}
+      <div class="tags">${(r.tags||[]).map(t=>`<a href="/community/?q=${encodeURIComponent(t)}">#${esc(t)}</a>`).join('')}</div>
+      <div class="acts"><button class="btn primary sm" data-get>내 캐드로 가져오기</button><button class="btn line sm" data-like aria-pressed="${liked}">${liked?'♥ 좋아요 취소':'♡ 좋아요'} ${r.likes}</button><button class="btn line sm" data-report>신고</button></div>
+      ${mine?`<div class="mine-del"><button class="btn line sm" data-del>${r.status==='hidden'?'신고로 숨겨짐 · 삭제':'공유 내리기'}</button></div>`:''}
+      <p class="lic">공유된 항목은 누구나 보고 복사해 쓸 수 있습니다. 실제 사용 전에 치수와 규격은 직접 확인하세요.</p></div></div></div>`;
+    document.body.append(d);
+    const close=()=>{d.remove();history.replaceState(null,'',location.pathname+(q?`?q=${encodeURIComponent(q)}`:''))};
+    d.addEventListener('click',e=>{if(e.target===d)close()});d.querySelector('[data-x]').onclick=close;
+    document.addEventListener('keydown',function k(e){if(e.key==='Escape'){close();document.removeEventListener('keydown',k)}});
+    d.querySelector('[data-get]').onclick=()=>{location.href='/cad/?import='+r.id};
+    d.querySelector('[data-like]').onclick=async ev=>{
+      if(!S.user){S.login(location.origin+'/community/?id='+r.id);return}
+      const b=ev.currentTarget;b.disabled=true;
+      const res=liked?await sb.from('shared_likes').delete().eq('item',r.id).eq('user_id',S.user.id):await sb.from('shared_likes').insert({item:r.id});
+      b.disabled=false;if(res.error){alert(res.error.message);return}
+      liked=!liked;r.likes+=liked?1:-1;b.textContent=`${liked?'♥ 좋아요 취소':'♡ 좋아요'} ${r.likes}`;b.setAttribute('aria-pressed',liked)};
+    d.querySelector('[data-report]').onclick=async()=>{
+      if(!S.user){S.login(location.origin+'/community/?id='+r.id);return}
+      const why=prompt('신고 이유를 숫자로 적어 주세요\n1 회사 기밀·개인정보\n2 저작권 침해\n3 광고·도배\n4 잘못된 도면\n5 기타','1');
+      const map={'1':'confidential','2':'copyright','3':'spam','4':'wrong','5':'etc'};if(!why||!map[why.trim()])return;
+      const {error}=await sb.from('shared_reports').insert({item:r.id,reason:map[why.trim()]});
+      alert(error?(error.code==='23505'?'이미 신고했습니다.':error.message):'신고를 접수했습니다. 3건이 모이면 자동으로 숨겨집니다.')};
+    const del=d.querySelector('[data-del]');
+    if(del)del.onclick=async()=>{if(!confirm('공유를 내리면 커뮤니티에서 사라집니다. 내 캐드의 도면은 그대로 남습니다.'))return;
+      const {error}=await sb.from('shared_items').delete().eq('id',r.id);if(error){alert(error.message);return}close();load(true)};
+    history.replaceState(null,'','?id='+r.id);
+  }
+
+  list.addEventListener('click',e=>{const b=e.target.closest('.item');if(b)open(b.dataset.id)});
+  document.getElementById('q').addEventListener('submit',e=>{e.preventDefault();q=qIn.value;history.replaceState(null,'',q?`?q=${encodeURIComponent(q)}`:location.pathname);load(true)});
+  document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x===b));kind=b.dataset.kind;load(true)});
+  sortSel.onchange=()=>load(true);
+  more.onclick=()=>{page++;load(false)};
+  async function paintWallet(){
+    const box=document.getElementById('wallet');
+    if(!S.user){box.hidden=false;box.innerHTML=`<span>로그인하면 공유할 때마다 크레딧과 기여 등급이 쌓입니다.</span><span class="sp"><button class="linkbtn" data-guide>등급 안내</button></span>`;}
+    else{const w=await S.wallet();if(!w)return;box.hidden=false;
+      const pct=w.next?Math.min(100,Math.round(w.points/w.next*100)):100;
+      box.innerHTML=`${S.gradeIcon(w.grade,28)}<span><b>${S.GRADES[w.grade]}</b> · 기여 ${w.points}점</span>
+        <span class="meter" title="${w.next?S.GRADES[w.grade+1]+'까지 '+Math.max(0,w.next-w.points)+'점':'명장'}"><i style="width:${pct}%"></i></span>
+        <span>${w.users} 중 ${w.rank}위${w.grade===4?` · 명장 컷 ${w.master_cut}점`:''}</span>
+        <span>크레딧 <b>${w.credits}</b>${w.pending?` · 확정 대기 ${w.pending}`:''}</span>
+        <span class="sp"><button class="linkbtn" data-guide>등급 안내</button><a class="linkbtn" href="/requests/">요청 게시판</a></span>`;}
+    box.querySelector('[data-guide]').onclick=S.gradeGuide;
+  }
+  paintWallet();
+  await load(true);
+  if(params.get('id'))open(params.get('id'));
+})();
+</script>
+</body>
+</html>

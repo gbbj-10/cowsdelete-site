@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>요청 게시판 — 무카 커뮤니티</title>
+<meta name="description" content="찾는 블록·도면이 없으면 요청하세요. 누군가 그려서 공유하면 현상금 크레딧을 받습니다.">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+.head{padding-top:44px;padding-bottom:22px}
+.head h1{font-size:clamp(30px,4.4vw,48px);letter-spacing:-.035em;line-height:1.15;margin:0 0 10px}
+.head p{color:var(--ink-2);margin:0 0 22px;max-width:42em}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--ink-2);font:500 14px var(--sans);padding:10px 14px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--plate-2);color:var(--ink)}
+.bar .btn{margin-left:auto}
+.list-sec{padding:0 0 80px}
+.reqs{display:grid;gap:10px}
+.req{display:grid;grid-template-columns:96px 1fr auto;gap:14px;align-items:center;text-align:left;width:100%;background:var(--plate);border:1px solid var(--line);border-radius:10px;padding:14px 16px;color:inherit;font:inherit;cursor:pointer}
+.req:hover{border-color:var(--sky)}
+.req .side{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.req .t{font-weight:600;line-height:1.4;margin:0 0 4px}
+.req .by{font-size:13px;color:var(--ink-3)}
+.req .n{font-family:var(--cmd);color:var(--ink-2);font-size:14px;white-space:nowrap}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0}
+.tags span{font-size:12px;color:var(--sky);border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+.rq-body{color:var(--ink-2);white-space:pre-wrap;margin:0 0 12px}
+.ans{display:grid;gap:10px;margin:14px 0}
+.an{display:grid;grid-template-columns:120px 1fr auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--plate-2)}
+.an.win{border-color:var(--sky)}
+.an .pic{aspect-ratio:16/10;background:#111418 center/contain no-repeat;border-radius:6px}
+.an .t{font-weight:600}
+.an .by{font-size:13px;color:var(--ink-3)}
+.pick{display:grid;gap:8px;max-height:300px;overflow:auto;margin:10px 0}
+.pick label{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
+.pick label:has(input:checked){border-color:var(--sky)}
+.frm{display:grid;gap:12px}
+.frm .row{display:grid;grid-template-columns:1fr 160px;gap:12px}
+.note{font-size:13px;color:var(--ink-3);margin:0}
+.err{color:var(--axis);font-size:14px;min-height:1.2em;margin:0}
+@media (max-width:640px){.req{grid-template-columns:1fr}.req .side{flex-direction:row}.req .n{justify-self:start}.frm .row{grid-template-columns:1fr}.an{grid-template-columns:90px 1fr}.an .act{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<header class="site-top"><div class="wrap">
+  <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법</span></a>
+  <nav class="site-nav">
+    <a href="/cad/">무카 CAD</a>
+    <a href="/community/">커뮤니티</a>
+    <a href="/requests/" aria-current="page">요청</a>
+    <span class="who" data-who></span>
+  </nav>
+</div></header>
+
+<main>
+<div class="wrap head">
+  <h1>요청 게시판</h1>
+  <p>찾는 블록이나 도면이 커뮤니티에 없으면 여기에 올려 주세요. 누군가 그려서 공유하고 답으로 걸면, 마음에 드는 답을 채택해 현상금 크레딧을 줍니다.</p>
+  <div class="wallet" id="wallet" hidden></div>
+  <div class="bar">
+    <div class="seg" role="group" aria-label="보기">
+      <button type="button" data-f="open" aria-pressed="true">열린 요청</button>
+      <button type="button" data-f="filled" aria-pressed="false">채워진 요청</button>
+      <button type="button" data-f="mine" aria-pressed="false">내 요청</button>
+    </div>
+    <button class="btn primary sm" id="newBtn" type="button">요청 올리기</button>
+  </div>
+</div>
+<section class="list-sec"><div class="wrap">
+  <div class="reqs" id="list"></div>
+</div></section>
+</main>
+
+<footer class="titleblock"><div class="wrap">
+  <div class="tb">
+    <div><span class="h">도명</span>무카 요청 게시판</div>
+    <div><span class="h">무카 CAD</span><a href="/cad/">열기</a> / <a href="/community/">커뮤니티</a></div>
+    <div><span class="h">안내</span><a href="/beta/">베타 이용 안내</a><br><a href="/privacy/">개인정보처리방침</a></div>
+    <div><span class="h">채널</span><a href="https://www.youtube.com/@cowsdelete" target="_blank" rel="noopener">YouTube @cowsdelete</a></div>
+  </div>
+</div></footer>
+
+<script src="/assets/config.js"></script>
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/site.js"></script>
+<script>
+(async function(){
+  'use strict';
+  const S=window.COWS, sb=S.sb, esc=S.esc;
+  const list=document.getElementById('list'), params=new URLSearchParams(location.search);
+  let filter='open', wallet=null;
+  await S.ready;
+  if(!sb){list.innerHTML='<div class="empty">지금은 요청 게시판을 불러올 수 없습니다.</div>';return}
+  const STATUS={open:'열림',filled:'채워짐',closed:'닫힘'};
+  const day=d=>new Date(d).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'});
+
+  function dlg(title,inner){
+    const d=document.createElement('div');d.className='dlg';
+    d.innerHTML=`<div class="box" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h3>${esc(title)}</h3><button class="x" data-x>닫기</button></header><div class="in">${inner}</div></div>`;
+    document.body.append(d);
+    const close=()=>{d.remove();document.removeEventListener('keydown',k)};
+    function k(e){if(e.key==='Escape')close()}
+    document.addEventListener('keydown',k);
+    d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-x]'))close()});
+    d.close=close;return d;
+  }
+
+  async function paintWallet(){
+    const box=document.getElementById('wallet');
+    if(!S.user){box.hidden=false;box.innerHTML='<span>로그인하면 요청을 올리고, 답해서 현상금 크레딧을 받을 수 있습니다.</span><span class="sp"><button class="linkbtn" data-guide>등급 안내</button></span>';}
+    else{wallet=await S.wallet();if(!wallet)return;box.hidden=false;
+      box.innerHTML=`${S.gradeIcon(wallet.grade,28)}<span><b>${S.GRADES[wallet.grade]}</b> · 기여 ${wallet.points}점 · ${wallet.users}명 중 ${wallet.rank}위</span><span>크레딧 <b>${wallet.credits}</b>${wallet.pending?` · 확정 대기 ${wallet.pending}`:''}</span><span class="sp"><button class="linkbtn" data-guide>등급 안내</button></span>`;}
+    box.querySelector('[data-guide]').onclick=S.gradeGuide;
+  }
+
+  function row(r){
+    return `<button class="req" data-id="${r.id}">
+      <span class="side"><span class="chipb ${r.status}">${STATUS[r.status]}</span>${r.bounty?`<span class="chipb bounty">현상금 ${r.bounty}</span>`:''}</span>
+      <span><p class="t">${esc(r.title)}</p><span class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · ${day(r.created_at)}</span>
+        ${(r.tags||[]).length?`<span class="tags">${r.tags.map(t=>`<span>#${esc(t)}</span>`).join('')}</span>`:''}</span>
+      <span class="n">답 ${r.answers}</span></button>`;
+  }
+
+  async function load(){
+    if(filter==='mine'&&!S.user){list.innerHTML='<div class="empty">내 요청을 보려면 로그인하세요.</div>';return}
+    let qb=sb.from('requests').select('id,title,tags,bounty,status,answers,author_nick,author_grade,created_at').order('created_at',{ascending:false}).limit(60);
+    qb=filter==='mine'?qb.eq('owner',S.user.id):qb.eq('status',filter);
+    const {data,error}=await qb;
+    if(error){list.innerHTML=`<div class="empty">불러오지 못했습니다: ${esc(error.message)}</div>`;return}
+    list.innerHTML=data.length?data.map(row).join(''):(filter==='open'?'<div class="empty">아직 열린 요청이 없습니다. 커뮤니티에서 못 찾은 블록이 있으면 첫 요청을 올려 주세요.</div>':'<div class="empty">아직 없습니다.</div>');
+  }
+
+  async function open(id){
+    const {data:r,error}=await sb.from('requests').select('*').eq('id',id).maybeSingle();
+    if(error||!r){dlg('요청','<p class="err">찾을 수 없는 요청입니다.</p>');return}
+    const {data:ans}=await sb.from('request_answers').select('item,by_user,created_at,shared_items(id,title,kind,thumb,author_nick,author_grade,copies)').eq('request',id).order('created_at');
+    const mine=S.user&&S.user.id===r.owner, isOpen=r.status==='open';
+    const answers=(ans||[]).filter(a=>a.shared_items).map(a=>{const it=a.shared_items,win=r.answer_item===it.id;
+      return `<div class="an ${win?'win':''}"><a class="pic" href="/community/?id=${it.id}" style="${S.thumb(it.thumb)}" aria-label="${esc(it.title)} 보기"></a>
+        <div><div class="t">${win?'✓ 채택 · ':''}${esc(it.title)}</div><div class="by">${S.gradeIcon(it.author_grade)}${esc(it.author_nick)} · 가져감 ${it.copies}</div></div>
+        <div class="act">${mine&&isOpen?`<button class="btn primary sm" data-accept="${it.id}">채택</button>`:`<a class="btn line sm" href="/cad/?import=${it.id}">가져오기</a>`}</div></div>`}).join('');
+    const d=dlg('요청',`
+      <p style="margin:0 0 6px"><span class="chipb ${r.status}">${STATUS[r.status]}</span> ${r.bounty?`<span class="chipb bounty">현상금 ${r.bounty} 크레딧</span>`:''}</p>
+      <h4 style="font-size:20px;margin:6px 0">${esc(r.title)}</h4>
+      <div class="by" style="color:var(--ink-3);font-size:14px;margin-bottom:12px">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · ${new Date(r.created_at).toLocaleDateString('ko-KR')}</div>
+      ${r.body?`<p class="rq-body">${esc(r.body)}</p>`:''}
+      ${(r.tags||[]).length?`<div class="tags">${r.tags.map(t=>`<span>#${esc(t)}</span>`).join('')}</div>`:''}
+      <h4 style="margin:22px 0 0">답 ${(ans||[]).length}</h4>
+      <div class="ans">${answers||'<p class="note">아직 답이 없습니다. 무카 CAD에서 그려서 [공유]한 뒤 여기서 답으로 걸어 주세요.</p>'}</div>
+      <p class="err" data-err></p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${isOpen&&!mine?'<button class="btn primary sm" data-answer>내 공유 항목으로 답하기</button><a class="btn line sm" href="/cad/" target="_blank" rel="noopener">무카 CAD에서 그리기</a>':''}
+        ${isOpen&&mine?`<button class="btn line sm" data-close>요청 닫기${r.bounty?' (현상금 돌려받기)':''}</button>`:''}
+      </div>`);
+    const err=d.querySelector('[data-err]');
+    history.replaceState(null,'','?id='+id);
+    const done=()=>{d.close();history.replaceState(null,'',location.pathname);load();paintWallet()};
+    d.querySelectorAll('[data-accept]').forEach(b=>b.onclick=async()=>{
+      if(!confirm(`이 답을 채택할까요?${r.bounty?` 현상금 ${r.bounty} 크레딧이 답한 사람에게 갑니다.`:''}`))return;
+      const {error}=await sb.rpc('request_accept',{req:id,item_id:b.dataset.accept});if(error){err.textContent=error.message;return}done()});
+    const cl=d.querySelector('[data-close]');
+    if(cl)cl.onclick=async()=>{const {error}=await sb.rpc('request_close',{req:id});if(error){err.textContent=error.message;return}done()};
+    const an=d.querySelector('[data-answer]');
+    if(an)an.onclick=async()=>{
+      if(!S.user){S.login(location.origin+'/requests/?id='+id);return}
+      const {data:its}=await sb.from('shared_items').select('id,title,kind').eq('owner',S.user.id).eq('status','public').order('created_at',{ascending:false}).limit(50);
+      if(!its||!its.length){err.textContent='아직 공유한 항목이 없습니다. 무카 CAD에서 그려서 [공유]한 뒤 다시 와 주세요.';return}
+      const p=dlg('답으로 걸 항목 고르기',`<div class="pick">${its.map((it,i)=>`<label><input type="radio" name="pk" value="${it.id}" ${i?'':'checked'}><span>${it.kind==='block'?'블록':'도면'} · ${esc(it.title)}</span></label>`).join('')}</div>
+        <p class="err" data-e></p><button class="btn primary sm" data-go>답으로 걸기</button>`);
+      p.querySelector('[data-go]').onclick=async()=>{const v=p.querySelector('input[name=pk]:checked').value;
+        const {error}=await sb.rpc('request_answer',{req:id,item_id:v});if(error){p.querySelector('[data-e]').textContent=error.message;return}
+        p.close();d.close();open(id)};
+    };
+  }
+
+  function openNew(pre){
+    if(!S.user){S.login(location.origin+'/requests/?new='+encodeURIComponent(pre||''));return}
+    if(!S.nick){location.href='/cad/';return}
+    const max=Math.min(5,wallet?wallet.credits:0);
+    const d=dlg('요청 올리기',`<form class="frm">
+      <div class="field"><label for="rt">무엇이 필요한가요</label><input type="text" id="rt" maxlength="60" required placeholder="예: M12 육각너트 블록 (KS B 1012)" value="${esc(pre||'')}"></div>
+      <div class="field"><label for="rb">자세히 (선택)</label><textarea id="rb" maxlength="600" placeholder="규격, 쓰는 곳, 기준점 위치 같은 걸 적어 주세요. 회사명·고객명은 빼 주세요."></textarea></div>
+      <div class="row"><div class="field"><label for="rg">태그 (쉼표로)</label><input type="text" id="rg" maxlength="120" placeholder="너트, KS, 체결"></div>
+        <div class="field"><label for="rk">현상금</label><select id="rk">${Array.from({length:max+1},(_,i)=>`<option value="${i}">${i?i+' 크레딧':'없음'}</option>`).join('')}</select></div></div>
+      <p class="note">내 크레딧 ${wallet?wallet.credits:0}개. 현상금은 지금 빠지고, 답을 채택하면 답한 사람에게 갑니다. 채택 전에 닫으면 돌려받습니다.</p>
+      <p class="err" data-e></p>
+      <div><button class="btn primary sm" type="submit">요청 올리기</button></div></form>`);
+    d.querySelector('form').onsubmit=async e=>{e.preventDefault();
+      const t=d.querySelector('#rt').value.trim(), er=d.querySelector('[data-e]');
+      if(t.length<2){er.textContent='두 글자 이상 적어 주세요';return}
+      const tags=[...new Set(d.querySelector('#rg').value.split(',').map(x=>x.trim()).filter(Boolean))].slice(0,8).map(x=>x.slice(0,20));
+      const {data:id,error}=await sb.rpc('request_post',{p_title:t,p_body:d.querySelector('#rb').value.trim(),p_tags:tags,p_bounty:+d.querySelector('#rk').value});
+      if(error){er.textContent=error.message;return}
+      d.close();filter='open';setSeg();await load();paintWallet();open(id)};
+    setTimeout(()=>d.querySelector('#rt').focus(),30);
+  }
+
+  function setSeg(){document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.f===filter))}
+  document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{filter=b.dataset.f;setSeg();load()});
+  list.addEventListener('click',e=>{const b=e.target.closest('.req');if(b)open(b.dataset.id)});
+  document.getElementById('newBtn').onclick=()=>openNew('');
+  await paintWallet();
+  await load();
+  if(params.get('id'))open(params.get('id'));
+  else if(params.has('new'))openNew(params.get('new'));
+})();
+</script>
+</body>
+</html>
