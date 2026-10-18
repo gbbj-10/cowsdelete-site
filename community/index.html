@@ -23,7 +23,8 @@
 .count{color:var(--ink-3);font-size:14px;margin:6px 0 18px}
 .list-sec{padding:0 0 80px}
 .more{display:flex;justify-content:center;margin-top:22px}
-.detail{display:grid;grid-template-columns:1.35fr 1fr;gap:18px}
+.detail{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px}
+.detail .desc{overflow-wrap:anywhere}
 .detail .pic{background:#111418 center/contain no-repeat;border:1px solid var(--line);border-radius:8px;aspect-ratio:16/10}
 .detail h4{margin:0 0 6px;font-size:20px;line-height:1.35}
 .detail .by{color:var(--ink-3);font-size:14px;margin-bottom:12px}
