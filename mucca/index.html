@@ -288,7 +288,7 @@ a.tool.ask:hover{border-color:var(--note)}
 (async function(){
   const box=document.getElementById('latest'), S=window.COWS, esc=S.esc;
   if(!S.sb){box.innerHTML='';return}
-  const {data,error}=await S.sb.from('shared_items').select('id,kind,title,author_nick,author_grade,thumb,copies,created_at').eq('status','public').order('created_at',{ascending:false}).limit(8);
+  const {data,error}=await S.sb.from('shared_items').select('id,kind,title,author_nick,author_grade,thumb,copies,created_at').eq('status','public').order('sort_group',{ascending:true}).order('created_at',{ascending:false}).limit(8);
   if(error||!data||!data.length){box.innerHTML='<div class="empty">아직 공유된 블록이 없습니다. 무카 CAD에서 [공유]를 눌러 첫 블록을 올려 주세요.</div>';return}
   box.innerHTML=data.map(r=>`<a class="item" href="/community/?id=${r.id}"><span class="pic" style="${S.thumb(r.thumb)}"><span class="kind ${r.kind}">${r.kind==='block'?'블록':'도면'}</span></span><span class="meta"><p class="t">${esc(r.title)}</p><span class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · 가져감 ${r.copies}</span></span></a>`).join('');
 })();
