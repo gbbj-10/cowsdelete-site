@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>무카 CAD — 말하면 그려지는 캐드 | 카우스 소거법</title>
-<meta name="description" content="설치 없이 브라우저에서 쓰는 AI 캐드 무카 CAD. 쓰던 단축키 그대로, DXF로 오토캐드와 주고받고, 블록과 도면은 커뮤니티에서 나눕니다.">
+<title>카우스 소거법 — 직장인 업무 자동화 도구함 | 무카 CAD</title>
+<meta name="description" content="영상에서 만든 업무 자동화 도구를 모아 둔 카우스 소거법 도구함. 첫 도구는 설치 없이 브라우저에서 쓰는 AI 캐드 무카 CAD. 쓰던 단축키 그대로, DXF로 오토캐드와 주고받고, 블록과 도면은 커뮤니티에서 나눕니다.">
 <meta property="og:title" content="무카 CAD — 말하면 그려지는 캐드">
 <meta property="og:description" content="설치 없이 브라우저에서 쓰는 AI 캐드. 블록·도면 공유 커뮤니티.">
 <meta property="og:image" content="/assets/og.jpg">
@@ -24,6 +24,31 @@
 .hero .lead{font-size:18px;color:var(--ink-2);margin:0 0 30px;max-width:30em}
 .hero .cta{display:flex;flex-wrap:wrap;gap:10px}
 .hero .fine{font-size:14px;color:var(--ink-3);margin:16px 0 0}
+.hero{padding:40px 0 34px}
+.hero .now{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink-3);margin:0 0 22px}
+.hero .now img{width:22px;height:22px;border-radius:5px}
+.hero .now b{color:var(--ink-2);font-weight:600}
+.slides{display:grid}
+.slide{grid-area:1/1;opacity:0;visibility:hidden;transition:opacity .45s ease,visibility 0s linear .45s}
+.slide.on{opacity:1;visibility:visible;transition:opacity .45s ease}
+.hero h2.big{font-size:clamp(40px,5.6vw,74px);line-height:1.05;letter-spacing:-.05em;margin:0 0 22px;font-weight:700}
+.hero h2.big span{display:block}.hero h2.big .l2{color:transparent;-webkit-text-stroke:1.5px var(--sky)}
+.shot{margin:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#07101c;box-shadow:0 30px 80px -40px rgba(56,214,245,.35)}
+.shot img{display:block;width:100%;height:auto}
+.shot figcaption{padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-3)}
+.ctrl{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:stretch;margin-top:30px}
+.ctrl .arw{width:44px;border:1px solid var(--line);border-radius:10px;background:var(--plate);color:var(--ink-2);font-size:18px;cursor:pointer}
+.ctrl .arw:hover{border-color:var(--sky);color:var(--ink)}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tabs button{position:relative;overflow:hidden;text-align:left;border:1px solid var(--line);border-radius:10px;background:var(--plate);color:var(--ink-3);padding:10px 14px 13px;font:500 14px var(--sans);cursor:pointer}
+.tabs button b{font:700 13px var(--cmd);color:var(--ink-3);margin-right:8px}
+.tabs button[aria-selected=true]{color:var(--ink);border-color:rgba(56,214,245,.55)}
+.tabs button[aria-selected=true] b{color:var(--sky)}
+.tabs button i{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--sky)}
+.tabs button[aria-selected=true] i{animation:fill var(--dur,7s) linear forwards}
+.slides.paused~.ctrl .tabs i{animation-play-state:paused}
+@keyframes fill{to{width:100%}}
+:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
 .vp{background:#07101c;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 30px 80px -40px rgba(56,214,245,.35)}
 .vp .bar{display:flex;align-items:center;gap:14px;padding:9px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-3)}
 .vp .bar b{color:var(--ink-2);font-weight:600}
@@ -73,7 +98,7 @@
 .msg{font-size:15px;margin:0}.msg.ok{color:var(--leaf)}.msg.bad{color:var(--axis)}
 
 /* 도구 서랍: 2열, 무카 CAD 외에는 준비중 */
-.tools{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tools{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,auto);gap:14px}
 .tool{position:relative;display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:start;padding:20px 22px;border:1px solid var(--line);border-radius:var(--r);background:var(--plate);text-decoration:none;color:inherit;min-height:118px}
 .tool .no{grid-row:span 2;font:600 13px var(--cmd);color:var(--ink-3);border:1px solid var(--line);border-radius:6px;padding:4px 7px;line-height:1}
 .tool h3{margin:0;font-size:19px;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -85,11 +110,13 @@ a.tool.live:hover{border-color:var(--leaf)}
 a.tool.live .go{position:absolute;right:20px;top:20px;font-size:13px;color:var(--leaf);font-weight:600}
 .tool.soon{border-style:dashed;background:repeating-linear-gradient(135deg,rgba(26,42,68,.35) 0 10px,transparent 10px 20px),var(--plate)}
 .tool.soon h3{color:var(--ink-2)}
+.tool.soon .no,a.tool.ask .no{opacity:.7}
 .tool.soon p{color:var(--ink-3)}
 a.tool.ask{border-style:dashed;border-color:rgba(241,194,50,.45)}
 a.tool.ask .st{color:var(--note);border-color:rgba(241,194,50,.5)}
 a.tool.ask:hover{border-color:var(--note)}
-@media (max-width:640px){.tools{gap:10px}.tool{grid-template-columns:1fr;padding:14px;min-height:0}.tool .no{grid-row:auto;justify-self:start}.tool h3{font-size:16px;flex-direction:column;align-items:flex-start;gap:6px}.tool p{font-size:13px}a.tool.live .go{position:static}}
+@media (max-width:860px){.tools{grid-template-columns:1fr 1fr}}
+@media (max-width:640px){.hero{padding:24px 0 26px}.hero .grid{gap:22px}.hero .fine,.shot figcaption,.vp .bar span:not(.legend){display:none}.hero .lead{font-size:16px;margin-bottom:20px}.ctrl{margin-top:20px}.tabs button span{display:none}.tabs button b{margin:0}.tools{gap:10px}.tool{grid-template-columns:1fr;padding:14px;min-height:0}.tool .no{grid-row:auto;justify-self:start}.tool h3{font-size:16px;flex-direction:column;align-items:flex-start;gap:6px}.tool p{font-size:13px}a.tool.live .go{position:static}}
 @media (max-width:960px){.hero .grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr}.step{border-right:0;border-bottom:1px solid var(--line)}.step:last-child{border-bottom:0}.vids{grid-template-columns:1fr}}
 @media (max-width:560px){.spec th{width:110px;padding:12px}.spec td{padding:12px}.vp .legend{display:none}.find{grid-template-columns:1fr}.vid{grid-template-columns:1fr}}
 </style>
@@ -108,7 +135,10 @@ a.tool.ask:hover{border-color:var(--note)}
 </div></header>
 
 <main>
-<section class="hero"><div class="wrap grid">
+<section class="hero" aria-roledescription="carousel" aria-label="지금 열려 있는 도구"><div class="wrap">
+  <p class="now"><img src="/assets/mucca-logo.png" alt="">지금 열려 있는 도구 <b>무카 CAD</b></p>
+  <div class="slides" id="slides">
+  <article class="slide on grid" id="sl1" role="group" aria-roledescription="slide" aria-label="1 / 3 말로 그리기">
   <div>
     <h1><span>말하면,</span><span class="l2">그려진다.</span></h1>
     <p class="lead">설치 없이 브라우저에서 쓰는 AI 캐드, 무카 CAD. 쓰던 단축키 그대로 그리고, 도면은 DXF로 오토캐드와 주고받고, 만든 블록은 커뮤니티에서 나눕니다.</p>
@@ -144,18 +174,47 @@ a.tool.ask:hover{border-color:var(--note)}
     </svg>
     <figcaption class="cmd"><span class="pfx">명령:</span><span class="txt" id="cmdTxt"></span><span class="caret"></span></figcaption>
   </figure>
+  </article>
+  <article class="slide grid" id="sl2" role="group" aria-roledescription="slide" aria-label="2 / 3 쓰던 그대로" aria-hidden="true" inert>
+    <div>
+      <h2 class="big"><span>쓰던 단축키,</span><span class="l2">그대로.</span></h2>
+      <p class="lead">L, C, TR, O, F 같은 오토캐드식 명령을 그대로 칩니다. 도면은 DXF로 오토캐드와 주고받고, 색상별 선 굵기로 벡터 PDF를 뽑습니다.</p>
+      <div class="cta"><a class="btn primary" href="/cad/">무카 CAD 열기</a><a class="btn line" href="#cad">기능 더 보기</a></div>
+      <p class="fine">설치 없이 링크로 열립니다. 기능사 실기 연습용으로도 그대로 씁니다.</p>
+    </div>
+    <figure class="shot"><img src="/assets/slide-cad.jpg" width="1400" height="813" loading="lazy" alt="무카 CAD 화면. 리본 메뉴와 도면층 패널, 치수가 들어간 샤프트 도면"><figcaption>실제 화면 · 1화 샤프트를 명령으로 다시 그린 예제</figcaption></figure>
+  </article>
+  <article class="slide grid" id="sl3" role="group" aria-roledescription="slide" aria-label="3 / 3 내 Claude로" aria-hidden="true" inert>
+    <div>
+      <h2 class="big"><span>내 Claude로,</span><span class="l2">키 없이.</span></h2>
+      <p class="lead">API 키나 별도 결제 없이, 쓰고 있는 Claude 앱을 연결합니다. 연결 파일을 받아 Claude 앱에 설치하면 저절로 이어지고, 사용량은 내 Claude 구독에서 나갑니다.</p>
+      <div class="cta"><a class="btn primary" href="/cad/">무카 CAD 열기</a><a class="btn line" href="#ai">연결 방법 보기</a></div>
+      <p class="fine">도면 데이터는 무카 CAD 서버로 보내지 않습니다. 연결 도구는 내 PC 안에서만 열립니다.</p>
+    </div>
+    <figure class="shot"><img src="/assets/slide-claude.jpg" width="1200" height="754" loading="lazy" alt="무카 CAD의 Claude 연결 창. 연결 파일 받기와 Claude 앱에 설치 두 단계"><figcaption>실제 화면 · 상단 [Claude 연결]을 누르면 열리는 창</figcaption></figure>
+  </article>
+  </div>
+  <div class="ctrl">
+    <button class="arw" type="button" id="slPrev" aria-label="이전 슬라이드">‹</button>
+    <div class="tabs" role="tablist" aria-label="슬라이드 고르기">
+      <button type="button" role="tab" aria-selected="true" aria-controls="sl1"><b>01</b><span>말로 그리기</span><i></i></button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="sl2" tabindex="-1"><b>02</b><span>쓰던 그대로</span><i></i></button>
+      <button type="button" role="tab" aria-selected="false" aria-controls="sl3" tabindex="-1"><b>03</b><span>내 Claude로</span><i></i></button>
+    </div>
+    <button class="arw" type="button" id="slNext" aria-label="다음 슬라이드">›</button>
+  </div>
 </div></section>
 
 <section class="sec" id="tools"><div class="wrap">
   <h2>카우스 소거법 도구함</h2>
-  <p class="sub">영상에서 만든 업무 자동화 도구를 하나씩 여기에 올립니다. 지금은 무카 CAD가 열려 있고, 나머지는 만들고 있습니다.</p>
+  <p class="sub">영상에서 만든 업무 자동화 도구를 이 칸에 하나씩 채웁니다. 지금은 무카 CAD가 열려 있고, 나머지 칸은 연구 중입니다.</p>
   <div class="tools">
     <a class="tool live" href="/cad/"><span class="no">01</span><h3>무카 CAD <span class="st">베타 운영 중</span></h3><p>말로 시키면 그려 주는 브라우저 2D 캐드. 오토캐드 단축키 그대로, DXF 주고받기.</p><span class="go">열기</span></a>
-    <div class="tool soon" aria-disabled="true"><span class="no">02</span><h3>무카 3D <span class="st">준비중</span></h3><p>축·플랜지 같은 부품을 말로 3D 모델링. 1화 Onshape 자동화를 도구로.</p></div>
-    <div class="tool soon" aria-disabled="true"><span class="no">03</span><h3>견적 정리기 <span class="st">준비중</span></h3><p>업체마다 다른 견적서를 표 하나로 모아 비교.</p></div>
-    <div class="tool soon" aria-disabled="true"><span class="no">04</span><h3>도면 일괄 출력 <span class="st">준비중</span></h3><p>도면 수십 장을 정한 규칙대로 PDF 한 번에 출력.</p></div>
-    <div class="tool soon" aria-disabled="true"><span class="no">05</span><h3>규격 부품 찾기 <span class="st">준비중</span></h3><p>KS 볼트·베어링 치수를 찾아 바로 무카 CAD 블록으로.</p></div>
-    <a class="tool ask" href="#report"><span class="no">06</span><h3>다음 도구 <span class="st">제보 받는 중</span></h3><p>매일 반복하는 업무를 알려 주세요. 다음 영상과 도구 후보가 됩니다.</p></a>
+    <div class="tool soon" aria-disabled="true"><span class="no">02</span><h3>새로운 도구 연구 중</h3><p>다음 영상과 함께 이 칸에 공개합니다.</p></div>
+    <div class="tool soon" aria-disabled="true"><span class="no">03</span><h3>새로운 도구 연구 중</h3><p>회사 일을 하며 만들고, 써 보고 다듬는 중입니다.</p></div>
+    <div class="tool soon" aria-disabled="true"><span class="no">04</span><h3>새로운 도구 연구 중</h3><p>완성되면 영상과 이 칸에서 먼저 알려 드립니다.</p></div>
+    <div class="tool soon" aria-disabled="true"><span class="no">05</span><h3>새로운 도구 연구 중</h3><p>반복 업무 하나를 지우는 도구를 설계하고 있습니다.</p></div>
+    <a class="tool ask" href="#report"><span class="no">06</span><h3>새로운 도구 연구 중 <span class="st">제보 받는 중</span></h3><p>만들었으면 하는 도구가 있다면 매일 반복하는 업무를 알려 주세요.</p></a>
   </div>
 </div></section>
 
@@ -262,6 +321,26 @@ a.tool.ask:hover{border-color:var(--note)}
     }
     cmd.textContent=`완료 · 명령 9개 · ${((performance.now()-t0)/1000).toFixed(1)}초`;
   })();
+})();
+
+/* 히어로 슬라이드: 7초마다 넘김, 마우스·포커스가 있으면 멈춤, 움직임 줄이기면 자동 넘김 끔 */
+(function(){
+  const box=document.getElementById('slides'),sl=[...box.children],tabs=[...document.querySelectorAll('.tabs [role=tab]')];
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches,DUR=7000;let i=0,t=null,hold=false;
+  document.documentElement.style.setProperty('--dur',DUR/1000+'s');
+  function go(n,focus){i=(n+sl.length)%sl.length;
+    sl.forEach((e,k)=>{const on=k===i;e.classList.toggle('on',on);e.toggleAttribute('inert',!on);on?e.removeAttribute('aria-hidden'):e.setAttribute('aria-hidden','true')});
+    tabs.forEach((b,k)=>{const on=k===i;b.setAttribute('aria-selected',on);b.tabIndex=on?0:-1;const bar=b.querySelector('i');bar.style.animation='none';void bar.offsetWidth;bar.style.animation=''});
+    if(focus)tabs[i].focus();arm()}
+  function arm(){clearTimeout(t);if(reduce){tabs.forEach(b=>b.querySelector('i').style.display='none');return}if(!hold)t=setTimeout(()=>go(i+1),DUR)}
+  function pause(v){hold=v;box.classList.toggle('paused',v);if(v){clearTimeout(t)}else arm()}
+  tabs.forEach((b,k)=>{b.onclick=()=>go(k);b.onkeydown=e=>{if(e.key==='ArrowRight'){e.preventDefault();go(i+1,true)}else if(e.key==='ArrowLeft'){e.preventDefault();go(i-1,true)}}});
+  document.getElementById('slPrev').onclick=()=>go(i-1);document.getElementById('slNext').onclick=()=>go(i+1);
+  const area=box.parentElement;area.addEventListener('mouseenter',()=>pause(true));area.addEventListener('mouseleave',()=>pause(false));
+  area.addEventListener('focusin',()=>pause(true));area.addEventListener('focusout',e=>{if(!area.contains(e.relatedTarget))pause(false)});
+  document.addEventListener('visibilitychange',()=>pause(document.hidden));
+  let x0=null;box.addEventListener('touchstart',e=>{x0=e.touches[0].clientX},{passive:true});box.addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0;if(Math.abs(dx)>50)go(i+(dx<0?1:-1));x0=null});
+  arm();
 })();
 
 /* 최근 공유 */
