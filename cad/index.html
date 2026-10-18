@@ -4980,8 +4980,10 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
   if(top){top.innerHTML='<span class="aicDot" aria-hidden="true"></span>Claude 연결';top.title='Claude 연결 — 내 Claude로 그리기 (Claude 앱 · Claude Code)';top.dataset.st='off';top.onclick=()=>openAic()}
   const h3=document.querySelector('#side h3');
 
+  const verLt=(a,b)=>{a=String(a||'0').split('.').map(Number);b=String(b||'0').split('.').map(Number);for(let i=0;i<3;i++){if((a[i]||0)!==(b[i]||0))return (a[i]||0)<(b[i]||0)}return false};
+  const outdated=()=>!!AIC.ver&&verLt(AIC.ver,MUCCA_MCP_VER);
   function setState(s,msg){AIC.state=s;if(top)top.dataset.st=s;if(msg!=null)AIC.err=msg;renderDlg();
-    if(!AIC.busy&&!sampleFn)aiSt.textContent=s==='on'?(AIC.claude?'내 Claude 연결됨 · 요청을 쓰고 [그리기]를 누르세요.':'연결됨 · 이 PC에 Claude Code가 없어 입력칸은 쓸 수 없습니다. Claude 앱 대화로 그려 보세요.'):'상단 [Claude 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
+    if(!AIC.busy&&!sampleFn)aiSt.textContent=s==='on'?(outdated()?'연결 프로그램 업데이트가 필요합니다 (설치됨 v'+AIC.ver+' → 최신 v'+MUCCA_MCP_VER+'). 아래 [새 연결 파일 받기]를 누르세요.':AIC.claude?'내 Claude 연결됨 · 요청을 쓰고 [그리기]를 누르세요.':'연결됨 · 이 PC에 Claude Code가 없어 입력칸은 쓸 수 없습니다. Claude 앱 대화로 그려 보세요.'):'상단 [Claude 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 
   /* --- 2) 연결 --- */
   async function connect(code,{silent=false}={}){
@@ -4994,7 +4996,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
     if(!pr.ok){setState('off',pr.error||'연결 코드가 맞지 않습니다.');if(!silent)lsSet('');return false}
     AIC.code=code;lsSet(code);
     const es=AIC.es=new EventSource(AIC.base+'/events?code='+code);
-    es.addEventListener('hello',e=>{const d=JSON.parse(e.data);AIC.claude=d.claudeCode;AIC.ver=d.version;AIC.retry=0;setState('on','');log('Claude 연결됨 · 연결 프로그램 v'+d.version+(d.claudeCode?' · Claude Code 사용 가능':''),'ok')});
+    es.addEventListener('hello',e=>{const d=JSON.parse(e.data);AIC.claude=d.claudeCode;AIC.ver=d.version;AIC.retry=0;setState('on','');log('Claude 연결됨 · 연결 프로그램 v'+d.version+(d.claudeCode?' · Claude Code 사용 가능':''),'ok');if(outdated()){log('연결 프로그램이 예전 버전(v'+d.version+')입니다 — 오른쪽 [새 연결 파일 받기]로 업데이트하세요 (최신 v'+MUCCA_MCP_VER+')','err');updateHelp()}else{const u=document.getElementById('aiUpdHelp');if(u)u.hidden=true}});
     es.addEventListener('call',e=>handleCall(JSON.parse(e.data)));
     es.addEventListener('ai',e=>aiEvent(JSON.parse(e.data)));
     es.addEventListener('replaced',()=>{es.close();if(AIC.es===es)AIC.es=null;setState('off','다른 탭(창)에서 연결해서 이 화면은 연결을 넘겼습니다.')});
@@ -5040,8 +5042,20 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
     else if(d.kind==='done'||d.kind==='error'){AIC.busy=false;bAi.textContent='그리기';
       const t=(d.text||'').trim().slice(0,400)||(d.kind==='done'&&d.ok?'완료':'실패');aiSt.textContent=t;log((d.kind==='done'&&d.ok?'Claude: ':'AI 실패: ')+t,d.kind==='done'&&d.ok?'ok':'err');
       if(!(d.kind==='done'&&d.ok)&&/authenticat|oauth|\blog ?in\b|401|credential|로그인이 필요/i.test(t))loginHelp()}}
+  /* 연결 프로그램이 예전 버전일 때: [새 연결 파일 받기] → 다시 설치하면 자동으로 이어짐 */
+  function updateHelp(){
+    let box=document.getElementById('aiUpdHelp');
+    if(!box){box=document.createElement('div');box.id='aiUpdHelp';box.style.cssText='margin:6px 0 2px;display:grid;gap:6px';
+      const ub=document.createElement('button');ub.className='tbtn primary';ub.id='aiUpdBtn';ub.textContent='새 연결 파일 받기 (업데이트)';
+      const tip=document.createElement('div');tip.className='empty';tip.style.cssText='font-size:12px;line-height:1.5';
+      tip.textContent='받은 mucca-cad.mcpb 를 Claude 앱 창에 끌어다 놓고 [설치](또는 [업데이트])를 누르면 저절로 다시 연결됩니다. 안 되면 Claude 앱을 껐다 켜 보세요.';
+      ub.onclick=()=>{openAic();getMcpb();aiSt.textContent='파일을 받았습니다. Claude 앱 창에 끌어다 놓고 [설치]를 누르면 자동으로 다시 연결됩니다.'};
+      box.append(ub,tip);aiSt.after(box)}
+    const lh=document.getElementById('aiLoginHelp');if(lh)lh.hidden=true;
+    box.hidden=false}
   /* Claude Code 로그인이 풀렸을 때: 쉬운 안내 + [로그인 창 열기] */
   function loginHelp(){
+    if(outdated()){aiSt.textContent='이 PC의 Claude Code 로그인이 풀렸습니다. 로그인 창을 열려면 연결 프로그램을 먼저 최신(v'+MUCCA_MCP_VER+')으로 바꿔야 합니다 — 아래 [새 연결 파일 받기]를 누르세요.';updateHelp();return}
     aiSt.textContent='이 PC의 Claude Code 로그인이 풀렸습니다. 아래 [Claude Code 로그인 창 열기]를 눌러 로그인한 뒤 [그리기]를 다시 누르세요.';
     log('AI: Claude Code 로그인이 필요합니다 — 오른쪽 [Claude Code 로그인 창 열기]를 누르세요. 그동안 Claude 앱 대화창에서 "무카 CAD에 ○○ 그려줘"라고 써도 됩니다.','err');
     let box=document.getElementById('aiLoginHelp');
@@ -5051,7 +5065,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
       tip.textContent='내 PC에 로그인 창(검은 창)이 열립니다. 브라우저에서 Claude 계정으로 로그인하면 끝. 그동안 Claude 앱 대화창에서 "무카 CAD에 ○○ 그려줘"라고 써도 그려집니다.';
       lb.onclick=async()=>{lb.disabled=true;const r=await post('/login');lb.disabled=false;
         if(r&&r.ok){aiSt.textContent='로그인 창을 열었습니다. 작업 표시줄의 검은 창에서 안내대로 로그인하고, 끝나면 [그리기]를 다시 누르세요.'}
-        else if(r&&/not found/i.test(r.error||'')){aiSt.textContent='연결 프로그램이 예전 버전입니다. 상단 [Claude 연결]에서 연결 프로그램을 새로 받아 다시 설치해 주세요.'}
+        else if(r&&/not found/i.test(r.error||'')){aiSt.textContent='연결 프로그램이 예전 버전이라 로그인 창을 못 엽니다. 아래 [새 연결 파일 받기]로 업데이트하세요.';updateHelp()}
         else aiSt.textContent=(r&&r.error)||'로그인 창을 열지 못했습니다. PowerShell에서 claude 를 실행해 로그인해 주세요.'};
       box.append(lb,tip);aiSt.after(box)}
     box.hidden=false}
@@ -5091,9 +5105,10 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
   function newPresetCode(){const a=new Uint32Array(1);crypto.getRandomValues(a);const c=String(a[0]%1000000).padStart(6,'0');AIC.code=c;lsSet(c);return c}
   function waitInstall(){clearInterval(AIC.waitT);AIC.waiting=Date.now();AIC.err='';renderDlg();
     AIC.waitT=setInterval(async()=>{
-      if(AIC.state==='on'||Date.now()-AIC.waiting>15*60*1000){clearInterval(AIC.waitT);AIC.waiting=0;renderDlg();return}
+      if((AIC.state==='on'&&!outdated())||Date.now()-AIC.waiting>15*60*1000){clearInterval(AIC.waitT);AIC.waiting=0;renderDlg();return}
       let st=null;try{st=await fetch(AIC.base+'/status',{cache:'no-store'}).then(r=>r.json())}catch(_){}
-      if(st&&st.app==='mucca-mcp'){const ok=await connect(lsGet(),{silent:true});
+      if(st&&st.app==='mucca-mcp'&&verLt(st.version,MUCCA_MCP_VER)){AIC.err='이전 버전(v'+st.version+') 연결 프로그램이 실행 중입니다. 방금 받은 파일을 Claude 앱 창에 끌어다 놓고 [설치]하면 자동으로 이어집니다. 안 되면 Claude 앱을 껐다 켜 보세요.';renderDlg()}
+      else if(st&&st.app==='mucca-mcp'){const ok=await connect(lsGet(),{silent:true});
         if(ok){clearInterval(AIC.waitT);AIC.waiting=0;log('Claude 연결 완료 — 설치한 연결 프로그램과 자동으로 연결했습니다','ok');renderDlg()}
         else{AIC.err='이전에 설치한 연결 프로그램이 실행 중입니다. 방금 받은 파일로 Claude 앱에서 다시 설치하면 자동으로 이어집니다.';renderDlg()}}
     },2000)}
@@ -5106,7 +5121,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
   const el=(tag,cls,html)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e};
   function renderDlg(){const d=AIC.dlg;if(!d||!d.isConnected)return;
     const s=d.querySelector('.aicStat');s.dataset.st=AIC.state;
-    s.querySelector('.txt').textContent=AIC.state==='on'?('연결됨 · 연결 프로그램 v'+(AIC.ver||'?')+(AIC.claude?' · Claude Code 사용 가능 — 오른쪽 입력칸으로 그릴 수 있습니다':' · Claude Code 없음 — Claude 앱 대화로 그릴 수 있습니다 (오른쪽 입력칸은 아래 Claude Code 필요)')):AIC.state==='connecting'?'연결하는 중…':'연결 안 됨 — 아래 ①→② 순서로 연결하세요';
+    s.querySelector('.txt').textContent=AIC.state==='on'?('연결됨 · 연결 프로그램 v'+(AIC.ver||'?')+(outdated()?' — 예전 버전입니다. 아래 ①로 새 파일을 받아 ②처럼 다시 설치하세요 (최신 v'+MUCCA_MCP_VER+')':AIC.claude?' · Claude Code 사용 가능 — 오른쪽 입력칸으로 그릴 수 있습니다':' · Claude Code 없음 — Claude 앱 대화로 그릴 수 있습니다 (오른쪽 입력칸은 아래 Claude Code 필요)')):AIC.state==='connecting'?'연결하는 중…':'연결 안 됨 — 아래 ①→② 순서로 연결하세요';
     const e=d.querySelector('.aicErr');e.textContent=AIC.err||'';e.hidden=!AIC.err;
     const w=d.querySelector('.aicWait');if(w)w.textContent=(AIC.waiting&&AIC.state!=='on')?'⏳ 설치를 기다리는 중… Claude 앱에서 [설치]를 누르면 자동으로 연결됩니다.':(AIC.state==='on'?'✓ 연결됐습니다.':'');
     const dc=d.querySelector('#aicDisc');if(dc)dc.hidden=AIC.state!=='on'&&!AIC.code}
