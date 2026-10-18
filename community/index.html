@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=20261018b">
+<link rel="stylesheet" href="/assets/site.css?v=20261018c">
 <style>
 .head{padding-top:44px;padding-bottom:26px}
 .head h1{font-size:clamp(30px,4.4vw,48px);letter-spacing:-.035em;line-height:1.15;margin:0 0 10px}
@@ -83,9 +83,9 @@
   </div>
 </div></footer>
 
-<script src="/assets/config.js?v=20261018b"></script>
+<script src="/assets/config.js?v=20261018c"></script>
 <script src="/assets/vendor/supabase.js"></script>
-<script src="/assets/site.js?v=20261018b"></script>
+<script src="/assets/site.js?v=20261018c"></script>
 <script>
 (async function(){
   'use strict';
@@ -169,7 +169,7 @@
     else{const w=await S.wallet();if(!w)return;box.hidden=false;
       const pct=w.next?Math.min(100,Math.round(w.points/w.next*100)):100;
       box.innerHTML=`${S.gradeIcon(w.grade,28)}<span><b>${S.GRADES[w.grade]}</b> · 기여 ${w.points}점</span>
-        <span class="meter" title="${w.next?S.GRADES[w.grade+1]+'까지 '+Math.max(0,w.next-w.points)+'점':'명장'}"><i style="width:${pct}%"></i></span>
+        <span class="meter" title="${w.next?S.GRADES[w.grade+1]+'까지 '+Math.max(0,w.next-w.points)+'점':(w.grade===9?'운영자':'명장')}"><i style="width:${pct}%"></i></span>
         <span>${w.users} 중 ${w.rank}위${w.grade===4?` · 명장 컷 ${w.master_cut}점`:''}</span>
         <span>크레딧 <b>${w.credits}</b>${w.pending?` · 확정 대기 ${w.pending}`:''}</span>
         <span class="sp"><button class="linkbtn" data-guide>등급 안내</button><a class="linkbtn" href="/requests/">요청 게시판</a></span>`;}

@@ -14,13 +14,13 @@ const URL_ = process.env.SB_URL || /supabaseUrl:\s*'([^']+)'/.exec(cfg)[1];
 const KEY = /supabaseKey:\s*'([^']+)'/.exec(cfg)[1];
 
 const GAL = { mech: '기계', arch: '건축', civil: '토목', elec: '전기·전자', plant: '플랜트·배관', cad: 'CAD·도면', license: '자격증·취업', office: '회사생활', humor: '유머', worry: '고민' };
-const GRADE = ['', '기능사', '산업기사', '기사', '기술사', '명장'];
+const GRADE = ['', '기능사', '산업기사', '기사', '기술사', '명장']; GRADE[9] = '운영자';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const linkify = t => esc(t).replace(/https?:\/\/[^\s<>"']+/g, u => `<a href="${u}" target="_blank" rel="nofollow ugc noopener">${u}</a>`);
 const pad = n => String(n).padStart(2, '0');
 const kst = iso => { const d = new Date(new Date(iso).getTime() + 9 * 3600e3); return `${d.getUTCFullYear()}.${pad(d.getUTCMonth() + 1)}.${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`; };
 const snip = (t, n = 150) => { const s = String(t || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
-const gi = (g, size = 18) => { g = Math.min(5, Math.max(1, g | 0 || 1)); return `<img class="gr" src="/assets/grade/g${g}.png" srcset="/assets/grade/g${g}.png 1x, /assets/grade/g${g}@2x.png 2x" width="${size}" height="${size}" alt="${GRADE[g]}" title="${GRADE[g]}">`; };
+const gi = (g, size = 18) => { g = (g | 0) === 9 ? 9 : Math.min(5, Math.max(1, g | 0 || 1)); return `<img class="gr" src="/assets/grade/g${g}.png" srcset="/assets/grade/g${g}.png 1x, /assets/grade/g${g}@2x.png 2x" width="${size}" height="${size}" alt="${GRADE[g]}" title="${GRADE[g]}">`; };
 const jsonld = o => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, '\\u003c')}</script>`;
 
 async function all(table, select, filter = '') {
@@ -54,8 +54,8 @@ function page({ title, desc, canonical, body, head = '', tail = '', css = '' }) 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
-<link rel="stylesheet" href="/assets/site.css?v=20261018b">
-<link rel="stylesheet" href="/assets/board.css?v=20261018b">${css}
+<link rel="stylesheet" href="/assets/site.css?v=20261018c">
+<link rel="stylesheet" href="/assets/board.css?v=20261018c">${css}
 ${head}
 </head>
 <body>
@@ -78,9 +78,9 @@ ${body}
     <div><span class="h">채널</span><a href="https://www.youtube.com/@cowsdelete" target="_blank" rel="noopener">YouTube @cowsdelete</a></div>
   </div>
 </div></footer>
-<script src="/assets/config.js?v=20261018b"></script>
+<script src="/assets/config.js?v=20261018c"></script>
 <script src="/assets/vendor/supabase.js"></script>
-<script src="/assets/site.js?v=20261018b"></script>
+<script src="/assets/site.js?v=20261018c"></script>
 ${tail}
 </body>
 </html>
@@ -122,7 +122,7 @@ for (const p of posts) {
     author: { '@type': 'Person', name: p.author_nick }, interactionStatistic: [{ '@type': 'InteractionCounter', interactionType: 'https://schema.org/LikeAction', userInteractionCount: p.likes },
       { '@type': 'InteractionCounter', interactionType: 'https://schema.org/CommentAction', userInteractionCount: p.comments }], isPartOf: { '@type': 'WebPage', name: `${g} 갤러리`, url: `${SITE}/board/?g=${p.gallery}` } });
   if (write(`p/${p.id}/index.html`, page({ title: `${p.title} — ${g} 갤러리 | 카우스 소거법`, desc: snip(p.body), canonical: url, body, head: ld,
-    tail: `<script>window.BOARD_POST_ID=${JSON.stringify(p.id)}</script>\n<script src="/assets/board.js?v=20261018b"></script>` }))) changed++;
+    tail: `<script>window.BOARD_POST_ID=${JSON.stringify(p.id)}</script>\n<script src="/assets/board.js?v=20261018c"></script>` }))) changed++;
 }
 
 const thumbOk = t => typeof t === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(t) && t.length < 200000;

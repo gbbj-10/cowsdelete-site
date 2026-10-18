@@ -7,8 +7,8 @@
   'use strict';
   const CFG = window.COWS_CONFIG || {};
   const READY = !!(CFG.supabaseUrl && CFG.supabaseKey && window.supabase);
-  const GRADES = ['', '기능사', '산업기사', '기사', '기술사', '명장'];
-  const gradeImg = (g, cls) => { g = Math.min(5, Math.max(1, g | 0 || 1)); const i = document.createElement('img'); i.className = cls || 'gr'; i.src = `/assets/grade/g${g}.png`; i.srcset = `/assets/grade/g${g}.png 1x, /assets/grade/g${g}@2x.png 2x`; i.alt = GRADES[g]; i.title = GRADES[g]; i.width = 18; i.height = 18; return i; };
+  const GRADES = ['', '기능사', '산업기사', '기사', '기술사', '명장']; GRADES[9] = '운영자';
+  const gradeImg = (g, cls) => { g = (g | 0) === 9 ? 9 : Math.min(5, Math.max(1, g | 0 || 1)); const i = document.createElement('img'); i.className = cls || 'gr'; i.src = `/assets/grade/g${g}.png`; i.srcset = `/assets/grade/g${g}.png 1x, /assets/grade/g${g}@2x.png 2x`; i.alt = GRADES[g]; i.title = GRADES[g]; i.width = 18; i.height = 18; return i; };
   const APP_VER = CFG.appVer || 'web';
   const NICK_RE = /^[가-힣A-Za-z0-9_]{2,12}$/;
   const RESERVED = ['관리자', '운영자', 'admin', 'administrator', '카우스소거법', '카우스', '무카캐드', '무카', 'cowsdelete', 'mucca', 'muccacad'];
@@ -174,7 +174,7 @@
     const bar = $('div', { class: 'cl-bar' }); const fill = document.createElement('i'); fill.style.width = pct + '%'; bar.append(fill);
     wbox.append(gradeImg(w.grade, 'cl-big'), $('div', {},
       $('b', { text: `${GRADES[w.grade]} · 기여 ${w.points}점` }), bar,
-      $('div', { class: 'cl-hint', text: w.grade >= 5 ? `명장 · 전체 ${w.users}명 중 ${w.rank}위 (상위 ${w.master_pct}%)` : w.grade === 4 ? `명장은 전체 상위 ${w.master_pct}% · 지금 컷 ${w.master_cut}점 (현재 ${w.users}명 중 ${w.rank}위)` : `${GRADES[w.grade + 1]}까지 ${Math.max(0, w.next - w.points)}점 · ${w.users}명 중 ${w.rank}위` }),
+      $('div', { class: 'cl-hint', text: w.grade === 9 ? '카우스 소거법 운영자' : w.grade >= 5 ? `명장 · 전체 ${w.users}명 중 ${w.rank}위 (상위 ${w.master_pct}%)` : w.grade === 4 ? `명장은 전체 상위 ${w.master_pct}% · 지금 컷 ${w.master_cut}점 (현재 ${w.users}명 중 ${w.rank}위)` : `${GRADES[w.grade + 1]}까지 ${Math.max(0, w.next - w.points)}점 · ${w.users}명 중 ${w.rank}위` }),
       $('div', { class: 'cl-p', text: `크레딧 ${w.credits}${w.pending ? ` (확정 대기 ${w.pending})` : ''}` }),
       $('div', { class: 'cl-hint', text: '공유가 확정되면 +1점, 다른 사람이 내 블록을 가져갈 때마다 +1점, 요청에 답해 채택되면 +2점' }),
       $('a', { href: '/requests/', target: '_blank', rel: 'noopener', class: 'cl-hint', text: '요청 게시판 보기' })));
