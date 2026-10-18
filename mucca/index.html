@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>무카 CAD — 말하면 그려지는 캐드 | 카우스 소거법</title>
+<meta name="description" content="설치 없이 브라우저에서 쓰는 AI 캐드 무카 CAD. 쓰던 단축키 그대로, DXF로 오토캐드와 주고받고, 블록과 도면은 커뮤니티에서 나눕니다.">
+<meta property="og:title" content="무카 CAD — 말하면 그려지는 캐드">
+<meta property="og:description" content="설치 없이 브라우저에서 쓰는 AI 캐드. 블록·도면 공유 커뮤니티.">
+<meta property="og:image" content="/assets/og.jpg">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0a1220">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="canonical" href="https://cowsdelete.com/mucca/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+.hero{padding:56px 0 64px;background:radial-gradient(1200px 520px at 75% 30%,rgba(56,214,245,.08),transparent 70%)}
+.hero .grid{display:grid;grid-template-columns:5fr 7fr;gap:44px;align-items:center}
+.hero h1{font-size:clamp(46px,7vw,92px);line-height:1.02;letter-spacing:-.05em;margin:0 0 22px;font-weight:700}
+.hero h1 span{display:block}
+.hero h1 .l2{color:transparent;-webkit-text-stroke:1.5px var(--sky)}
+.hero .lead{font-size:18px;color:var(--ink-2);margin:0 0 30px;max-width:30em}
+.hero .cta{display:flex;flex-wrap:wrap;gap:10px}
+.hero .fine{font-size:14px;color:var(--ink-3);margin:16px 0 0}
+.hero{padding:40px 0 34px}
+.hero .now{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink-3);margin:0 0 22px}
+.hero .now img{width:22px;height:22px;border-radius:5px}
+.hero .now b{color:var(--ink-2);font-weight:600}
+.slides{display:grid}
+.slide{grid-area:1/1;opacity:0;visibility:hidden;transition:opacity .45s ease,visibility 0s linear .45s}
+.slide.on{opacity:1;visibility:visible;transition:opacity .45s ease}
+.hero h2.big{font-size:clamp(40px,5.6vw,74px);line-height:1.05;letter-spacing:-.05em;margin:0 0 22px;font-weight:700}
+.hero h2.big span{display:block}.hero h2.big .l2{color:transparent;-webkit-text-stroke:1.5px var(--sky)}
+.shot{margin:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#07101c;box-shadow:0 30px 80px -40px rgba(56,214,245,.35)}
+.shot img{display:block;width:100%;height:auto}
+.shot figcaption{padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-3)}
+.ctrl{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:stretch;margin-top:30px}
+.ctrl .arw{width:44px;border:1px solid var(--line);border-radius:10px;background:var(--plate);color:var(--ink-2);font-size:18px;cursor:pointer}
+.ctrl .arw:hover{border-color:var(--sky);color:var(--ink)}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tabs button{position:relative;overflow:hidden;text-align:left;border:1px solid var(--line);border-radius:10px;background:var(--plate);color:var(--ink-3);padding:10px 14px 13px;font:500 14px var(--sans);cursor:pointer}
+.tabs button b{font:700 13px var(--cmd);color:var(--ink-3);margin-right:8px}
+.tabs button[aria-selected=true]{color:var(--ink);border-color:rgba(56,214,245,.55)}
+.tabs button[aria-selected=true] b{color:var(--sky)}
+.tabs button i{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--sky)}
+.tabs button[aria-selected=true] i{animation:fill var(--dur,7s) linear forwards}
+.slides.paused~.ctrl .tabs i{animation-play-state:paused}
+@keyframes fill{to{width:100%}}
+:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
+.vp{background:#07101c;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 30px 80px -40px rgba(56,214,245,.35)}
+.vp .bar{display:flex;align-items:center;gap:14px;padding:9px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-3)}
+.vp .bar b{color:var(--ink-2);font-weight:600}
+.vp .legend{margin-left:auto;display:flex;gap:12px}
+.vp .legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px}
+.vp svg{display:block;width:100%;height:auto;background:
+  linear-gradient(rgba(150,165,185,.07) 1px,transparent 1px) 0 0/20px 20px,
+  linear-gradient(90deg,rgba(150,165,185,.07) 1px,transparent 1px) 0 0/20px 20px,#111418}
+.vp .cmd{display:flex;gap:10px;align-items:center;padding:10px 14px;border-top:1px solid var(--line);font:15px var(--cmd);min-height:44px}
+.vp .cmd .pfx{color:var(--note)}
+.vp .cmd .txt{color:var(--ink)}
+.vp .cmd .caret{width:8px;height:17px;background:var(--sky);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.ol{fill:none;stroke:var(--leaf);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round}
+.cl{fill:none;stroke:var(--axis);stroke-width:1.2;stroke-dasharray:22 5 4 5}
+.dm{fill:none;stroke:var(--sky);stroke-width:1.1}
+.ar{fill:var(--sky)}
+.dt{fill:var(--note);font:600 15px var(--cmd)}
+.hid{fill:none;stroke:var(--note);stroke-width:1.2;stroke-dasharray:6 4}
+.xh line{stroke:#e8edf3;stroke-width:1}
+.xh rect{fill:none;stroke:#e8edf3;stroke-width:1}
+
+.find{display:grid;grid-template-columns:1fr auto;gap:10px;max-width:760px;margin-bottom:30px}
+
+.spec{width:100%;border-collapse:collapse;border:1px solid var(--line);background:var(--plate)}
+.spec caption{text-align:left;color:var(--ink-3);font-size:14px;padding:0 0 10px}
+.spec th,.spec td{border:1px solid var(--line);padding:16px 18px;text-align:left;vertical-align:top}
+.spec th{width:190px;font-weight:600;color:var(--note);background:#0c1626;font-size:15px}
+.spec td{color:var(--ink-2)}
+.spec td b{color:var(--ink);font-weight:600}
+
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--plate)}
+.step{padding:22px 22px 24px;border-right:1px solid var(--line)}
+.step:last-child{border-right:0}
+.step .n{font:700 34px/1 var(--cmd);color:var(--sky);display:block;margin-bottom:12px}
+.step h3{margin:0 0 6px;font-size:18px}.step p{margin:0;color:var(--ink-2);font-size:15px}
+
+.vids{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.vid{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:start;text-decoration:none;background:var(--plate);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.vid:hover{border-color:var(--sky)}
+.vid .ep{font:700 40px/1 var(--cmd);color:var(--note)}
+.vid .ep small{display:block;font:500 13px var(--sans);color:var(--ink-3);margin-top:6px}
+.vid h3{margin:0 0 6px;font-size:17px;line-height:1.45}.vid p{margin:0;color:var(--ink-2);font-size:15px}
+
+.report{display:grid;gap:16px;max-width:760px}
+.warn{font-size:14px;color:var(--ink-3);margin:0}
+.msg{font-size:15px;margin:0}.msg.ok{color:var(--leaf)}.msg.bad{color:var(--axis)}
+
+/* 광고 행: 광고 코드를 넣기 전에는 숨김 (미리보기는 ?ads=1) */
+.adrow{padding:6px 0 34px}
+.adband{border:1px solid #3a4250;border-radius:10px;background:#0d1118;padding:10px 14px 14px}
+.adband .adh{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--ink-3);margin-bottom:8px}
+.adband .adh b{font-weight:600;color:#c9d1dc;background:#232a35;border-radius:4px;padding:1px 7px}
+.adband .slot{min-height:96px;border:1px dashed #556070;border-radius:6px;display:grid;place-items:center;color:#7d8794;font-size:14px;background:repeating-linear-gradient(45deg,#121821 0 8px,#0f141c 8px 16px)}
+.adband .disc{font-size:12px;color:var(--ink-3);margin:8px 0 0}
+/* 도구 서랍: 2열, 무카 CAD 외에는 준비중 */
+.tools{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(2,auto);gap:14px}
+.tool{position:relative;display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:start;padding:20px 22px;border:1px solid var(--line);border-radius:var(--r);background:var(--plate);text-decoration:none;color:inherit;min-height:118px}
+.tool .no{grid-row:span 2;font:600 13px var(--cmd);color:var(--ink-3);border:1px solid var(--line);border-radius:6px;padding:4px 7px;line-height:1}
+.tool h3{margin:0;font-size:19px;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tool p{margin:0;color:var(--ink-2);font-size:14.5px;line-height:1.6}
+.tool .st{font:500 12px var(--sans);padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-3)}
+a.tool.live{border-color:rgba(91,227,138,.45);background:linear-gradient(135deg,rgba(91,227,138,.08),var(--plate) 55%)}
+a.tool.live .st{color:var(--leaf);border-color:rgba(91,227,138,.5)}
+a.tool.live:hover{border-color:var(--leaf)}
+a.tool.live .go{position:absolute;right:20px;top:20px;font-size:13px;color:var(--leaf);font-weight:600}
+.tool.soon{border-style:dashed;background:repeating-linear-gradient(135deg,rgba(26,42,68,.35) 0 10px,transparent 10px 20px),var(--plate)}
+.tool.soon h3{color:var(--ink-2)}
+.tool.soon .no,a.tool.ask .no{opacity:.7}
+.tool.soon p{color:var(--ink-3)}
+a.tool.ask{border-style:dashed;border-color:rgba(241,194,50,.45)}
+a.tool.ask .st{color:var(--note);border-color:rgba(241,194,50,.5)}
+a.tool.ask:hover{border-color:var(--note)}
+@media (max-width:640px){.hero{padding:24px 0 26px}.hero .grid{gap:22px}.hero .fine,.shot figcaption,.vp .bar span:not(.legend){display:none}.hero .lead{font-size:16px;margin-bottom:20px}.ctrl{margin-top:20px}.tabs button span{display:none}.tabs button b{margin:0}.tools{gap:10px}.tool{grid-template-columns:1fr;padding:14px;min-height:0}.tool .no{grid-row:auto;justify-self:start}.tool h3{font-size:16px;flex-direction:column;align-items:flex-start;gap:6px}.tool p{font-size:13px}a.tool.live .go{position:static}}
+@media (max-width:960px){.hero .grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr}.step{border-right:0;border-bottom:1px solid var(--line)}.step:last-child{border-bottom:0}.vids{grid-template-columns:1fr}}
+@media (max-width:560px){.spec th{width:110px;padding:12px}.spec td{padding:12px}.vp .legend{display:none}.find{grid-template-columns:1fr}.vid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="site-top"><div class="wrap">
+  <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법<small>Development Storage</small></span></a>
+  <nav class="site-nav">
+    <a href="/">홈</a>
+    <a href="/cad/">무카 CAD</a>
+    <a href="/community/">커뮤니티</a>
+    <a href="/requests/">요청</a>
+    <a class="opt" href="#videos">영상</a>
+    <a class="opt" href="#report">자동화 문의</a>
+    <span class="who" data-who></span>
+  </nav>
+</div></header>
+
+<main>
+<section class="hero"><div class="wrap grid">
+  <div>
+    <h1><span>말하면,</span><span class="l2">그려진다.</span></h1>
+    <p class="lead">설치 없이 브라우저에서 쓰는 AI 캐드, 무카 CAD. 쓰던 단축키 그대로 그리고, 도면은 DXF로 오토캐드와 주고받고, 만든 블록은 커뮤니티에서 나눕니다.</p>
+    <div class="cta">
+      <a class="btn kakao" id="startBtn" href="/cad/">카카오로 시작하기</a>
+      <a class="btn line" href="/community/">공유 도면 둘러보기</a>
+    </div>
+    <p class="fine">무료 베타예요. 카카오 로그인 후 바로 쓸 수 있고, PC 크롬이나 엣지를 권장합니다.</p>
+  </div>
+
+  <figure class="vp" style="margin:0" aria-label="무카 CAD가 축 도면을 그리는 장면">
+    <div class="bar"><b>무카 CAD</b><span>모형 · 1:1</span>
+      <span class="legend"><span><i style="background:var(--leaf)"></i>외형선</span><span><i style="background:var(--axis)"></i>중심선</span><span><i style="background:var(--sky)"></i>치수</span></span></div>
+    <svg viewBox="0 0 1000 540" role="img" aria-hidden="true" id="draw">
+      <g id="ents">
+        <path class="cl" data-c="CENTERLINE" d="M90 270 H910"/>
+        <path class="ol" data-c="PLINE" d="M150 228 L156 222 H270 V196 H600 V180 H660 V212 H850 L856 218 V322 L850 328 H660 V360 H600 V344 H270 V318 H156 L150 312 Z"/>
+        <path class="ol" data-c="LINE" d="M270 222 V318 M600 196 V344 M660 180 V360"/>
+        <path class="hid" data-c="KEYWAY" d="M350 226 H500 A10 10 0 0 1 500 246 H350 A10 10 0 0 1 350 226 Z"/>
+        <path class="dm" data-c="DIMLINEAR" d="M150 336 V452 M856 336 V452 M156 440 H850"/>
+        <path class="ar" data-c="" d="M150 440 L166 435 V445 Z M856 440 L840 435 V445 Z"/>
+        <text class="dt" data-c="" x="476" y="430">240</text>
+        <path class="dm" data-c="DIMDIAMETER" d="M630 180 V96 M630 360 V376 M600 110 H700"/>
+        <text class="dt" data-c="" x="642" y="100">Ø45</text>
+        <path class="dm" data-c="DIMDIAMETER" d="M760 212 V150 M760 150 H820"/>
+        <text class="dt" data-c="" x="772" y="142">Ø32</text>
+        <path class="dm" data-c="DIMDIAMETER" d="M210 222 V150 M210 150 H270"/>
+        <text class="dt" data-c="" x="222" y="142">Ø25</text>
+        <path class="dm" data-c="LEADER" d="M425 236 L470 132 H560"/>
+        <text class="dt" data-c="" x="480" y="124">키홈 8×7</text>
+      </g>
+      <g class="xh" id="xh" style="transform:translate(500px,270px)"><line x1="-2000" y1="0" x2="2000" y2="0" opacity=".25"/><line x1="0" y1="-2000" x2="0" y2="2000" opacity=".25"/><rect x="-6" y="-6" width="12" height="12"/></g>
+    </svg>
+    <figcaption class="cmd"><span class="pfx">명령:</span><span class="txt" id="cmdTxt"></span><span class="caret"></span></figcaption>
+  </figure>
+</div></section>
+
+<section class="sec" id="find"><div class="wrap">
+  <h2>그거 없어? 무카에서 찾아봐</h2>
+  <p class="sub">다른 사람이 공유한 블록과 도면을 찾아 내 캐드로 바로 가져옵니다. 직접 '공유'를 누른 것만 올라오고, 내 도면은 기본으로 나만 봅니다.</p>
+  <form class="find" action="/community/" method="get">
+    <div class="cmdline"><span class="pfx">찾기:</span><input name="q" type="search" placeholder="M10 볼트, 플랜지, 표제란 양식" aria-label="공유 도면 찾기"></div>
+    <button class="btn line" type="submit">찾기</button>
+  </form>
+  <div class="shelf" id="latest" aria-live="polite"></div>
+</div></section>
+
+<section class="sec" id="cad"><div class="wrap">
+  <h2>무카 CAD 요목표</h2>
+  <p class="sub">직장인이 회사 일을 하면서 직접 만들고, 기능사 도면 30장을 따라 그리며 다듬었습니다. 베타라 부족한 곳은 의견을 받아 고쳐 나갑니다.</p>
+  <table class="spec">
+    <tr><th>명령 · 단축키</th><td><b>쓰던 그대로.</b> L, C, REC, TR, O, F, CHA 같은 오토캐드식 명령. 단축키 대화상자에서 바로 바꿉니다.</td></tr>
+    <tr><th>실행 환경</th><td><b>설치 없음.</b> 링크로 열리는 브라우저 캐드. 학생과 시험 준비생도 연습용으로 그대로 씁니다.</td></tr>
+    <tr><th>AI 그리기</th><td><b>내 클로드로.</b> API 키 없이, 쓰고 있는 Claude 앱이나 클로드 코드를 연결해 말로 그립니다.</td></tr>
+    <tr><th>파일</th><td><b>DXF · 벡터 PDF.</b> 오토캐드와 DXF로 주고받고, 색상별 선 굵기로 PDF를 출력합니다.</td></tr>
+    <tr><th>저장</th><td><b>클라우드, 나만 보기.</b> 카카오 계정으로 도면과 단축키 설정을 저장하고 다른 PC에서 엽니다.</td></tr>
+    <tr><th>공유</th><td><b>고른 것만.</b> 블록이나 도면을 골라 커뮤니티에 올리면 누구나 보고 내 캐드로 가져갈 수 있습니다.</td></tr>
+  </table>
+</div></section>
+
+<section class="sec" id="ai"><div class="wrap">
+  <h2>말로 그리려면</h2>
+  <p class="sub">캐드는 AI 없이도 다 쓸 수 있습니다. 말로 그리기는 한 번만 연결하면 됩니다.</p>
+  <div class="steps">
+    <div class="step"><span class="n">1</span><h3>[Claude 연결] 누르기</h3><p>무카 CAD 상단의 [Claude 연결] 버튼을 누르고 연결 파일을 받습니다.</p></div>
+    <div class="step"><span class="n">2</span><h3>Claude 앱에 설치</h3><p>받은 파일을 Claude 앱 창 프로필 › 설정 › 확장 프로그램 화면에 끌어다 놓고 [설치]를 누릅니다. 연결 파일을 받은 창은 그대로 두세요. 내 PC 안에서만 열리는 작은 연결 도구입니다.</p></div>
+    <div class="step"><span class="n">3</span><h3>자동 연결</h3><p>설치가 끝나면 저절로 초록 불이 켜집니다. "플랜지 붙은 축 그려줘"라고 말해 보세요.</p></div>
+  </div>
+</div></section>
+
+<section class="sec" id="videos"><div class="wrap">
+  <h2>만드는 과정은 영상으로</h2>
+  <p class="sub">매일 하는 회사 업무를 AI로 어디까지 자동화할 수 있는지 직접 해 봅니다.</p>
+  <div class="vids">
+    <a class="vid" href="https://youtu.be/vi42ztaCKw0" target="_blank" rel="noopener"><span class="ep">02<small>4분 · 무카 CAD</small></span><span><h3>클로드 AI 캐드 만들어 봤습니다, 말로 대화하면 12초만에 도면 뚝딱</h3><p>MCP가 안 되는 캐드 대신, AI가 끝까지 조작할 수 있는 캐드를 직접 만들었습니다.</p></span></a>
+    <a class="vid" href="https://youtu.be/sbg-gBG2x40" target="_blank" rel="noopener"><span class="ep">01<small>6분 · 온셰이프</small></span><span><h3>클로드코드로 3D 캐드 모델링 설계 자동화 해봤습니다</h3><p>클로드 코드와 온셰이프 MCP로 2D 샤프트 도면을 3D 모델로 자동 생성.</p></span></a>
+  </div>
+</div></section>
+
+<section class="sec" id="report"><div class="wrap">
+  <h2>이 캐드 작업, 자동화될까요?</h2>
+  <p class="sub">매일 손으로 반복하는 캐드 작업을 적어 주세요. 무카 CAD나 Claude로 어떻게 자동화할 수 있는지 답해 드립니다. 답변은 [요청] 게시판과 다음 영상에서 공개합니다.</p>
+  <form class="report" id="reportForm">
+    <div class="field"><label for="rText">어떤 캐드 작업을 자동화하고 싶으세요?</label>
+      <textarea id="rText" maxlength="1500" required placeholder="예: 탱크 도면을 지름·높이만 바꿔 매번 다시 그립니다. 노즐 위치와 치수까지 자동으로 들어가면 좋겠어요."></textarea></div>
+    <div class="field"><label for="rJob">직무 (선택)</label><input type="text" id="rJob" maxlength="40" placeholder="예: 기계 설계 3년차"></div>
+    <p class="warn">회사명, 고객명, 단가, 실제 도면은 빼고 작업 방식만 적어 주세요. 내 질문에 달린 답을 직접 받아 보려면 로그인 후 <a href="/requests/?new=">[요청] 게시판</a>에 올려 주세요.</p>
+    <div><button class="btn primary" type="submit" id="rSend">자동화 문의 보내기</button></div>
+    <p class="msg" id="rMsg" role="status"></p>
+  </form>
+</div></section>
+</main>
+
+<footer class="titleblock"><div class="wrap">
+  <div class="tb">
+    <div><span class="h">도명</span>카우스 소거법, 소처럼 일하는 흑우들을 없애자</div>
+    <div><span class="h">무카 CAD</span><a href="/mucca/">소개</a> / <a href="/cad/">열기</a> / <a href="/community/">커뮤니티</a></div>
+    <div><span class="h">안내</span><a href="/beta/">베타 이용 안내</a><br><a href="/privacy/">개인정보처리방침</a></div>
+    <div><span class="h">채널</span><a href="https://www.youtube.com/@cowsdelete" target="_blank" rel="noopener">YouTube @cowsdelete</a></div>
+  </div>
+</div></footer>
+
+<script src="/assets/config.js"></script>
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/site.js"></script>
+<script>
+(function(){
+  'use strict';
+  const C=window.COWS_CONFIG||{}, S=window.COWS;
+  /* 로그인 상태에 따라 시작 버튼 */
+  S.ready.then(s=>{const b=document.getElementById('startBtn');
+    if(s.user){b.className='btn primary';b.textContent='무카 CAD 열기';b.href='/cad/'}
+    else{b.addEventListener('click',e=>{if(!s.sb)return;e.preventDefault();s.login(location.origin+'/cad/')})}});
+
+  /* 히어로: 축 도면을 그리는 장면 (한 번만 재생, 움직임 줄이기 설정이면 바로 완성) */
+  const ents=[...document.querySelectorAll('#ents > *')], xh=document.getElementById('xh'), cmd=document.getElementById('cmdTxt');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const prompt='플랜지 붙은 축 그려줘, 전체 길이 240';
+  if(reduce){cmd.textContent='완료 · 명령 9개';return}
+  ents.forEach(e=>{e.style.opacity='0'});
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  (async()=>{
+    await wait(500);
+    for(let i=1;i<=prompt.length;i++){cmd.textContent=prompt.slice(0,i);await wait(42)}
+    await wait(650);const t0=performance.now();
+    for(const e of ents){
+      const c=e.dataset.c; if(c)cmd.textContent=c;
+      e.style.opacity='1';
+      if(e.tagName==='path'&&!e.classList.contains('ar')){
+        const L=e.getTotalLength(), dash=getComputedStyle(e).strokeDasharray;
+        const dur=Math.min(900,Math.max(260,L*1.1));
+        e.style.strokeDasharray=L+' '+L;
+        const end=e.getPointAtLength(L);
+        xh.animate([{},{transform:`translate(${end.x}px,${end.y}px)`}],{duration:dur,fill:'forwards',easing:'ease-in-out'});
+        await e.animate([{strokeDashoffset:L},{strokeDashoffset:0}],{duration:dur,easing:'ease-in-out',fill:'forwards'}).finished;
+        e.style.strokeDasharray=dash==='none'?'':dash;e.getAnimations().forEach(a=>a.cancel());
+      }else{e.animate([{opacity:0},{opacity:1}],{duration:220,fill:'forwards'});await wait(160)}
+    }
+    cmd.textContent=`완료 · 명령 9개 · ${((performance.now()-t0)/1000).toFixed(1)}초`;
+  })();
+})();
+
+/* 최근 공유 */
+(async function(){
+  const box=document.getElementById('latest'), S=window.COWS, esc=S.esc;
+  if(!S.sb){box.innerHTML='';return}
+  const {data,error}=await S.sb.from('shared_items').select('id,kind,title,author_nick,author_grade,thumb,copies,created_at').eq('status','public').order('created_at',{ascending:false}).limit(8);
+  if(error||!data||!data.length){box.innerHTML='<div class="empty">아직 공유된 블록이 없습니다. 무카 CAD에서 [공유]를 눌러 첫 블록을 올려 주세요.</div>';return}
+  box.innerHTML=data.map(r=>`<a class="item" href="/community/?id=${r.id}"><span class="pic" style="${S.thumb(r.thumb)}"><span class="kind ${r.kind}">${r.kind==='block'?'블록':'도면'}</span></span><span class="meta"><p class="t">${esc(r.title)}</p><span class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · 가져감 ${r.copies}</span></span></a>`).join('');
+})();
+
+/* 업무 제보 */
+(function(){
+  const C=window.COWS_CONFIG||{},f=document.getElementById('reportForm'),msg=document.getElementById('rMsg'),btn=document.getElementById('rSend');
+  f.addEventListener('submit',async e=>{e.preventDefault();
+    const text=document.getElementById('rText').value.trim(),job=document.getElementById('rJob').value.trim();
+    if(text.length<5){msg.className='msg bad';msg.textContent='어떤 캐드 작업인지 한두 문장으로 적어 주세요.';return}
+    btn.disabled=true;msg.className='msg';msg.textContent='보내는 중…';
+    try{const r=await fetch(C.supabaseUrl+'/rest/v1/events',{method:'POST',headers:{'apikey':C.supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({kind:'report',payload:{text:text.slice(0,1500),job:job.slice(0,40)},app_ver:C.appVer||'',page:'home'})});
+      if(!r.ok)throw new Error(r.status);f.reset();msg.className='msg ok';msg.textContent='보냈습니다. 답변은 [요청] 게시판과 다음 영상에서 공개합니다.';
+    }catch(_){msg.className='msg bad';msg.textContent='보내지 못했습니다. 잠시 뒤 다시 보내 주세요.'}
+    btn.disabled=false});
+})();
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>카우스 소거법 — 직장인 업무 자동화 도구함 | 무카 CAD</title>
+<title>카우스 소거법 — Development Storage</title>
 <meta name="description" content="영상에서 만든 업무 자동화 도구를 모아 둔 카우스 소거법 도구함. 첫 도구는 설치 없이 브라우저에서 쓰는 AI 캐드 무카 CAD. 쓰던 단축키 그대로, DXF로 오토캐드와 주고받고, 블록과 도면은 커뮤니티에서 나눕니다.">
 <meta property="og:title" content="무카 CAD — 말하면 그려지는 캐드">
 <meta property="og:description" content="설치 없이 브라우저에서 쓰는 AI 캐드. 블록·도면 공유 커뮤니티.">
@@ -29,6 +29,7 @@
 .hero .now img{width:22px;height:22px;border-radius:5px}
 .hero .now b{color:var(--ink-2);font-weight:600}
 .slides{display:grid}
+.godown{margin:18px 0 0;font-size:14px;color:var(--ink-3)}
 .slide{grid-area:1/1;opacity:0;visibility:hidden;transition:opacity .45s ease,visibility 0s linear .45s}
 .slide.on{opacity:1;visibility:visible;transition:opacity .45s ease}
 .hero h2.big{font-size:clamp(40px,5.6vw,74px);line-height:1.05;letter-spacing:-.05em;margin:0 0 22px;font-weight:700}
@@ -131,11 +132,11 @@ a.tool.ask:hover{border-color:var(--note)}
 <header class="site-top"><div class="wrap">
   <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법<small>Development Storage</small></span></a>
   <nav class="site-nav">
-    <a href="/cad/">무카 CAD</a>
+    <a href="/mucca/">무카 CAD</a>
     <a href="/community/">커뮤니티</a>
     <a href="/requests/">요청</a>
-    <a class="opt" href="#videos">영상</a>
-    <a class="opt" href="#report">자동화 문의</a>
+    <a class="opt" href="/mucca/#videos">영상</a>
+    <a class="opt" href="/mucca/#report">자동화 문의</a>
     <span class="who" data-who></span>
   </nav>
 </div></header>
@@ -148,11 +149,7 @@ a.tool.ask:hover{border-color:var(--note)}
   <div>
     <h1><span>말하면,</span><span class="l2">그려진다.</span></h1>
     <p class="lead">설치 없이 브라우저에서 쓰는 AI 캐드, 무카 CAD. 쓰던 단축키 그대로 그리고, 도면은 DXF로 오토캐드와 주고받고, 만든 블록은 커뮤니티에서 나눕니다.</p>
-    <div class="cta">
-      <a class="btn kakao" id="startBtn" href="/cad/">카카오로 시작하기</a>
-      <a class="btn line" href="/community/">공유 도면 둘러보기</a>
-    </div>
-    <p class="fine">무료 베타예요. 카카오 로그인 후 바로 쓸 수 있고, PC 크롬이나 엣지를 권장합니다.</p>
+    <p class="fine">무료 베타 · PC 크롬이나 엣지를 권장합니다.</p>
   </div>
 
   <figure class="vp" style="margin:0" aria-label="무카 CAD가 축 도면을 그리는 장면">
@@ -185,7 +182,6 @@ a.tool.ask:hover{border-color:var(--note)}
     <div>
       <h2 class="big"><span>쓰던 단축키,</span><span class="l2">그대로.</span></h2>
       <p class="lead">L, C, TR, O, F 같은 오토캐드식 명령을 그대로 칩니다. 도면은 DXF로 오토캐드와 주고받고, 색상별 선 굵기로 벡터 PDF를 뽑습니다.</p>
-      <div class="cta"><a class="btn primary" href="/cad/">무카 CAD 열기</a><a class="btn line" href="#cad">기능 더 보기</a></div>
       <p class="fine">설치 없이 링크로 열립니다. 기능사 실기 연습용으로도 그대로 씁니다.</p>
     </div>
     <figure class="shot"><img src="/assets/slide-cad.jpg" width="1400" height="813" loading="lazy" alt="무카 CAD 화면. 리본 메뉴와 도면층 패널, 치수가 들어간 샤프트 도면"><figcaption>실제 화면 · 1화 샤프트를 명령으로 다시 그린 예제</figcaption></figure>
@@ -194,7 +190,6 @@ a.tool.ask:hover{border-color:var(--note)}
     <div>
       <h2 class="big"><span>내 Claude로,</span><span class="l2">키 없이.</span></h2>
       <p class="lead">API 키나 별도 결제 없이, 쓰고 있는 Claude 앱을 연결합니다. 연결 파일을 받아 Claude 앱에 설치하면 저절로 이어지고, 사용량은 내 Claude 구독에서 나갑니다.</p>
-      <div class="cta"><a class="btn primary" href="/cad/">무카 CAD 열기</a><a class="btn line" href="#ai">연결 방법 보기</a></div>
       <p class="fine">도면 데이터는 무카 CAD 서버로 보내지 않습니다. 연결 도구는 내 PC 안에서만 열립니다.</p>
     </div>
     <figure class="shot"><img src="/assets/slide-claude.jpg" width="1200" height="754" loading="lazy" alt="무카 CAD의 Claude 연결 창. 연결 파일 받기와 Claude 앱에 설치 두 단계"><figcaption>실제 화면 · 상단 [Claude 연결]을 누르면 열리는 창</figcaption></figure>
@@ -209,6 +204,7 @@ a.tool.ask:hover{border-color:var(--note)}
     </div>
     <button class="arw" type="button" id="slNext" aria-label="다음 슬라이드">›</button>
   </div>
+  <p class="godown">쓰려면 아래 도구함에서 고르세요 ↓</p>
 </div></section>
 
 <section class="adrow" id="adrow" hidden aria-label="광고"><div class="wrap">
@@ -219,73 +215,19 @@ a.tool.ask:hover{border-color:var(--note)}
   <h2>카우스 소거법 도구함</h2>
   <p class="sub">영상에서 만든 업무 자동화 도구를 이 칸에 하나씩 채웁니다. 지금은 무카 CAD가 열려 있고, 나머지 칸은 연구 중입니다.</p>
   <div class="tools">
-    <a class="tool live" href="/cad/"><span class="no">01</span><h3>무카 CAD <span class="st">베타 운영 중</span></h3><p>말로 시키면 그려 주는 브라우저 2D 캐드. 오토캐드 단축키 그대로, DXF 주고받기.</p><span class="go">열기</span></a>
+    <a class="tool live" href="/mucca/"><span class="no">01</span><h3>무카 CAD <span class="st">베타 운영 중</span></h3><p>말로 시키면 그려 주는 브라우저 2D 캐드. 오토캐드 단축키 그대로, DXF 주고받기.</p><span class="go">열기</span></a>
     <div class="tool soon" aria-disabled="true"><span class="no">02</span><h3>새로운 도구 연구 중</h3><p>다음 영상과 함께 이 칸에 공개합니다.</p></div>
     <div class="tool soon" aria-disabled="true"><span class="no">03</span><h3>새로운 도구 연구 중</h3><p>회사 일을 하며 만들고, 써 보고 다듬는 중입니다.</p></div>
-    <a class="tool ask" href="#report"><span class="no">04</span><h3>새로운 도구 연구 중 <span class="st">아이디어 받는 중</span></h3><p>캐드로 자동화하고 싶은 작업을 알려 주시면 다음 도구 후보가 됩니다.</p></a>
+    <a class="tool ask" href="/mucca/#report"><span class="no">04</span><h3>새로운 도구 연구 중 <span class="st">아이디어 받는 중</span></h3><p>캐드로 자동화하고 싶은 작업을 알려 주시면 다음 도구 후보가 됩니다.</p></a>
   </div>
 </div></section>
 
-<section class="sec" id="find"><div class="wrap">
-  <h2>그거 없어? 무카에서 찾아봐</h2>
-  <p class="sub">다른 사람이 공유한 블록과 도면을 찾아 내 캐드로 바로 가져옵니다. 직접 '공유'를 누른 것만 올라오고, 내 도면은 기본으로 나만 봅니다.</p>
-  <form class="find" action="/community/" method="get">
-    <div class="cmdline"><span class="pfx">찾기:</span><input name="q" type="search" placeholder="M10 볼트, 플랜지, 표제란 양식" aria-label="공유 도면 찾기"></div>
-    <button class="btn line" type="submit">찾기</button>
-  </form>
-  <div class="shelf" id="latest" aria-live="polite"></div>
-</div></section>
-
-<section class="sec" id="cad"><div class="wrap">
-  <h2>무카 CAD 요목표</h2>
-  <p class="sub">직장인이 회사 일을 하면서 직접 만들고, 기능사 도면 30장을 따라 그리며 다듬었습니다. 베타라 부족한 곳은 의견을 받아 고쳐 나갑니다.</p>
-  <table class="spec">
-    <tr><th>명령 · 단축키</th><td><b>쓰던 그대로.</b> L, C, REC, TR, O, F, CHA 같은 오토캐드식 명령. 단축키 대화상자에서 바로 바꿉니다.</td></tr>
-    <tr><th>실행 환경</th><td><b>설치 없음.</b> 링크로 열리는 브라우저 캐드. 학생과 시험 준비생도 연습용으로 그대로 씁니다.</td></tr>
-    <tr><th>AI 그리기</th><td><b>내 클로드로.</b> API 키 없이, 쓰고 있는 Claude 앱이나 클로드 코드를 연결해 말로 그립니다.</td></tr>
-    <tr><th>파일</th><td><b>DXF · 벡터 PDF.</b> 오토캐드와 DXF로 주고받고, 색상별 선 굵기로 PDF를 출력합니다.</td></tr>
-    <tr><th>저장</th><td><b>클라우드, 나만 보기.</b> 카카오 계정으로 도면과 단축키 설정을 저장하고 다른 PC에서 엽니다.</td></tr>
-    <tr><th>공유</th><td><b>고른 것만.</b> 블록이나 도면을 골라 커뮤니티에 올리면 누구나 보고 내 캐드로 가져갈 수 있습니다.</td></tr>
-  </table>
-</div></section>
-
-<section class="sec" id="ai"><div class="wrap">
-  <h2>말로 그리려면</h2>
-  <p class="sub">캐드는 AI 없이도 다 쓸 수 있습니다. 말로 그리기는 한 번만 연결하면 됩니다.</p>
-  <div class="steps">
-    <div class="step"><span class="n">1</span><h3>[Claude 연결] 누르기</h3><p>무카 CAD 상단의 [Claude 연결] 버튼을 누르고 연결 파일을 받습니다.</p></div>
-    <div class="step"><span class="n">2</span><h3>Claude 앱에 설치</h3><p>받은 파일을 Claude 앱 창 프로필 › 설정 › 확장 프로그램 화면에 끌어다 놓고 [설치]를 누릅니다. 연결 파일을 받은 창은 그대로 두세요. 내 PC 안에서만 열리는 작은 연결 도구입니다.</p></div>
-    <div class="step"><span class="n">3</span><h3>자동 연결</h3><p>설치가 끝나면 저절로 초록 불이 켜집니다. "플랜지 붙은 축 그려줘"라고 말해 보세요.</p></div>
-  </div>
-</div></section>
-
-<section class="sec" id="videos"><div class="wrap">
-  <h2>만드는 과정은 영상으로</h2>
-  <p class="sub">매일 하는 회사 업무를 AI로 어디까지 자동화할 수 있는지 직접 해 봅니다.</p>
-  <div class="vids">
-    <a class="vid" href="https://youtu.be/vi42ztaCKw0" target="_blank" rel="noopener"><span class="ep">02<small>4분 · 무카 CAD</small></span><span><h3>클로드 AI 캐드 만들어 봤습니다, 말로 대화하면 12초만에 도면 뚝딱</h3><p>MCP가 안 되는 캐드 대신, AI가 끝까지 조작할 수 있는 캐드를 직접 만들었습니다.</p></span></a>
-    <a class="vid" href="https://youtu.be/sbg-gBG2x40" target="_blank" rel="noopener"><span class="ep">01<small>6분 · 온셰이프</small></span><span><h3>클로드코드로 3D 캐드 모델링 설계 자동화 해봤습니다</h3><p>클로드 코드와 온셰이프 MCP로 2D 샤프트 도면을 3D 모델로 자동 생성.</p></span></a>
-  </div>
-</div></section>
-
-<section class="sec" id="report"><div class="wrap">
-  <h2>이 캐드 작업, 자동화될까요?</h2>
-  <p class="sub">매일 손으로 반복하는 캐드 작업을 적어 주세요. 무카 CAD나 Claude로 어떻게 자동화할 수 있는지 답해 드립니다. 답변은 [요청] 게시판과 다음 영상에서 공개합니다.</p>
-  <form class="report" id="reportForm">
-    <div class="field"><label for="rText">어떤 캐드 작업을 자동화하고 싶으세요?</label>
-      <textarea id="rText" maxlength="1500" required placeholder="예: 탱크 도면을 지름·높이만 바꿔 매번 다시 그립니다. 노즐 위치와 치수까지 자동으로 들어가면 좋겠어요."></textarea></div>
-    <div class="field"><label for="rJob">직무 (선택)</label><input type="text" id="rJob" maxlength="40" placeholder="예: 기계 설계 3년차"></div>
-    <p class="warn">회사명, 고객명, 단가, 실제 도면은 빼고 작업 방식만 적어 주세요. 내 질문에 달린 답을 직접 받아 보려면 로그인 후 <a href="/requests/?new=">[요청] 게시판</a>에 올려 주세요.</p>
-    <div><button class="btn primary" type="submit" id="rSend">자동화 문의 보내기</button></div>
-    <p class="msg" id="rMsg" role="status"></p>
-  </form>
-</div></section>
 </main>
 
 <footer class="titleblock"><div class="wrap">
   <div class="tb">
     <div><span class="h">도명</span>카우스 소거법, 소처럼 일하는 흑우들을 없애자</div>
-    <div><span class="h">무카 CAD</span><a href="/cad/">열기</a> / <a href="/community/">커뮤니티</a></div>
+    <div><span class="h">무카 CAD</span><a href="/mucca/">소개</a> / <a href="/cad/">열기</a> / <a href="/community/">커뮤니티</a></div>
     <div><span class="h">안내</span><a href="/beta/">베타 이용 안내</a><br><a href="/privacy/">개인정보처리방침</a></div>
     <div><span class="h">채널</span><a href="https://www.youtube.com/@cowsdelete" target="_blank" rel="noopener">YouTube @cowsdelete</a></div>
   </div>
@@ -298,10 +240,6 @@ a.tool.ask:hover{border-color:var(--note)}
 (function(){
   'use strict';
   const C=window.COWS_CONFIG||{}, S=window.COWS;
-  /* 로그인 상태에 따라 시작 버튼 */
-  S.ready.then(s=>{const b=document.getElementById('startBtn');
-    if(s.user){b.className='btn primary';b.textContent='무카 CAD 열기';b.href='/cad/'}
-    else{b.addEventListener('click',e=>{if(!s.sb)return;e.preventDefault();s.login(location.origin+'/cad/')})}});
 
   /* 히어로: 축 도면을 그리는 장면 (한 번만 재생, 움직임 줄이기 설정이면 바로 완성) */
   const ents=[...document.querySelectorAll('#ents > *')], xh=document.getElementById('xh'), cmd=document.getElementById('cmdTxt');
@@ -354,28 +292,6 @@ a.tool.ask:hover{border-color:var(--note)}
 /* 광고 행: config 에 광고가 켜졌거나 ?ads=1 미리보기일 때만 보임 */
 (function(){const C=window.COWS_CONFIG||{};if(C.ads||/[?&]ads=1\b/.test(location.search))document.getElementById('adrow').hidden=false})();
 
-/* 최근 공유 */
-(async function(){
-  const box=document.getElementById('latest'), S=window.COWS, esc=S.esc;
-  if(!S.sb){box.innerHTML='';return}
-  const {data,error}=await S.sb.from('shared_items').select('id,kind,title,author_nick,author_grade,thumb,copies,created_at').eq('status','public').order('created_at',{ascending:false}).limit(8);
-  if(error||!data||!data.length){box.innerHTML='<div class="empty">아직 공유된 블록이 없습니다. 무카 CAD에서 [공유]를 눌러 첫 블록을 올려 주세요.</div>';return}
-  box.innerHTML=data.map(r=>`<a class="item" href="/community/?id=${r.id}"><span class="pic" style="${S.thumb(r.thumb)}"><span class="kind ${r.kind}">${r.kind==='block'?'블록':'도면'}</span></span><span class="meta"><p class="t">${esc(r.title)}</p><span class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · 가져감 ${r.copies}</span></span></a>`).join('');
-})();
-
-/* 업무 제보 */
-(function(){
-  const C=window.COWS_CONFIG||{},f=document.getElementById('reportForm'),msg=document.getElementById('rMsg'),btn=document.getElementById('rSend');
-  f.addEventListener('submit',async e=>{e.preventDefault();
-    const text=document.getElementById('rText').value.trim(),job=document.getElementById('rJob').value.trim();
-    if(text.length<5){msg.className='msg bad';msg.textContent='어떤 캐드 작업인지 한두 문장으로 적어 주세요.';return}
-    btn.disabled=true;msg.className='msg';msg.textContent='보내는 중…';
-    try{const r=await fetch(C.supabaseUrl+'/rest/v1/events',{method:'POST',headers:{'apikey':C.supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({kind:'report',payload:{text:text.slice(0,1500),job:job.slice(0,40)},app_ver:C.appVer||'',page:'home'})});
-      if(!r.ok)throw new Error(r.status);f.reset();msg.className='msg ok';msg.textContent='보냈습니다. 답변은 [요청] 게시판과 다음 영상에서 공개합니다.';
-    }catch(_){msg.className='msg bad';msg.textContent='보내지 못했습니다. 잠시 뒤 다시 보내 주세요.'}
-    btn.disabled=false});
-})();
 </script>
 </body>
 </html>
