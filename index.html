@@ -104,6 +104,7 @@
 .adband .adh{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--ink-3);margin-bottom:8px}
 .adband .adh b{font-weight:600;color:#c9d1dc;background:#232a35;border-radius:4px;padding:1px 7px}
 .adband .slot{min-height:96px;border:1px dashed #556070;border-radius:6px;display:grid;place-items:center;color:#7d8794;font-size:14px;background:repeating-linear-gradient(45deg,#121821 0 8px,#0f141c 8px 16px)}
+.adband .slot.filled{background:none;border:0;min-height:0}
 .adband .disc{font-size:12px;color:var(--ink-3);margin:8px 0 0}
 /* 도구 서랍: 2열, 무카 CAD 외에는 준비중 */
 .tools{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(2,auto);gap:14px}
@@ -236,6 +237,7 @@ a.tool.ask:hover{border-color:var(--note)}
 <script src="/assets/config.js"></script>
 <script src="/assets/vendor/supabase.js"></script>
 <script src="/assets/site.js"></script>
+<script src="/assets/ads.js"></script>
 <script>
 (function(){
   'use strict';
