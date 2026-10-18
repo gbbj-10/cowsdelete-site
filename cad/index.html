@@ -1703,7 +1703,7 @@ document.getElementById('bApi').onclick=openApi;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));let replaying=false;
 async function replay(cmds,delay=250,{fit=true}={}){if(replaying)return {ok:false,errors:['이미 재생 중']};replaying=true;pushUndo();const ctx={results:[],lastIds:[]},errors=[];
   try{for(let i=0;i<cmds.length;i++){const c=cmds[i];try{const r=execOne(c,ctx)||{};r.ok=true;ctx.results[i]=r;ctx.lastIds=r.ids||(r.id?[r.id]:ctx.lastIds)}catch(err){ctx.results[i]={ok:false,error:err.message};errors.push(`#${i} ${c.cmd}: ${err.message}`)}
-    changed();if(fit&&i===0)zoomExtentsTo(cmds);await sleep(delay)}}finally{replaying=false}
+    changed();if(fit&&i===0)zoomExtentsTo(cmds);if(delay>0&&!document.hidden)await sleep(delay)}}finally{replaying=false}
   return {ok:!errors.length,results:ctx.results,errors,entities:doc.entities.length,bbox:bbox()}}
 function zoomExtentsTo(cmds){/* 미리 결과 범위를 계산해 화면을 맞춘다 */const save=JSON.stringify(doc);const ctx={results:[],lastIds:[]};for(const c of cmds){try{const r=execOne(c,ctx)||{};ctx.lastIds=r.ids||(r.id?[r.id]:ctx.lastIds)}catch(_){}}zoomExtents();doc=JSON.parse(save);dirty=true}
 function shaftCmds(){
@@ -2909,8 +2909,12 @@ const CMD_WORD={line:['LINE','선'],polyline:['PLINE','폴리선'],rect:['RECTAN
   dimstyle:['DIMSTYLE','치수 스타일'],group:['GROUP','그룹'],draworder:['DRAWORDER','그리기 순서'],align:['ALIGN','정렬'],modify:['PROPERTIES','특성'],clear:['ERASE ALL','전체 지우기'],
   ltscale:['LTSCALE','선종류 축척'],dim_scale:['DIMSCALE','치수 축척'],zoom_extents:['ZOOM E','줌 범위']};
 const nowMs=()=>performance.now();
-function lsleep(ms){return new Promise(res=>{let acc=0,last=nowMs();const tick=()=>{if(LIVE.skip||LIVE.stop)return res();const n=nowMs();if(!LIVE.paused)acc+=(n-last)*LIVE.speed;last=n;if(acc>=ms)return res();requestAnimationFrame(tick)};requestAnimationFrame(tick)})}
-function animate(dur,fn){return new Promise(res=>{let acc=0,last=nowMs();const tick=()=>{const n=nowMs();if(!LIVE.paused)acc+=(n-last)*LIVE.speed;last=n;const t=LIVE.skip||LIVE.stop?1:Math.min(1,acc/Math.max(1,dur));try{fn(t)}catch(_){}dirty=true;if(t>=1)return res();requestAnimationFrame(tick)};tick()})}
+/* 화면이 가려지면(다른 창이 덮음·최소화·다른 탭) 브라우저가 애니메이션 프레임을 멈춘다 → 그때는 기다리지 않고 바로 끝낸다 */
+function nextFrame(tick){if(document.hidden){Promise.resolve().then(tick);return}let done=false;const off=()=>document.removeEventListener('visibilitychange',onv);
+  const onv=()=>{if(document.hidden&&!done){done=true;cancelAnimationFrame(id);off();Promise.resolve().then(tick)}};document.addEventListener('visibilitychange',onv);
+  const id=requestAnimationFrame(()=>{if(done)return;done=true;off();tick()})}
+function lsleep(ms){return new Promise(res=>{let acc=0,last=nowMs();const tick=()=>{if(LIVE.skip||LIVE.stop||document.hidden)return res();const n=nowMs();if(!LIVE.paused)acc+=(n-last)*LIVE.speed;last=n;if(acc>=ms)return res();nextFrame(tick)};nextFrame(tick)})}
+function animate(dur,fn){return new Promise(res=>{let acc=0,last=nowMs();const tick=()=>{const n=nowMs();if(!LIVE.paused)acc+=(n-last)*LIVE.speed;last=n;const t=LIVE.skip||LIVE.stop||document.hidden?1:Math.min(1,acc/Math.max(1,dur));try{fn(t)}catch(_){}dirty=true;if(t>=1)return res();nextFrame(tick)};tick()})}
 function penTo(p){if(!p||!isFinite(p.x)||!isFinite(p.y))return;LIVE.pen={x:p.x,y:p.y};cursor={x:p.x,y:p.y};cursorScr=S(p)}
 async function travel(p,dur=280){if(!p)return;const a=LIVE.pen||Wp(W*.5,H*.5);const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;await animate(dur,t=>{const k=ease(t);penTo({x:a.x+(p.x-a.x)*k,y:a.y+(p.y-a.y)*k})})}
 async function typeInto(text,per=24){const s=[...String(text)];cmdIn.value='';if(LIVE.cap)LIVE.cap.typed='';for(let i=0;i<s.length;i++){if(LIVE.skip||LIVE.stop)break;cmdIn.value+=s[i];if(LIVE.cap)LIVE.cap.typed=cmdIn.value;if(s[i]!==' ')sfxKey();dirty=true;await lsleep(s.length>40?per*0.35:per)}cmdIn.value=s.join('');if(LIVE.cap)LIVE.cap.typed=cmdIn.value}
