@@ -121,10 +121,15 @@ a.tool.live .go{position:absolute;right:20px;top:20px;font-size:13px;color:var(-
 .tool.soon h3{color:var(--ink-2)}
 .tool.soon .no,a.tool.ask .no{opacity:.7}
 .tool.soon p{color:var(--ink-3)}
+a.tool.fun{border-color:rgba(241,194,50,.45);background:linear-gradient(135deg,rgba(241,194,50,.07),var(--plate) 55%)}
+a.tool.fun .st{color:var(--note);border-color:rgba(241,194,50,.5)}
+a.tool.fun:hover{border-color:var(--note)}
+a.tool.fun .go{position:absolute;right:20px;top:20px;font-size:13px;color:var(--note);font-weight:600}
+.contact{display:grid;gap:14px;max-width:760px}
 a.tool.ask{border-style:dashed;border-color:rgba(241,194,50,.45)}
 a.tool.ask .st{color:var(--note);border-color:rgba(241,194,50,.5)}
 a.tool.ask:hover{border-color:var(--note)}
-@media (max-width:640px){.hero{padding:24px 0 26px}.hero .grid{gap:22px}.hero .fine,.shot figcaption,.vp .bar span:not(.legend){display:none}.hero .lead{font-size:16px;margin-bottom:20px}.ctrl{margin-top:20px}.tabs button span{display:none}.tabs button b{margin:0}.tools{gap:10px}.tool{grid-template-columns:1fr;padding:14px;min-height:0}.tool .no{grid-row:auto;justify-self:start}.tool h3{font-size:16px;flex-direction:column;align-items:flex-start;gap:6px}.tool p{font-size:13px}a.tool.live .go{position:static}}
+@media (max-width:640px){.hero{padding:24px 0 26px}.hero .grid{gap:22px}.hero .fine,.shot figcaption,.vp .bar span:not(.legend){display:none}.hero .lead{font-size:16px;margin-bottom:20px}.ctrl{margin-top:20px}.tabs button span{display:none}.tabs button b{margin:0}.tools{gap:10px}.tool{grid-template-columns:1fr;padding:14px;min-height:0}.tool .no{grid-row:auto;justify-self:start}.tool h3{font-size:16px;flex-direction:column;align-items:flex-start;gap:6px}.tool p{font-size:13px}a.tool.live .go,a.tool.fun .go{position:static}}
 @media (max-width:960px){.hero .grid{grid-template-columns:1fr}.steps{grid-template-columns:1fr}.step{border-right:0;border-bottom:1px solid var(--line)}.step:last-child{border-bottom:0}.vids{grid-template-columns:1fr}}
 @media (max-width:560px){.spec th{width:110px;padding:12px}.spec td{padding:12px}.vp .legend{display:none}.find{grid-template-columns:1fr}.vid{grid-template-columns:1fr}}
 </style>
@@ -133,11 +138,7 @@ a.tool.ask:hover{border-color:var(--note)}
 <header class="site-top"><div class="wrap">
   <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법<small>Development Storage</small></span></a>
   <nav class="site-nav">
-    <a href="/mucca/">무카 CAD</a>
-    <a href="/community/">커뮤니티</a>
-    <a href="/requests/">요청</a>
-    <a class="opt" href="/mucca/#videos">영상</a>
-    <a class="opt" href="/mucca/#report">자동화 문의</a>
+    <a href="#contact">문의</a>
     <span class="who" data-who></span>
   </nav>
 </div></header>
@@ -218,11 +219,23 @@ a.tool.ask:hover{border-color:var(--note)}
   <div class="tools">
     <a class="tool live" href="/mucca/"><span class="no">01</span><h3>무카 CAD <span class="st">베타 운영 중</span></h3><p>말로 시키면 그려 주는 브라우저 2D 캐드. 오토캐드 단축키 그대로, DXF 주고받기.</p><span class="go">열기</span></a>
     <div class="tool soon" aria-disabled="true"><span class="no">02</span><h3>새로운 도구 연구 중</h3><p>다음 영상과 함께 이 칸에 공개합니다.</p></div>
-    <div class="tool soon" aria-disabled="true"><span class="no">03</span><h3>새로운 도구 연구 중</h3><p>회사 일을 하며 만들고, 써 보고 다듬는 중입니다.</p></div>
-    <a class="tool ask" href="/mucca/#report"><span class="no">04</span><h3>새로운 도구 연구 중 <span class="st">아이디어 받는 중</span></h3><p>캐드로 자동화하고 싶은 작업을 알려 주시면 다음 도구 후보가 됩니다.</p></a>
+    <a class="tool fun" href="https://meetcal.co.kr" target="_blank" rel="noopener"><span class="no">03</span><h3>심심풀이 <span class="st">사주 보기</span></h3><p>일하다 머리 식히고 싶을 때, 심심하면 사주 보고 가세요. 생년월일로 나와 잘 맞는 사람을 재미로 알아봅니다.</p><span class="go">열기 ↗</span></a>
+    <a class="tool ask" href="#contact"><span class="no">04</span><h3>새로운 도구 연구 중 <span class="st">아이디어 받는 중</span></h3><p>있었으면 하는 도구를 문의로 알려 주시면 다음 도구 후보가 됩니다.</p></a>
   </div>
 </div></section>
 
+<section class="sec" id="contact"><div class="wrap">
+  <h2>카우스 소거법에 문의하기</h2>
+  <p class="sub">채널, 영상, 도구, 협업 등 무엇이든 남겨 주세요. 답장이 필요하면 연락처를 함께 적어 주시고, 급한 일은 <a href="mailto:kkun@kakao.com">kkun@kakao.com</a>으로 보내 주세요.</p>
+  <form class="contact" id="contactForm">
+    <div class="field"><label for="cText">문의 내용</label>
+      <textarea id="cText" maxlength="1500" required placeholder="예: 영상에서 쓴 도구를 회사에서 써 보고 싶은데, 비슷한 걸 만들 수 있을까요?"></textarea></div>
+    <div class="field"><label for="cReply">답장 받을 연락처 (선택)</label><input type="text" id="cReply" maxlength="80" placeholder="이메일 또는 카카오톡 아이디" autocomplete="email"></div>
+    <p class="warn">연락처는 답장에만 쓰고 1년 뒤 지웁니다. 회사명, 고객명, 단가 같은 민감한 정보는 빼고 적어 주세요.</p>
+    <div><button class="btn primary" type="submit" id="cSend">문의 보내기</button></div>
+    <p class="msg" id="cMsg" role="status"></p>
+  </form>
+</div></section>
 </main>
 
 <footer class="titleblock"><div class="wrap">
@@ -294,6 +307,19 @@ a.tool.ask:hover{border-color:var(--note)}
 /* 광고 행: config 에 광고가 켜졌거나 ?ads=1 미리보기일 때만 보임 */
 (function(){const C=window.COWS_CONFIG||{};if(C.ads||/[?&]ads=1\b/.test(location.search))document.getElementById('adrow').hidden=false})();
 
+/* 문의 */
+(function(){
+  const C=window.COWS_CONFIG||{},f=document.getElementById('contactForm'),msg=document.getElementById('cMsg'),btn=document.getElementById('cSend');
+  f.addEventListener('submit',async e=>{e.preventDefault();
+    const text=document.getElementById('cText').value.trim(),reply=document.getElementById('cReply').value.trim();
+    if(text.length<5){msg.className='msg bad';msg.textContent='문의 내용을 한두 문장으로 적어 주세요.';return}
+    btn.disabled=true;msg.className='msg';msg.textContent='보내는 중…';
+    try{const r=await fetch(C.supabaseUrl+'/rest/v1/events',{method:'POST',headers:{'apikey':C.supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({kind:'feedback',payload:{type:'contact',text:text.slice(0,1500),reply:reply.slice(0,80)},app_ver:C.appVer||'',page:'home-contact'})});
+      if(!r.ok)throw new Error(r.status);f.reset();msg.className='msg ok';msg.textContent='문의를 보냈습니다. 연락처를 남기셨다면 그쪽으로 답장 드리겠습니다.';
+    }catch(_){msg.className='msg bad';msg.textContent='보내지 못했습니다. 잠시 뒤 다시 보내거나 kkun@kakao.com 으로 보내 주세요.'}
+    btn.disabled=false});
+})();
 </script>
 </body>
 </html>
