@@ -101,21 +101,33 @@
 
   function card(r){return `<button class="item" data-id="${r.id}"><span class="pic" style="${S.thumb(r.thumb)}"><span class="kind ${r.kind}">${r.kind==='block'?'블록':'도면'}</span></span><span class="meta"><p class="t">${esc(r.title)}</p><span class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · 가져감 ${r.copies} · ♥ ${r.likes}</span></span></button>`}
 
+  /* 검색어 보정: 현장 발음·오타 → 표준 이름, 숫자/한글 붙여 쓴 말은 나눠서 모두 포함(AND) */
+  const SYN=[[/^(프랜지|후렌지|후랜지|플렌지|프렌지|후란지|frange|flange)$/i,'플랜지'],[/^(엘보우|엘보|엘보이|엘바|elbow)$/i,'엘보'],[/^(롱엘보우|롱엘보)$/,'LR'],[/^(숏엘보우|숏엘보|쇼트엘보)$/,'SR'],
+    [/^(레듀샤|레듀서|레듀셔|리듀샤|리듀셔|reducer)$/i,'리듀서'],[/^(앵글|앵글강|angle|ㄱ형강|L형강)$/i,'ㄱ형강'],[/^(찬넬|채널|챤넬|channel|C형강|ㄷ형강)$/i,'ㄷ형강'],
+    [/^(H빔|에이치빔|H-빔|h-beam|hbeam|H형강|I빔)$/i,'H형강'],[/^(와샤|와셔|워셔|washer)$/i,'와셔'],[/^(볼토|볼트|bolt)$/i,'볼트'],[/^(낫트|넛트|너트|nut)$/i,'너트'],[/^(노즐|nozzle)$/i,'노즐'],[/^(티이|tee)$/i,'티'],[/^(sus|스뎅|스텐|스테인레스)$/i,'스테인리스']];
+  const PARTS=['플랜지','노즐','엘보','리듀서','형강','볼트','너트','와셔','티'];
+  function normTok(t){for(const [re,to] of SYN)if(re.test(t))return to;return null}
+  function searchGroups(str){const toks=str.replace(/([A-Za-z]+\d[\dA-Za-z.x×]*)(?=[가-힣])/g,'$1 ').replace(/([가-힣])(?=[A-Za-z]?\d)/g,'$1 ').split(/\s+/).filter(Boolean).slice(0,4);
+    return toks.map(t=>{const v=new Set([t]);const n=normTok(t);if(n)v.add(n);if(/^\d+(\.\d+)?a$/i.test(t))v.add(t.toUpperCase());const ks=t.match(/^KS(\d+K)$/i);if(ks)v.add('KS '+ks[1].toUpperCase());if(/^\d+k$/i.test(t))v.add(t.toUpperCase());return [...v].slice(0,4)})}
+  function fallbackOf(str){for(const t of str.split(/\s+/)){const n=normTok(t);if(n&&n!==t)continue;for(const p of PARTS){if(t!==p&&t.endsWith(p))return str.replace(t,p);const m=t.match(/(프랜지|후렌지|엘보우|레듀샤|와샤|낫트|볼토)$/);if(m&&t!==m[1])return str.replace(t,normTok(m[1])||m[1])}}return null}
+  let fallback=null;
   async function load(reset){
-    if(reset){page=0;list.innerHTML='';}
+    if(reset){page=0;list.innerHTML='';if(reset!=='fb')fallback=null;}
     const mine=sortSel.value==='mine';
     if(mine&&!S.user){list.innerHTML='<div class="empty">내가 올린 것을 보려면 로그인하세요.</div>';count.textContent='';more.hidden=true;return}
     let qb=sb.from('shared_items').select('id,kind,title,author_nick,author_grade,thumb,copies,likes,created_at,status',{count:'exact'});
     if(mine)qb=qb.eq('owner',S.user.id);else qb=qb.eq('status','public');
     if(kind)qb=qb.eq('kind',kind);
-    const term=q.trim().replace(/[,()*%]/g,' ').trim();
-    if(term)qb=qb.or(`title.ilike.*${term}*,description.ilike.*${term}*,tags.cs.{\"${term}\"}`);
+    const term=q.trim().replace(/[,()*%"{}]/g,' ').trim();
+    const groups=term?searchGroups(fallback||term):[];
+    for(const g of groups)qb=qb.or(g.flatMap(v=>[`title.ilike.*${v}*`,`description.ilike.*${v}*`,`tags.cs.{"${v}"}`]).join(','));
     qb=qb.order(mine?'created_at':sortSel.value,{ascending:false}).range(page*PAGE,page*PAGE+PAGE-1);
     const res=await qb, data=res.data, error=res.error;
     const n=res.count!=null?res.count:(data?page*PAGE+data.length+(data.length===PAGE?1:0):0);
     if(error){list.innerHTML=`<div class="empty">불러오지 못했습니다: ${esc(error.message)}</div>`;return}
+    if(reset&&!data.length&&term&&!fallback){const fb=fallbackOf(term);if(fb){fallback=fb;return load('fb')}}
     if(reset&&!data.length){list.innerHTML=term?`<div class="empty">"${esc(term)}"은(는) 아직 없습니다. 직접 그려서 처음으로 공유하면 크레딧 +2를 더 받습니다. <br><br><a class="btn primary sm" href="/cad/">무카 CAD에서 그리기</a> <a class="btn line sm" href="/requests/?new=${encodeURIComponent(term)}">요청 게시판에 올리기</a></div>`:'<div class="empty">아직 공유된 항목이 없습니다. 무카 CAD 상단 [공유]로 첫 블록을 올려 주세요.</div>';}
-    else list.insertAdjacentHTML('beforeend',data.map(card).join(''));
+    else{if(fallback&&page===0&&!list.querySelector('.fbnote'))list.insertAdjacentHTML('beforeend',`<div class="empty fbnote" style="grid-column:1/-1;padding:10px 0">"${esc(term)}"과(와) 똑같은 이름은 없어서 "${esc(fallback)}" 결과를 보여 드립니다. 찾는 것이 없으면 <a href="/requests/?new=${encodeURIComponent(term)}">요청 게시판</a>에 올려 주세요.</div>`);list.insertAdjacentHTML('beforeend',data.map(card).join(''))}
     count.textContent=term?`"${term}" ${n||0}개`:`${n||0}개`;
     more.hidden=(page+1)*PAGE>=(n||0);
     if(reset&&term&&!data.length){sb.from('events').insert({kind:'search_miss',payload:{q:term.slice(0,40)},page:'community'}).then(()=>{},()=>{})}

@@ -673,8 +673,8 @@ function strokeEnt(c,e){
   switch(e.type){
     case 'line':{const a=S(e.a),b=S(e.b);c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();break}
     case 'polyline':{c.beginPath();e.pts.forEach((p,i)=>{const q=S(p);i?c.lineTo(q.x,q.y):c.moveTo(q.x,q.y)});if(e.closed)c.closePath();c.stroke();break}
-    case 'circle':{const q=S(e.c);c.beginPath();c.arc(q.x,q.y,e.r*view.s,0,Math.PI*2);c.stroke();break}
-    case 'arc':{const q=S(e.c);c.beginPath();c.arc(q.x,q.y,e.r*view.s,-e.a0*D2R,-e.a1*D2R,true);c.stroke();break}
+    case 'circle':{const q=S(e.c),rr=Math.abs(e.r*view.s);if(!(rr>0)||!isFinite(rr))break;c.beginPath();c.arc(q.x,q.y,rr,0,Math.PI*2);c.stroke();break}
+    case 'arc':{const q=S(e.c),rr=Math.abs(e.r*view.s);if(!(rr>0)||!isFinite(rr))break;c.beginPath();c.arc(q.x,q.y,rr,-e.a0*D2R,-e.a1*D2R,true);c.stroke();break}
     case 'text':drawText(c,e.p,e.s,e.h,e.rot||0,e.align);break;
     case 'dim':{const g=dimGeom(e);c.setLineDash([]);c.beginPath();for(const [a,b] of g.lines){const p=S(a),q=S(b);c.moveTo(p.x,p.y);c.lineTo(q.x,q.y)}c.stroke();
       for(const ar of g.arrows){const tip=ar.p,base=sub(tip,mul(ar.d,ar.s)),w=mul(perp(ar.d),ar.s/6),p1=S(tip),p2=S(add(base,w)),p3=S(sub(base,w));c.beginPath();c.moveTo(p1.x,p1.y);c.lineTo(p2.x,p2.y);c.lineTo(p3.x,p3.y);c.closePath();c.fill()}
@@ -1321,7 +1321,9 @@ cv.addEventListener('pointerleave',()=>{cursorScr=null;hoverEnt=null;hoverGrip=n
 cv.addEventListener('contextmenu',ev=>{ev.preventDefault();if(pendWin){pendWin=null;winSel=null;hud.style.display='none';setPrompt(tool?tool.prompt:'명령:');dirty=true;return}openCtx(evPos(ev),ctxItems())});
 document.addEventListener('pointerdown',ev=>{if(ctxEl&&!ctxEl.contains(ev.target)&&ev.target!==cv)closeCtx()},true);
 cv.addEventListener('wheel',ev=>{ev.preventDefault();const sp=evPos(ev),before=Wp(sp.x,sp.y),k=Math.exp(-ev.deltaY*0.0015);view.s=Math.max(.02,Math.min(400,view.s*k));const after=Wp(sp.x,sp.y);view.x+=before.x-after.x;view.y+=before.y-after.y;dirty=true},{passive:false});
-function zoomExtents(){const b=bbox();if(!b){view.x=0;view.y=0;view.s=3;dirty=true;return}const w=Math.max(1,b.maxX-b.minX),h=Math.max(1,b.maxY-b.minY);view.s=Math.min((W-80)/w,(H-80)/h);view.x=(b.minX+b.maxX)/2;view.y=(b.minY+b.maxY)/2;dirty=true}
+/* 음수·NaN 반지름으로 캔버스가 멈추는 것 방지 (작은 화면·전환 중 크기) */
+(function(){const P=CanvasRenderingContext2D.prototype,_a=P.arc;if(P.__muccaArc)return;P.__muccaArc=1;P.arc=function(x,y,r,s0,s1,ccw){if(!(r>=0)){if(!isFinite(r)||!isFinite(x)||!isFinite(y))return;r=-r}return _a.call(this,x,y,r,s0,s1,ccw)}})();
+function zoomExtents(){const b=bbox();if(!b){view.x=0;view.y=0;view.s=3;dirty=true;return}const w=Math.max(1,b.maxX-b.minX),h=Math.max(1,b.maxY-b.minY);view.s=Math.max(1e-4,Math.min(Math.max(20,W-80)/w,Math.max(20,H-80)/h));view.x=(b.minX+b.maxX)/2;view.y=(b.minY+b.maxY)/2;dirty=true}
 function zoomBy(k){view.s=Math.max(.02,Math.min(400,view.s*k));dirty=true}
 document.getElementById('vFit').onclick=zoomExtents;document.getElementById('vIn').onclick=()=>zoomBy(1.4);document.getElementById('vOut').onclick=()=>zoomBy(1/1.4);
 
@@ -1333,6 +1335,7 @@ function ko2en(str){let out='';for(const ch of str){const c=ch.charCodeAt(0);
   else out+=KO2EN[ch]??ch}return out}
 function handleCommandText(raw){
   let s=raw.trim();
+  if(!tool&&!fence&&preCommand(s))return;
   if(/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(s)&&!(tool&&tool.wantsText&&tool.wantsText())&&s[0]!=='['&&s[0]!=='{'){const en=ko2en(s).toUpperCase();log(`한/영 자동 전환: ${s} → ${en}`);s=en}
   if(s)log((tool?tool.prompt+' ':'명령: ')+s,'me');
   if(fence&&!s){finishFence();return}
@@ -1350,7 +1353,7 @@ function handleCommandText(raw){
   if(up==='U'||up==='UNDO'){undo();return}if(up==='REDO'){redo();return}
   if(up==='ZE'){zoomExtents();return}
   if(up==='HELP'||up==='?'){openApi();return}
-  (window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:up}));log(`알 수 없는 명령: ${s}  (L, C, REC, PL, A, T, M, CO, RO, MI, O, E, DLI, DAL, DDI, DRA)`,'err');
+  (window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:up}));const sg=cmdSuggest(up);if(sg){log(`알 수 없는 명령: ${s} — 혹시 ${sg} (${CMD_KO[ALIAS[sg]]||ALIAS[sg]}) 인가요? 다시 입력해 주세요.`,'err');return}log(`알 수 없는 명령: ${s}  (L, C, REC, PL, A, T, M, CO, RO, MI, O, E, DLI, DAL, DDI, DRA)`,'err');
 }
 let imeSubmitAt=0,imePending=false;
 function imeSubmit(){if(!imePending)return;imePending=false;imeSubmitAt=performance.now();const v=cmdIn.value.replace(/\s+$/,'');cmdIn.value='';handleCommandText(v)}
@@ -5232,6 +5235,70 @@ const KEY_RESERVED=new Set(['Ctrl+F1','Ctrl+1','Ctrl+C','Ctrl+V','Ctrl+X','Ctrl+
 const KEY_ACTIONS={'!grp':'그룹 선택 켜기/끄기','!dyn':'동적 입력 켜기/끄기','!osnap':'객체스냅 켜기/끄기','!ortho':'직교 켜기/끄기'};
 Object.assign(ALIAS,{ALIASEDIT:'aliasedit',KEYS:'aliasedit',QBLOCK:'qblock'});
 Object.assign(CMD_KO,{qblock:'퀵블록',aliasedit:'단축키 편집',layer_mgr:'도면층 관리자',ltscale:'선종류 축척',text:'한 줄 문자',plot:'플롯(PDF)'});
+/* ================= v1.6 확장: 사용자 기록에서 나온 없는 명령 · 오타 · 한글 입력 처리 ================= */
+TOOLS.units=()=>{log('도면 단위: 밀리미터(mm) 고정 · 1 단위 = 1 mm · 각도는 도(°), 반시계 방향이 + 입니다.','ok');toast('단위: mm 고정');return null};
+TOOLS.osnapset=()=>{setTimeout(()=>{const b=document.getElementById('tOsnapMenu');if(b)openOsnapMenu(b)});log('객체 스냅 종류를 고르세요. F3 = 켜기/끄기','ok');return null};
+TOOLS.options=()=>{setTimeout(()=>{const wrap=document.createElement('div');wrap.style.cssText='display:grid;gap:8px;min-width:260px';
+  const p=document.createElement('p');p.style.margin='0 0 4px';p.textContent='무카 CAD 설정은 기능별 창에 나뉘어 있습니다.';wrap.append(p);
+  let m;const items=[['객체 스냅 종류 (OS)','osnapset'],['도면층 관리자 (LA)','layer_mgr'],['치수 스타일 (D)','dimstyle'],['문자 스타일 (ST)','style'],['선종류 축척 (LTS)','ltscale'],['플롯 스타일 테이블 (CTB)','ctbedit'],['단축키·별칭 편집 (ALIASEDIT)','aliasedit'],['Claude 연결 (AICONNECT)','aiconnect']];
+  for(const [l,t] of items){const b=document.createElement('button');b.className='tbtn';b.textContent=l;b.style.textAlign='left';b.onclick=()=>{m&&m.remove();if(t==='layer_mgr'){openLM();return}startTool(t)};wrap.append(b)}
+  const u=document.createElement('p');u.style.cssText='margin:6px 0 0;opacity:.75;font-size:12px';u.textContent='단위는 mm 고정입니다. 화면 색·글꼴 같은 표시 설정은 아직 없습니다.';wrap.append(u);
+  m=modal('옵션 (OPTIONS)',wrap)});return null};
+TOOLS.selectall=()=>{let n=0;pickableEnts().forEach(e=>{sel.add(e.id);n++});changed();log(`객체 ${n}개 선택됨`,'ok');return null};
+TOOLS.layon=()=>{let n=0;for(const l of doc.layers){if(!l.visible||l.frozen){l.visible=true;l.frozen=false;n++}}changed();dirty=true;log(n?`꺼지거나 동결된 도면층 ${n}개를 모두 켰습니다`:'모든 도면층이 이미 켜져 있습니다','ok');return null};
+TOOLS.layoff=()=>{const names=new Set([...sel].map(id=>{const e=byId(id);return e&&e.layer}).filter(Boolean));
+  if(!names.size){log('끌 도면층의 객체를 먼저 선택한 뒤 LAYOFF 를 입력하세요. (모두 켜기 = LAYON)','err');return null}
+  const off=[];for(const nm of names){if(nm===doc.current)continue;const l=layerOf(nm);if(l){l.visible=false;off.push(nm)}}
+  for(const e of doc.entities)if(off.includes(e.layer))sel.delete(e.id);changed();dirty=true;
+  log(off.length?`도면층 끔: ${off.join(', ')}${names.has(doc.current)?' (현재 도면층은 끌 수 없어 제외)':''}`:'현재 도면층은 끌 수 없습니다','ok');return null};
+TOOLS.dline=()=>{log('DLINE(이중선)은 따로 없습니다. 선을 그린 뒤 O(간격띄우기)로 같은 간격의 선을 만드세요. 지금 간격띄우기를 시작합니다.','ok');setTimeout(()=>startTool('offset'));return null};
+TOOLS.ucs=()=>{log('무카 CAD는 세계 좌표계(WCS) 하나만 씁니다. 기울어진 방향은 @길이<각도 (예: @100<30) 로 입력하세요.','ok');return null};
+TOOLS.appload=()=>{log('AutoLISP(APPLOAD)는 지원하지 않습니다. 반복 작업은 Claude 연결(AICONNECT)로 말로 시키거나, [ {"cmd":"line",...} ] JSON 명령을 붙여넣어 실행할 수 있습니다.','ok');return null};
+Object.assign(ALIAS,{
+  UNITS:'units',UNIT:'units',UN:'units',DDUNITS:'units',
+  OS:'osnapset',OSNAP:'osnapset',DS:'osnapset',DSETTINGS:'osnapset',SE:'osnapset',DDOSNAP:'osnapset',
+  OP:'options',OPTIONS:'options',PREFERENCES:'options',CONFIG:'options',
+  ER:'erase',DE:'erase',ERASER:'erase',ERESER:'erase',ERAS:'erase',DELETE:'erase',
+  DIM:'dimlin',DIMLIN:'dimlin',DDIM:'dimstyle',
+  DL:'dline',DLINE:'dline',
+  UCS:'ucs',UCSMAN:'ucs',
+  AP:'appload',APPLOAD:'appload',
+  REF:'bedit',
+  LAYON:'layon',LAYTHW:'layon',LAYOFF:'layoff',
+  SS:'selectall',ALL:'selectall',SELECTALL:'selectall',
+  CC:'copy'
+});
+Object.assign(CMD_KO,{units:'단위',osnapset:'객체 스냅 설정',options:'옵션',selectall:'전체 선택',layon:'도면층 모두 켜기',layoff:'도면층 끄기',dline:'이중선',ucs:'좌표계',appload:'LISP 로드'});
+/* 한글 명령어(이름)로도 실행: 선, 원, 지우기 … */
+const KO_CMD=(()=>{const m={};for(const [k,v] of Object.entries(CMD_KO))if(v&&TOOLS[k])m[v.replace(/\s+/g,'')]=k;
+  Object.assign(m,{선:'line',직선:'line',원:'circle',호:'arc',사각형:'rect',네모:'rect',폴리선:'polyline',지우기:'erase',삭제:'erase',지워:'erase',복사:'copy',이동:'move',옮기기:'move',회전:'rotate',대칭:'mirror',미러:'mirror',간격띄우기:'offset',오프셋:'offset',자르기:'trim',트림:'trim',연장:'extend',모깎기:'fillet',필렛:'fillet',모따기:'chamfer',분해:'explode',축척:'scale',스케일:'scale',배열:'array',문자:'mtext',글자:'mtext',텍스트:'mtext',해치:'hatch',블록:'block',삽입:'insert',치수:'dimlin',선형치수:'dimlin',단위:'units',옵션:'options',설정:'options',스냅:'osnapset',전체선택:'selectall',모두선택:'selectall'});
+  for(const k of Object.keys(m))if(!TOOLS[m[k]]&&m[k]!=='layer_mgr')delete m[k];m.도면층='layer_mgr';m.레이어='layer_mgr';return m})();
+function cmdLev(a,b){if(Math.abs(a.length-b.length)>2)return 9;const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;
+  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++){d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1)}return d[a.length][b.length]}
+function cmdSuggest(up){if(up.length<3)return null;let best=null,bd=9;for(const k of Object.keys(ALIAS)){if(k.length<4)continue;const d=cmdLev(up,k);if(d<bd||(d===bd&&best&&k.length<best.length)){bd=d;best=k}}return bd<=(up.length>=6?2:1)?best:null}
+function logLink(msg,href,label){const d=document.createElement('div');d.className='ok';d.append(msg+' ');const a=document.createElement('a');a.href=href;a.target='_blank';a.rel='noopener';a.textContent=label;a.style.cssText='color:inherit;text-decoration:underline;font-weight:600';d.append(a);histEl.appendChild(d);histEl.scrollTop=histEl.scrollHeight}
+/* 지름·반지름으로 바로 원: 30파이, 파이30, Ø30, %%C30, 30R, R15 */
+function quickCircle(s){const t=s.replace(/\s+/g,'');let m,r=null;
+  if((m=t.match(/^(\d+(?:\.\d+)?)(?:파이|φ|Φ|ø|Ø|VKDL|D)$/i))||(m=t.match(/^(?:파이|φ|Φ|ø|Ø|%%C|VKDL)(\d+(?:\.\d+)?)$/i)))r=+m[1]/2;
+  else if((m=t.match(/^(\d+(?:\.\d+)?)R$/i))||(m=t.match(/^R(\d+(?:\.\d+)?)$/i)))r=+m[1];
+  if(!(r>0))return false;
+  log('명령: 원 Ø'+fmt(r*2),'me');lastCmd='circle';
+  tool={name:'circle',prompt:`원 Ø${fmt(r*2)} — 중심점 지정:`,onPoint(p){commit({cmd:'circle',center:[p.x,p.y],r},`원 Ø${fmt(r*2)}`);endTool()},
+    preview(c,cur){const q=S(cur);c.beginPath();c.arc(q.x,q.y,Math.abs(r*view.s),0,7);c.stroke()}};
+  setPrompt(tool.prompt);markRibbon();dirty=true;
+  log(`지름 ${fmt(r*2)} (반지름 ${fmt(r)}) 원 — 중심점을 클릭하거나 좌표를 입력하세요.`,'ok');return true}
+/* 한글/알 수 없는 입력을 명령 실행 전에 가로챔. true = 처리됨 */
+function preCommand(orig){const t=orig.trim();if(!t||t[0]==='['||t[0]==='{')return false;
+  if(quickCircle(t))return true;
+  if(/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(t)){const key=t.replace(/\s+/g,'');
+    if(KO_CMD[key]){const n=KO_CMD[key];if(n==='layer_mgr'){openLM();return true}startTool(n);return true}
+    const en=ko2en(t).toUpperCase().replace(/\s+/g,'');
+    if(ALIAS[en]||['U','UNDO','REDO','ZE','HELP'].includes(en))return false;/* 한/영 전환 실수 → 기존 처리 */
+    log('입력: '+t,'me');
+    logLink(`'${t}' 은(는) 명령어가 아닙니다. 부품을 찾는다면`,'/community/?q='+encodeURIComponent(t),`커뮤니티에서 '${t}' 블록 찾기`);
+    log('그림으로 만들고 싶다면 Claude 연결(AICONNECT) 후 "'+t+' 그려줘"라고 말해 보세요. 명령은 영어 약자로 (선 L · 원 C · 지우기 E)','ok');
+    window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'KO_'+en.replace(/[^A-Z0-9_.-]/g,'').slice(0,21)});return true}
+  return false}
 const ALIAS_DEF=Object.assign({},ALIAS),KEYMAP_DEF=Object.assign({},KEYMAP),SC_KEY='muccacad.shortcuts.v1';
 let scSaved=null;
 function comboOf(ev){const c=ev.code||'';const k=c.startsWith('Key')?c.slice(3):c.startsWith('Digit')?c.slice(5):/^F\d{1,2}$/.test(c)?c:null;if(!k)return null;return [(ev.ctrlKey||ev.metaKey)&&'Ctrl',ev.altKey&&'Alt',ev.shiftKey&&'Shift',k].filter(Boolean).join('+')}
