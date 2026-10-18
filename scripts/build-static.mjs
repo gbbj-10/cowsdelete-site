@@ -54,8 +54,8 @@ function page({ title, desc, canonical, body, head = '', tail = '', css = '' }) 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
-<link rel="stylesheet" href="/assets/site.css">
-<link rel="stylesheet" href="/assets/board.css">${css}
+<link rel="stylesheet" href="/assets/site.css?v=20261018b">
+<link rel="stylesheet" href="/assets/board.css?v=20261018b">${css}
 ${head}
 </head>
 <body>
@@ -78,9 +78,9 @@ ${body}
     <div><span class="h">채널</span><a href="https://www.youtube.com/@cowsdelete" target="_blank" rel="noopener">YouTube @cowsdelete</a></div>
   </div>
 </div></footer>
-<script src="/assets/config.js"></script>
+<script src="/assets/config.js?v=20261018b"></script>
 <script src="/assets/vendor/supabase.js"></script>
-<script src="/assets/site.js"></script>
+<script src="/assets/site.js?v=20261018b"></script>
 ${tail}
 </body>
 </html>
@@ -122,7 +122,7 @@ for (const p of posts) {
     author: { '@type': 'Person', name: p.author_nick }, interactionStatistic: [{ '@type': 'InteractionCounter', interactionType: 'https://schema.org/LikeAction', userInteractionCount: p.likes },
       { '@type': 'InteractionCounter', interactionType: 'https://schema.org/CommentAction', userInteractionCount: p.comments }], isPartOf: { '@type': 'WebPage', name: `${g} 갤러리`, url: `${SITE}/board/?g=${p.gallery}` } });
   if (write(`p/${p.id}/index.html`, page({ title: `${p.title} — ${g} 갤러리 | 카우스 소거법`, desc: snip(p.body), canonical: url, body, head: ld,
-    tail: `<script>window.BOARD_POST_ID=${JSON.stringify(p.id)}</script>\n<script src="/assets/board.js"></script>` }))) changed++;
+    tail: `<script>window.BOARD_POST_ID=${JSON.stringify(p.id)}</script>\n<script src="/assets/board.js?v=20261018b"></script>` }))) changed++;
 }
 
 const thumbOk = t => typeof t === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(t) && t.length < 200000;
