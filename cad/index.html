@@ -1333,6 +1333,17 @@ function handleCommandText(raw){
 let imeSubmitAt=0,imePending=false;
 function imeSubmit(){if(!imePending)return;imePending=false;imeSubmitAt=performance.now();const v=cmdIn.value.replace(/\s+$/,'');cmdIn.value='';handleCommandText(v)}
 cmdIn.addEventListener('compositionend',()=>{if(imePending)setTimeout(imeSubmit,0)});
+/* 빠른 입력 보정: L 을 누르고 글자가 입력칸에 들어오기 전에 Space 가 먼저 오면(한글 입력기·포커스 이동 지연)
+   Space 를 버리지 않고, 글자가 들어오는 즉시(최대 0.3초) 실행한다 */
+let keyInflight=0,spaceDeferred=false,deferT=0;
+document.addEventListener('keydown',ev=>{if(ev.ctrlKey||ev.metaKey||ev.altKey)return;const t=ev.target,tag=(t.tagName||'').toLowerCase();
+  if((tag==='input'||tag==='textarea'||tag==='select')&&t!==cmdIn)return;
+  if((ev.key&&ev.key.length===1&&ev.key!==' ')||ev.key==='Process'||(ev.keyCode===229&&ev.code!=='Space'&&ev.code!=='Enter'&&ev.code!=='NumpadEnter'))keyInflight=performance.now()},true);
+function flushCmd(){const v=cmdIn.value.replace(/\s+$/,'');cmdIn.value='';handleCommandText(v)}
+function deferSpace(){spaceDeferred=true;clearTimeout(deferT);deferT=setTimeout(()=>{if(!spaceDeferred)return;spaceDeferred=false;flushCmd()},300)}
+const inflightNow=()=>keyInflight&&performance.now()-keyInflight<300;
+cmdIn.addEventListener('input',ev=>{keyInflight=0;if(!spaceDeferred)return;spaceDeferred=false;clearTimeout(deferT);
+  if(ev.isComposing){imePending=true;cmdIn.blur();cmdIn.focus();setTimeout(imeSubmit,80)}else flushCmd()});
 cmdIn.addEventListener('keydown',ev=>{
   const textMode=tool&&tool.wantsText&&tool.wantsText();
   if(ev.isComposing||ev.keyCode===229){if(ev.code==='Enter'||ev.code==='NumpadEnter'||(ev.code==='Space'&&!textMode)){ev.preventDefault();imePending=true;setTimeout(imeSubmit,40)}return}
@@ -1340,7 +1351,7 @@ cmdIn.addEventListener('keydown',ev=>{
   if(ev.key==='Enter'){ev.preventDefault();const v=cmdIn.value;cmdIn.value='';handleCommandText(v)}
   else if(ev.key===' '&&textMode&&tool.spaceEmptyEnter&&!cmdIn.value){ev.preventDefault();handleCommandText('')}
   else if(ev.key==='Escape'){cmdIn.value='';cancel()}
-  else if(ev.key===' '&&!(tool&&tool.wantsText&&tool.wantsText())&&!cmdIn.value.trim().startsWith('[')&&!cmdIn.value.trim().startsWith('{')){ev.preventDefault();const v=cmdIn.value;cmdIn.value='';handleCommandText(v)}
+  else if(ev.key===' '&&!(tool&&tool.wantsText&&tool.wantsText())&&!cmdIn.value.trim().startsWith('[')&&!cmdIn.value.trim().startsWith('{')){ev.preventDefault();if(!cmdIn.value&&inflightNow()){deferSpace();return}const v=cmdIn.value;cmdIn.value='';handleCommandText(v)}
 });
 function cancel(){if(ctxEl){closeCtx();return}if(fence){fence=null;hud.style.display='none';setPrompt(tool?tool.prompt:'명령:');log('*취소*');dirty=true;return}if(pendWin){pendWin=null;winSel=null;setPrompt(tool?tool.prompt:'명령:');dirty=true;return}if(tool){log('*취소*');endTool()}else if(sel.size){sel.clear();changed()}}
 document.addEventListener('keydown',ev=>{
@@ -1353,7 +1364,7 @@ document.addEventListener('keydown',ev=>{
   if(ev.key==='Escape'){cancel();return}
   if(ev.key==='Delete'){startTool('erase');return}
   if(ctxEl&&ev.key!=='Escape')return;
-  if(ev.key===' '){ev.preventDefault();handleCommandText('');return}
+  if(ev.key===' '){ev.preventDefault();if(inflightNow()){cmdIn.focus();deferSpace();return}handleCommandText('');return}
   if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='a'){ev.preventDefault();pickableEnts().forEach(e=>sel.add(e.id));changed();return}
   if(ev.key==='Enter'){handleCommandText('');return}
   if((ev.key.length===1||ev.key==='Process')&&!ev.ctrlKey&&!ev.metaKey&&!ev.altKey){cmdIn.focus();}
