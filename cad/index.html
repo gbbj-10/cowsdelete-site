@@ -30,6 +30,8 @@ button{cursor:pointer}
 /* 상단 파일바 */
 .top{display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid var(--rule);overflow-x:auto;white-space:nowrap}
 .brand{display:flex;align-items:center;gap:8px;margin-right:8px;font-weight:600;letter-spacing:.02em}
+.brandlogo{width:26px;height:26px;border-radius:6px;display:block;flex:none}
+#bRec,#bApi{display:none!important}
 .tagmark{width:26px;height:22px;background:var(--tag);border-radius:4px 4px 9px 9px;position:relative;display:grid;place-items:center;color:var(--tag-ink);font:600 9px/1 var(--mono)}
 .tagmark::before{content:"";position:absolute;top:3px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--chrome)}
 .tagmark span{margin-top:7px}
@@ -235,7 +237,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><div class="tagmark"><span>CAD</span></div>무카 CAD <small>베타 v1.8.1</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.8.1</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -5048,8 +5050,8 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
     if(!box){box=document.createElement('div');box.id='aiUpdHelp';box.style.cssText='margin:6px 0 2px;display:grid;gap:6px';
       const ub=document.createElement('button');ub.className='tbtn primary';ub.id='aiUpdBtn';ub.textContent='새 연결 파일 받기 (업데이트)';
       const tip=document.createElement('div');tip.className='empty';tip.style.cssText='font-size:12px;line-height:1.5';
-      tip.textContent='받은 mucca-cad.mcpb 를 Claude 앱 창에 끌어다 놓고 [설치](또는 [업데이트])를 누르면 저절로 다시 연결됩니다. 안 되면 Claude 앱을 껐다 켜 보세요.';
-      ub.onclick=()=>{openAic();getMcpb();aiSt.textContent='파일을 받았습니다. Claude 앱 창에 끌어다 놓고 [설치]를 누르면 자동으로 다시 연결됩니다.'};
+      tip.textContent='받은 mucca-cad.mcpb 를 Claude 앱 창 프로필 › 설정 › 확장 프로그램 화면에 끌어다 놓고 [설치](또는 [업데이트])를 누르면 저절로 다시 연결됩니다. 이 창은 그대로 두고 진행하세요. 안 되면 Claude 앱을 껐다 켜 보세요.';
+      ub.onclick=()=>{openAic();getMcpb();aiSt.textContent='파일을 받았습니다. Claude 앱 창 프로필 › 설정 › 확장 프로그램 화면에 끌어다 놓고 [설치]를 누르면 자동으로 다시 연결됩니다.'};
       box.append(ub,tip);aiSt.after(box)}
     const lh=document.getElementById('aiLoginHelp');if(lh)lh.hidden=true;
     box.hidden=false}
@@ -5107,7 +5109,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
     AIC.waitT=setInterval(async()=>{
       if((AIC.state==='on'&&!outdated())||Date.now()-AIC.waiting>15*60*1000){clearInterval(AIC.waitT);AIC.waiting=0;renderDlg();return}
       let st=null;try{st=await fetch(AIC.base+'/status',{cache:'no-store'}).then(r=>r.json())}catch(_){}
-      if(st&&st.app==='mucca-mcp'&&verLt(st.version,MUCCA_MCP_VER)){AIC.err='이전 버전(v'+st.version+') 연결 프로그램이 실행 중입니다. 방금 받은 파일을 Claude 앱 창에 끌어다 놓고 [설치]하면 자동으로 이어집니다. 안 되면 Claude 앱을 껐다 켜 보세요.';renderDlg()}
+      if(st&&st.app==='mucca-mcp'&&verLt(st.version,MUCCA_MCP_VER)){AIC.err='이전 버전(v'+st.version+') 연결 프로그램이 실행 중입니다. 방금 받은 파일을 Claude 앱 창 프로필 › 설정 › 확장 프로그램 화면에 끌어다 놓고 [설치]하면 자동으로 이어집니다. 안 되면 Claude 앱을 껐다 켜 보세요.';renderDlg()}
       else if(st&&st.app==='mucca-mcp'){const ok=await connect(lsGet(),{silent:true});
         if(ok){clearInterval(AIC.waitT);AIC.waiting=0;log('Claude 연결 완료 — 설치한 연결 프로그램과 자동으로 연결했습니다','ok');renderDlg()}
         else{AIC.err='이전에 설치한 연결 프로그램이 실행 중입니다. 방금 받은 파일로 Claude 앱에서 다시 설치하면 자동으로 이어집니다.';renderDlg()}}
