@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://cowsdelete.com/sitemap.xml

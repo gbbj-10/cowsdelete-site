@@ -142,3 +142,9 @@ img.gr{display:inline-block;vertical-align:-4px;object-fit:contain}
 .chipb.bounty{color:var(--note);border-color:rgba(241,194,50,.45)}
 .chipb.open{color:var(--leaf)} .chipb.filled{color:var(--sky)} .chipb.closed{color:var(--ink-3)}
 @media (max-width:420px){.who .nick span{display:none}.who .nick{padding:3px 6px 3px 3px}}
+
+/* 커뮤니티 탭 (블록·도면 / 엔지니어 갤러리 / 요청) */
+.ctabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 0 22px;overflow-x:auto}
+.ctabs a{padding:12px 16px 11px;text-decoration:none;color:var(--ink-3);font-weight:600;border-bottom:2px solid transparent;white-space:nowrap}
+.ctabs a:hover{color:var(--ink)}
+.ctabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--note)}
