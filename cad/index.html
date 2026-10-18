@@ -65,6 +65,23 @@ button{cursor:pointer}
 .tool .lb{font-size:11px;line-height:1.1;white-space:nowrap}
 .tool .key{font:500 9px/1 var(--mono);color:var(--ink-dim)}
 .tool:hover{background:var(--chrome-2);border-color:var(--rule)}
+/* 리본: 아이콘만 (이름은 마우스를 올리면 말풍선) · 오른쪽은 광고 자리 */
+.ribbon .tool .lb,.ribbon .tool .key{display:none}
+.ribbon .tool{width:34px;height:34px;padding:0;justify-content:center;gap:0}
+.ribbon .tool svg{width:21px;height:21px}
+.ribbon .tool.s{width:28px;height:26px;padding:0;justify-content:center}
+.ribbon .tool.s svg{width:17px;height:17px}
+.ribbon .group .tools{align-content:start}
+.ribbon .gname{white-space:nowrap}
+.ribbon{display:grid;grid-template-columns:minmax(0,1fr) auto}
+.ribbon>.rtabs{grid-column:1/-1}
+.ribbon>.rgroups{grid-column:1;grid-row:2}
+#ribbonAd{grid-column:2;grid-row:2;align-self:center;margin:4px 10px 4px 6px;display:grid;place-items:center;width:728px;height:90px;border:1px dashed #556070;border-radius:6px;color:#7d8794;font-size:12px;background:repeating-linear-gradient(45deg,#121821 0 8px,#0f141c 8px 16px);position:relative}
+#ribbonAd .adl{position:absolute;left:6px;top:4px;font-size:10.5px;font-weight:600;color:#c9d1dc;background:#232a35;border-radius:3px;padding:0 5px}
+@media (max-width:1699px){#ribbonAd{width:468px;height:60px}}
+@media (max-width:1279px){#ribbonAd{display:none!important}}
+#rtip{position:fixed;z-index:9999;pointer-events:none;background:#0b0f15;color:#e8edf3;border:1px solid var(--rule);border-radius:5px;padding:4px 8px;font-size:12px;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:0;transition:opacity .08s}
+#rtip.on{opacity:1}
 .tool.on{background:color-mix(in srgb,var(--tag) 16%,transparent);border-color:var(--tag);color:var(--tag)}
 .tool.on .key{color:var(--tag)}
 
@@ -1403,7 +1420,18 @@ const RTABS=[['home','홈'],['note','주석'],['block','블록·도구']];
   for(const g of RIBBON){const G=document.createElement('div');G.className='group'+(g.sm?' sm':'');const T=document.createElement('div');T.className='tools';if(g.sm)T.style.gridTemplateRows=`repeat(${g.sm},auto)`;
     for(const [k,lb,key] of g.t){const b=document.createElement('button');b.className='tool'+(g.sm?' s':'');b.dataset.t=k;b.title=`${lb} (${key.replace('Ctrl⇧','Ctrl+Shift+')})`;b.innerHTML=`<svg viewBox="0 0 22 22">${ICONS[k]||''}</svg><span class="lb">${lb}</span><span class="key">${key}</span>`;b.onclick=()=>startTool(k);T.appendChild(b)}
     G.appendChild(T);const n=document.createElement('div');n.className='gname';n.textContent=g.g;G.appendChild(n);document.getElementById('rg-'+g.tab).appendChild(G)}
+  /* 오른쪽 광고 자리: 광고 코드를 넣기 전에는 숨김 (미리보기 ?ads=1) */
+  const ad=document.createElement('div');ad.id='ribbonAd';ad.setAttribute('aria-label','광고');ad.innerHTML='<span class="adl">광고</span><span class="slot">광고 자리</span>';
+  ad.hidden=!((window.COWS_CONFIG||{}).ads||/[?&]ads=1\b/.test(location.search));r.appendChild(ad);
   showTab('home')})();
+/* 리본 아이콘 이름 말풍선: 마우스를 올리면 바로 표시 (브라우저 기본 말풍선은 늦게 떠서 대신 씀) */
+(function(){const r=document.getElementById('ribbon'),tip=document.createElement('div');tip.id='rtip';tip.setAttribute('role','tooltip');document.body.appendChild(tip);let cur=null;
+  const hide=()=>{tip.classList.remove('on');cur=null};
+  r.addEventListener('pointerover',ev=>{const b=ev.target.closest&&ev.target.closest('button');if(!b||!r.contains(b)||b.classList.contains('rtab'))return;
+    if(b.title){b.dataset.tip=b.title;if(!b.getAttribute('aria-label'))b.setAttribute('aria-label',b.title);b.removeAttribute('title')}
+    const t=b.dataset.tip;if(!t){hide();return}cur=b;tip.textContent=t;tip.classList.add('on');
+    const br=b.getBoundingClientRect(),tw=tip.offsetWidth;let x=br.left+br.width/2-tw/2;x=Math.max(6,Math.min(innerWidth-tw-6,x));tip.style.left=x+'px';tip.style.top=(br.bottom+6)+'px'});
+  r.addEventListener('pointerout',ev=>{if(cur&&!cur.contains(ev.relatedTarget))hide()});r.addEventListener('pointerdown',hide);addEventListener('scroll',hide,true)})();
 function showTab(id){document.querySelectorAll('.rtab').forEach(b=>{b.classList.toggle('on',b.dataset.tab===id);b.setAttribute('aria-selected',b.dataset.tab===id)});document.querySelectorAll('.rgroups').forEach(g=>g.hidden=g.id!=='rg-'+id)}
 
 /* ================= 도면층 (레이어) UI ================= */
