@@ -64,6 +64,7 @@ ${head}
   <nav class="site-nav">
     <a href="/cad/">무카 CAD</a>
     <a href="/community/" aria-current="page">커뮤니티</a>
+    <a href="/qna/">문의</a>
     <span class="who" data-who></span>
   </nav>
 </div></header>
@@ -159,7 +160,7 @@ const day = iso => String(iso || new Date().toISOString()).slice(0, 10);
 const latest = [...posts, ...items, ...reqs].reduce((m, x) => (x.updated_at || x.created_at) > m ? (x.updated_at || x.created_at) : m, '2026-10-18');
 const urls = [
   ['/', latest, '1.0'], ['/mucca/', latest, '0.9'], ['/board/', latest, '0.9'], ...Object.keys(GAL).map(s => [`/board/?g=${s}`, latest, '0.7']),
-  ['/community/', latest, '0.8'], ['/requests/', latest, '0.7'], ['/beta/', '2026-10-18', '0.4'], ['/privacy/', '2026-10-18', '0.3'],
+  ['/community/', latest, '0.8'], ['/requests/', latest, '0.7'], ['/qna/', latest, '0.5'], ['/beta/', '2026-10-18', '0.4'], ['/privacy/', '2026-10-18', '0.3'],
   ...posts.map(p => [`/p/${p.id}/`, p.updated_at, '0.6']), ...items.map(i => [`/s/${i.id}/`, i.updated_at, '0.6']), ...reqs.map(r => [`/r/${r.id}/`, r.updated_at, '0.5'])
 ];
 const sm = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(([u, d, pr]) => `  <url><loc>${SITE}${esc(u)}</loc><lastmod>${day(d)}</lastmod><priority>${pr}</priority></url>`).join('\n')}\n</urlset>\n`;

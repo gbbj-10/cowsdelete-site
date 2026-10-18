@@ -139,7 +139,7 @@ a.tool.ask:hover{border-color:var(--note)}
 <header class="site-top"><div class="wrap">
   <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법<small>Development Storage</small></span></a>
   <nav class="site-nav">
-    <a href="#contact">문의</a>
+    <a href="/qna/">문의</a>
     <span class="who" data-who></span>
   </nav>
 </div></header>
@@ -227,15 +227,12 @@ a.tool.ask:hover{border-color:var(--note)}
 
 <section class="sec" id="contact"><div class="wrap">
   <h2>카우스 소거법에 문의하기</h2>
-  <p class="sub">채널, 영상, 도구, 협업 등 무엇이든 남겨 주세요. 답장이 필요하면 연락처를 함께 적어 주시고, 급한 일은 <a href="mailto:kkun@kakao.com">kkun@kakao.com</a>으로 보내 주세요.</p>
-  <form class="contact" id="contactForm">
-    <div class="field"><label for="cText">문의 내용</label>
-      <textarea id="cText" maxlength="1500" required placeholder="예: 영상에서 쓴 도구를 회사에서 써 보고 싶은데, 비슷한 걸 만들 수 있을까요?"></textarea></div>
-    <div class="field"><label for="cReply">답장 받을 연락처 (선택)</label><input type="text" id="cReply" maxlength="80" placeholder="이메일 또는 카카오톡 아이디" autocomplete="email"></div>
-    <p class="warn">연락처는 답장에만 쓰고 1년 뒤 지웁니다. 회사명, 고객명, 단가 같은 민감한 정보는 빼고 적어 주세요.</p>
-    <div><button class="btn primary" type="submit" id="cSend">문의 보내기</button></div>
-    <p class="msg" id="cMsg" role="status"></p>
-  </form>
+  <p class="sub">채널, 영상, 도구, 협업 등 무엇이든 문의 게시판에 남겨 주세요. 급한 일은 <a href="mailto:kkun@kakao.com">kkun@kakao.com</a>으로 보내 주세요.</p>
+  <div class="contact-cta" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+    <a class="btn primary" href="/qna/?write=etc">문의 쓰기</a>
+    <a class="btn line" href="/qna/">문의 게시판 보기</a>
+  </div>
+  <p class="warn" style="margin-top:12px">문의 게시판에서는 운영자가 댓글로 답합니다. 비밀글로 올리면 자물쇠가 붙고, 쓴 사람과 운영자만 열 수 있습니다.</p>
 </div></section>
 </main>
 
@@ -308,19 +305,6 @@ a.tool.ask:hover{border-color:var(--note)}
 /* 광고 행: config 에 광고가 켜졌거나 ?ads=1 미리보기일 때만 보임 */
 (function(){const C=window.COWS_CONFIG||{};if(C.ads||/[?&]ads=1\b/.test(location.search))document.getElementById('adrow').hidden=false})();
 
-/* 문의 */
-(function(){
-  const C=window.COWS_CONFIG||{},f=document.getElementById('contactForm'),msg=document.getElementById('cMsg'),btn=document.getElementById('cSend');
-  f.addEventListener('submit',async e=>{e.preventDefault();
-    const text=document.getElementById('cText').value.trim(),reply=document.getElementById('cReply').value.trim();
-    if(text.length<5){msg.className='msg bad';msg.textContent='문의 내용을 한두 문장으로 적어 주세요.';return}
-    btn.disabled=true;msg.className='msg';msg.textContent='보내는 중…';
-    try{const r=await fetch(C.supabaseUrl+'/rest/v1/events',{method:'POST',headers:{'apikey':C.supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({kind:'feedback',payload:{type:'contact',text:text.slice(0,1500),reply:reply.slice(0,80)},app_ver:C.appVer||'',page:'home-contact'})});
-      if(!r.ok)throw new Error(r.status);f.reset();msg.className='msg ok';msg.textContent='문의를 보냈습니다. 연락처를 남기셨다면 그쪽으로 답장 드리겠습니다.';
-    }catch(_){msg.className='msg bad';msg.textContent='보내지 못했습니다. 잠시 뒤 다시 보내거나 kkun@kakao.com 으로 보내 주세요.'}
-    btn.disabled=false});
-})();
 </script>
 </body>
 </html>

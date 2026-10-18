@@ -138,6 +138,7 @@ a.tool.ask:hover{border-color:var(--note)}
     <a href="/requests/">요청</a>
     <a class="opt" href="#videos">영상</a>
     <a class="opt" href="#report">자동화 문의</a>
+    <a href="/qna/">문의</a>
     <span class="who" data-who></span>
   </nav>
 </div></header>
@@ -225,15 +226,12 @@ a.tool.ask:hover{border-color:var(--note)}
 
 <section class="sec" id="report"><div class="wrap">
   <h2>이 캐드 작업, 자동화될까요?</h2>
-  <p class="sub">매일 손으로 반복하는 캐드 작업을 적어 주세요. 무카 CAD나 Claude로 어떻게 자동화할 수 있는지 답해 드립니다. 답변은 [요청] 게시판과 다음 영상에서 공개합니다.</p>
-  <form class="report" id="reportForm">
-    <div class="field"><label for="rText">어떤 캐드 작업을 자동화하고 싶으세요?</label>
-      <textarea id="rText" maxlength="1500" required placeholder="예: 탱크 도면을 지름·높이만 바꿔 매번 다시 그립니다. 노즐 위치와 치수까지 자동으로 들어가면 좋겠어요."></textarea></div>
-    <div class="field"><label for="rJob">직무 (선택)</label><input type="text" id="rJob" maxlength="40" placeholder="예: 기계 설계 3년차"></div>
-    <p class="warn">회사명, 고객명, 단가, 실제 도면은 빼고 작업 방식만 적어 주세요. 내 질문에 달린 답을 직접 받아 보려면 로그인 후 <a href="/requests/?new=">[요청] 게시판</a>에 올려 주세요.</p>
-    <div><button class="btn primary" type="submit" id="rSend">자동화 문의 보내기</button></div>
-    <p class="msg" id="rMsg" role="status"></p>
-  </form>
+  <p class="sub">매일 손으로 반복하는 캐드 작업을 적어 주세요. 무카 CAD나 Claude로 어떻게 자동화할 수 있는지 답해 드립니다. 운영자가 문의 게시판에 댓글로 답하고, 좋은 사례는 다음 영상에서 다룹니다.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+    <a class="btn primary" href="/qna/?write=auto">자동화 문의 쓰기</a>
+    <a class="btn line" href="/qna/">문의 게시판 보기</a>
+  </div>
+  <p class="warn" style="margin-top:12px">회사명, 고객명, 단가, 실제 도면은 빼고 작업 방식만 적어 주세요. 비밀글로 올리면 쓴 사람과 운영자만 볼 수 있습니다.</p>
 </div></section>
 </main>
 
@@ -295,19 +293,6 @@ a.tool.ask:hover{border-color:var(--note)}
   box.innerHTML=data.map(r=>`<a class="item" href="/community/?id=${r.id}"><span class="pic" style="${S.thumb(r.thumb)}"><span class="kind ${r.kind}">${r.kind==='block'?'블록':'도면'}</span></span><span class="meta"><p class="t">${esc(r.title)}</p><span class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · 가져감 ${r.copies}</span></span></a>`).join('');
 })();
 
-/* 업무 제보 */
-(function(){
-  const C=window.COWS_CONFIG||{},f=document.getElementById('reportForm'),msg=document.getElementById('rMsg'),btn=document.getElementById('rSend');
-  f.addEventListener('submit',async e=>{e.preventDefault();
-    const text=document.getElementById('rText').value.trim(),job=document.getElementById('rJob').value.trim();
-    if(text.length<5){msg.className='msg bad';msg.textContent='어떤 캐드 작업인지 한두 문장으로 적어 주세요.';return}
-    btn.disabled=true;msg.className='msg';msg.textContent='보내는 중…';
-    try{const r=await fetch(C.supabaseUrl+'/rest/v1/events',{method:'POST',headers:{'apikey':C.supabaseKey,'Content-Type':'application/json','Prefer':'return=minimal'},
-        body:JSON.stringify({kind:'report',payload:{text:text.slice(0,1500),job:job.slice(0,40)},app_ver:C.appVer||'',page:'home'})});
-      if(!r.ok)throw new Error(r.status);f.reset();msg.className='msg ok';msg.textContent='보냈습니다. 답변은 [요청] 게시판과 다음 영상에서 공개합니다.';
-    }catch(_){msg.className='msg bad';msg.textContent='보내지 못했습니다. 잠시 뒤 다시 보내 주세요.'}
-    btn.disabled=false});
-})();
 </script>
 </body>
 </html>

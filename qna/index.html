@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>문의 게시판 — 카우스 소거법</title>
+<meta name="description" content="무카 CAD, 캐드 자동화, 채널 협업 문의를 남기는 곳. 비밀글은 쓴 사람과 운영자만 볼 수 있습니다.">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+<link rel="stylesheet" href="/assets/site.css?v=20261018c">
+<style>
+.head{padding-top:44px;padding-bottom:22px}
+.head h1{font-size:clamp(30px,4.4vw,48px);letter-spacing:-.035em;line-height:1.15;margin:0 0 10px}
+.head p{color:var(--ink-2);margin:0 0 22px;max-width:42em}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--ink-2);font:500 14px var(--sans);padding:10px 14px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--plate-2);color:var(--ink)}
+.bar .btn{margin-left:auto}
+.list-sec{padding:0 0 80px}
+/* 목록: 도면 표제란처럼 칸이 나뉜 표 */
+.qt{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--plate)}
+.qh,.qr{display:grid;grid-template-columns:56px 96px minmax(0,1fr) 130px 88px 100px;gap:0;align-items:center}
+.qh{font-size:12px;color:var(--ink-3);background:var(--plate-2);border-bottom:1px solid var(--line)}
+.qh span,.qr>span{padding:11px 12px}
+.qr{width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--line);color:inherit;font:inherit;cursor:pointer}
+.qr:last-child{border-bottom:0}
+.qr:hover{background:var(--plate-2)}
+.qr:focus-visible{outline:2px solid var(--sky);outline-offset:-2px}
+.qr .no{font-family:var(--cmd);color:var(--ink-3);font-size:13px}
+.qr .ti{display:flex;align-items:center;gap:7px;min-width:0}
+.qr .ti b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qr.locked .ti b{color:var(--ink-3);font-weight:500}
+.qr .cm{font-family:var(--cmd);font-size:13px;color:var(--sky);flex:none}
+.qr .by{font-size:13px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qr .dt{font-family:var(--cmd);font-size:13px;color:var(--ink-3)}
+.lock{flex:none;width:15px;height:15px;color:var(--note)}
+.cat{font-size:12px;color:var(--ink-2)}
+.st{font-size:12px;padding:2px 8px;border-radius:6px;border:1px solid var(--line);white-space:nowrap}
+.st.answered{color:var(--leaf);border-color:rgba(120,200,120,.4)}
+.st.open{color:var(--ink-3)}
+.mine-tag{font-size:11px;color:var(--sky);border:1px solid var(--line);border-radius:5px;padding:0 5px;flex:none}
+.pager{display:flex;gap:8px;justify-content:center;margin:18px 0 0}
+/* 상세 */
+.meta{color:var(--ink-3);font-size:14px;margin:0 0 14px;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.qbody{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 14px;line-height:1.7}
+.private{font-size:13px;color:var(--ink-2);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:0 0 14px}
+.cmts{display:grid;gap:10px;margin:18px 0 12px;padding:16px 0 0;border-top:1px solid var(--line)}
+.c{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--plate-2)}
+.c.staff{border-color:rgba(241,194,50,.5)}
+.c .w{font-size:13px;color:var(--ink-3);margin:0 0 4px;display:flex;gap:8px;align-items:center}
+.c .w .op{color:var(--note);font-weight:600}
+.c p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.gate{text-align:center;padding:18px 6px}
+.gate svg{width:40px;height:40px;color:var(--note)}
+.gate h4{margin:10px 0 6px;font-size:18px}
+.gate p{color:var(--ink-2);margin:0 0 14px}
+.gate form{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.gate input{max-width:220px}
+input[type=password]{width:100%;font:15px/1.6 var(--sans);padding:11px 13px;border-radius:8px;border:1px solid var(--line);background:#07101c;color:var(--ink)}
+input[type=password]:focus{outline:none;border-color:var(--sky)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.frm{display:grid;gap:12px}
+.frm .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.note{font-size:13px;color:var(--ink-3);margin:0}
+.err{color:var(--axis);font-size:14px;min-height:1.2em;margin:0}
+/* 비밀글 토글 */
+.sw{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;font-weight:600}
+.sw input{position:absolute;opacity:0;width:1px;height:1px}
+.sw .tr{width:42px;height:24px;border-radius:12px;background:var(--line);position:relative;transition:background .15s}
+.sw .tr::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--ink-2);transition:transform .15s,background .15s}
+.sw input:checked+.tr{background:rgba(241,194,50,.55)}
+.sw input:checked+.tr::after{transform:translateX(18px);background:var(--note)}
+.sw input:focus-visible+.tr{outline:2px solid var(--sky);outline-offset:2px}
+.pwbox{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:8px;background:var(--plate-2)}
+@media (prefers-reduced-motion:reduce){.sw .tr,.sw .tr::after{transition:none}}
+@media (max-width:720px){
+  .qh{display:none}
+  .qr{grid-template-columns:1fr auto;grid-template-areas:"ti st" "by by"}
+  .qr>span{padding:4px 12px}.qr>span:first-child{padding-top:12px}
+  .qr .no,.qr .cat{display:none}
+  .qr .ti{grid-area:ti;padding-top:12px}.qr .stc{grid-area:st;padding-top:12px}
+  .qr .by{grid-area:by;padding-bottom:12px;font-size:12px;color:var(--ink-3)}
+  .qr .dt{display:none}
+  .frm .row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<header class="site-top"><div class="wrap">
+  <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법<small>Development Storage</small></span></a>
+  <nav class="site-nav">
+    <a href="/cad/">무카 CAD</a>
+    <a href="/community/">커뮤니티</a>
+    <a href="/qna/" aria-current="page">문의</a>
+    <span class="who" data-who></span>
+  </nav>
+</div></header>
+
+<main>
+<div class="wrap head">
+  <h1>문의 게시판</h1>
+  <p>무카 CAD 사용법, 캐드 자동화 의뢰, 채널 협업까지 무엇이든 남겨 주세요. 운영자가 댓글로 답합니다. 비밀글은 자물쇠가 붙고, 쓴 사람과 운영자만 열 수 있습니다.</p>
+  <div class="bar">
+    <div class="seg" role="group" aria-label="보기">
+      <button type="button" data-f="all" aria-pressed="true">전체</button>
+      <button type="button" data-f="open" aria-pressed="false">답변 대기</button>
+      <button type="button" data-f="mine" aria-pressed="false">내 문의</button>
+    </div>
+    <button class="btn primary sm" id="newBtn" type="button">문의 쓰기</button>
+  </div>
+</div>
+<section class="list-sec"><div class="wrap">
+  <div class="qt" id="tbl">
+    <div class="qh" aria-hidden="true"><span>번호</span><span>분류</span><span>제목</span><span>작성자</span><span>날짜</span><span>상태</span></div>
+    <div id="list"></div>
+  </div>
+  <div class="pager" id="pager"></div>
+</div></section>
+</main>
+
+<footer class="titleblock"><div class="wrap">
+  <div class="tb">
+    <div><span class="h">도명</span>카우스 소거법 문의 게시판</div>
+    <div><span class="h">무카 CAD</span><a href="/cad/">열기</a> / <a href="/community/">커뮤니티</a></div>
+    <div><span class="h">안내</span><a href="/beta/">베타 이용 안내</a><br><a href="/privacy/">개인정보처리방침</a></div>
+    <div><span class="h">급한 문의</span><a href="mailto:kkun@kakao.com">kkun@kakao.com</a></div>
+  </div>
+</div></footer>
+
+<script src="/assets/config.js?v=20261018c"></script>
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/site.js?v=20261018c"></script>
+<script>
+(async function(){
+  'use strict';
+  const S=window.COWS, sb=S.sb, esc=S.esc;
+  const list=document.getElementById('list'), pager=document.getElementById('pager'), params=new URLSearchParams(location.search);
+  const CAT={cad:'무카 CAD',auto:'자동화 의뢰',etc:'협업·기타'};
+  const LOCK='<svg class="lock" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V6H4a1.5 1.5 0 0 0-1.5 1.5v6A1.5 1.5 0 0 0 4 15h8a1.5 1.5 0 0 0 1.5-1.5v-6A1.5 1.5 0 0 0 12 6h-.5V4.5A3.5 3.5 0 0 0 8 1Zm2 5H6V4.5a2 2 0 1 1 4 0V6Zm-2 3a1.25 1.25 0 0 1 .6 2.35V12.5h-1.2v-1.15A1.25 1.25 0 0 1 8 9Z"/></svg>';
+  const pwMem={}; /* 이 창에서 맞힌 비밀번호 (새로고침하면 사라짐) */
+  let filter='all', page=0;
+  await S.ready;
+  if(!sb){list.innerHTML='<div class="empty">지금은 문의 게시판을 불러올 수 없습니다. kkun@kakao.com 으로 보내 주세요.</div>';return}
+  const day=d=>{const x=new Date(d),n=new Date();return x.toDateString()===n.toDateString()?x.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):x.toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}).replace(/\s/g,'').replace(/\.$/,'')};
+  const stChip=s=>s==='answered'?'<span class="st answered">답변 완료</span>':'<span class="st open">답변 대기</span>';
+
+  function dlg(title,inner){
+    const d=document.createElement('div');d.className='dlg';
+    d.innerHTML=`<div class="box" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h3>${esc(title)}</h3><button class="x" data-x>닫기</button></header><div class="in">${inner}</div></div>`;
+    document.body.append(d);
+    const close=()=>{d.remove();document.removeEventListener('keydown',k)};
+    function k(e){if(e.key==='Escape')close()}
+    document.addEventListener('keydown',k);
+    d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-x]'))close()});
+    d.close=close;return d;
+  }
+
+  function row(r){
+    const locked=r.is_secret&&!r.can_view;
+    return `<button class="qr ${locked?'locked':''}" data-id="${r.id}" aria-label="${r.is_secret?'비밀글 ':''}${esc(r.title)}">
+      <span class="no">${r.no}</span><span class="cat">${CAT[r.category]||''}</span>
+      <span class="ti">${r.is_secret?LOCK:''}<b>${esc(r.title)}</b>${r.comments?`<span class="cm">[${r.comments}]</span>`:''}${r.mine?'<span class="mine-tag">내 글</span>':''}</span>
+      <span class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)}</span><span class="dt">${day(r.created_at)}</span><span class="stc">${stChip(r.status)}</span></button>`;
+  }
+
+  async function load(){
+    if(filter==='mine'&&!S.user){list.innerHTML='<div class="empty" style="border:0">로그인하면 내가 쓴 문의만 모아 볼 수 있습니다. 로그인 없이 쓴 글은 [전체]에서 찾아 비밀번호로 여세요.</div>';pager.innerHTML='';return}
+    const {data,error}=await sb.rpc('qna_list',{p_filter:filter,p_page:page});
+    if(error){list.innerHTML=`<div class="empty" style="border:0">불러오지 못했습니다: ${esc(error.message)}</div>`;return}
+    list.innerHTML=data.length?data.map(row).join(''):`<div class="empty" style="border:0">${filter==='open'?'답변을 기다리는 문의가 없습니다.':'아직 문의가 없습니다. 첫 문의를 남겨 주세요.'}</div>`;
+    const total=data.length?+data[0].total:0, pages=Math.ceil(total/30);
+    pager.innerHTML=pages>1?Array.from({length:pages},(_,i)=>`<button class="btn ${i===page?'primary':'line'} sm" data-p="${i}">${i+1}</button>`).join(''):'';
+  }
+
+  function gate(id,res){
+    const canPw=res.has_pw;
+    const d=dlg('비밀글',`<div class="gate">${LOCK.replace('class="lock"','')}
+      <h4>비밀글입니다</h4>
+      <p>${canPw?'글을 쓸 때 정한 비밀번호를 넣거나, 작성자 계정으로 로그인하세요.':'작성자와 운영자만 볼 수 있는 글입니다. 작성자라면 글을 쓴 계정으로 로그인하세요.'}</p>
+      ${canPw?'<form data-f><label class="sr-only" for="gpw">비밀번호</label><input type="password" id="gpw" autocomplete="off" placeholder="비밀번호" required><button class="btn primary sm" type="submit">열기</button></form>':''}
+      <p class="err" data-e style="margin-top:10px">${res.error?esc(res.error):''}</p>
+      ${S.user?'':'<button class="btn line sm" data-login>로그인</button>'}</div>`);
+    const f=d.querySelector('[data-f]');
+    if(f){setTimeout(()=>d.querySelector('#gpw').focus(),30);
+      f.onsubmit=async e=>{e.preventDefault();const pw=d.querySelector('#gpw').value;const {data,error}=await sb.rpc('qna_get',{p_id:id,p_pw:pw});
+        if(error||!data.ok){d.querySelector('[data-e]').textContent=error?error.message:(data.error||'열 수 없습니다');return}
+        pwMem[id]=pw;d.close();show(id,data)}}
+    const lg=d.querySelector('[data-login]');if(lg)lg.onclick=()=>S.login(location.origin+'/qna/?id='+id);
+  }
+
+  async function open(id){
+    const {data,error}=await sb.rpc('qna_get',{p_id:id,p_pw:pwMem[id]||null});
+    if(error){dlg('문의',`<p class="err">${esc(error.message)}</p>`);return}
+    if(!data.ok){if(data.locked){gate(id,data);return}dlg('문의',`<p class="err">${esc(data.error||'찾을 수 없는 글입니다')}</p>`);return}
+    show(id,data);
+  }
+
+  function show(id,res){
+    const p=res.post, pw=pwMem[id]||null;
+    const cm=res.comments.map(c=>`<div class="c ${c.is_staff?'staff':''}"><div class="w">${S.gradeIcon(c.author_grade)}<span class="${c.is_staff?'op':''}">${esc(c.author_nick)}${c.is_staff?' · 운영자 답변':''}</span><span>${new Date(c.created_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false})}</span>${(c.mine||res.admin)?`<button class="linkbtn" data-cdel="${c.id}" style="margin-left:auto;font-size:12px">지우기</button>`:''}</div><p>${esc(c.body)}</p></div>`).join('');
+    const who=res.access===3?'운영자로 보는 중':res.access===2?'내 글':res.access===1?'비밀번호로 연 글':'';
+    const d=dlg(p.is_secret?'비밀글':'문의',`
+      <p style="margin:0 0 6px;display:flex;gap:8px;align-items:center">${stChip(p.status)}<span class="cat">${CAT[p.category]||''}</span>${p.is_secret?`<span class="cat" style="display:inline-flex;gap:4px;align-items:center;color:var(--note)">${LOCK}비밀글</span>`:''}</p>
+      <h4 style="font-size:20px;margin:6px 0">${esc(p.title)}</h4>
+      <div class="meta">${S.gradeIcon(p.author_grade)}<span>${esc(p.author_nick)}</span><span>${new Date(p.created_at).toLocaleString('ko-KR',{hour12:false})}</span><span>No.${p.no}</span>${who?`<span style="color:var(--sky)">${who}</span>`:''}</div>
+      <p class="qbody">${esc(p.body)}</p>
+      ${p.contact?`<p class="private">답장 받을 연락처: <b>${esc(p.contact)}</b> <span style="color:var(--ink-3)">(작성자와 운영자에게만 보입니다)</span></p>`:''}
+      <div class="cmts"><h4 style="margin:0">댓글 ${res.comments.length}</h4>${cm||'<p class="note">아직 답변이 없습니다. 운영자가 확인하면 여기에 댓글로 답합니다.</p>'}</div>
+      ${res.can_comment?`<form class="frm" data-cf><div class="field"><label for="ct">${res.admin?'운영자 답변':'댓글로 이어서 묻기'}</label><textarea id="ct" maxlength="2000" required placeholder="${res.admin?'답변을 적어 주세요. 등록하면 [답변 완료]로 바뀝니다.':'추가로 물어볼 내용을 적어 주세요.'}"></textarea></div>
+        <p class="err" data-e></p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary sm" type="submit">${res.admin?'답변 달기':'댓글 달기'}</button><button class="btn line sm" type="button" data-del>글 지우기</button></div></form>`
+        :`<p class="note">${p.guest?'댓글은 작성자(비밀번호로 연 경우 포함)와 운영자만 달 수 있습니다.':'댓글은 작성자와 운영자만 달 수 있습니다.'}</p>`}`);
+    history.replaceState(null,'','?id='+id);
+    const oldClose=d.close;d.close=()=>{oldClose();history.replaceState(null,'',location.pathname)};
+    d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-x]'))history.replaceState(null,'',location.pathname)});
+    const cf=d.querySelector('[data-cf]');
+    if(cf)cf.onsubmit=async e=>{e.preventDefault();const t=d.querySelector('#ct').value.trim();if(!t)return;
+      const {error}=await sb.rpc('qna_comment',{p_id:id,p_body:t,p_pw:pw});
+      if(error){d.querySelector('[data-e]').textContent=error.message;return}
+      d.close();await load();open(id)};
+    const del=d.querySelector('[data-del]');
+    if(del)del.onclick=async()=>{if(!confirm('이 문의를 지울까요? 지우면 되돌릴 수 없습니다.'))return;
+      const {error}=await sb.rpc('qna_delete',{p_id:id,p_pw:pw});if(error){d.querySelector('[data-e]').textContent=error.message;return}d.close();load()};
+    d.querySelectorAll('[data-cdel]').forEach(b=>b.onclick=async()=>{if(!confirm('이 댓글을 지울까요?'))return;
+      const {error}=await sb.rpc('qna_comment_delete',{p_cid:b.dataset.cdel});if(error){alert(error.message);return}d.close();await load();open(id)});
+  }
+
+  function openNew(cat){
+    const guest=!S.user;
+    const d=dlg('문의 쓰기',`<form class="frm" novalidate>
+      <div class="row"><div class="field"><label for="qc">분류</label><select id="qc">${Object.entries(CAT).map(([k,v])=>`<option value="${k}" ${k===(cat||'cad')?'selected':''}>${v}</option>`).join('')}</select></div>
+        ${guest?'<div class="field"><label for="qn">이름</label><input type="text" id="qn" maxlength="20" placeholder="게시판에 보일 이름" autocomplete="nickname"></div>':`<div class="field"><label>작성자</label><input type="text" value="${esc(S.nick||'로그인 사용자')}" disabled></div>`}</div>
+      <div class="field"><label for="qt">제목</label><input type="text" id="qt" maxlength="80" required placeholder="예: 무카 CAD에서 DWG 파일을 열 수 있나요?"></div>
+      <div class="field"><label for="qb">내용</label><textarea id="qb" maxlength="4000" required style="min-height:150px" placeholder="궁금한 점, 자동화하고 싶은 작업, 협업 제안을 적어 주세요. 회사명·고객명·단가·실제 도면은 빼 주세요."></textarea></div>
+      <div class="field"><label for="qr">답장 받을 연락처 (선택)</label><input type="text" id="qr" maxlength="120" placeholder="이메일 또는 카카오톡 아이디 — 작성자와 운영자만 봅니다" autocomplete="email"></div>
+      <label class="sw"><input type="checkbox" id="qs" role="switch"><span class="tr" aria-hidden="true"></span><span style="display:inline-flex;gap:5px;align-items:center">${LOCK}비밀글로 올리기</span></label>
+      <div class="pwbox" id="pwb" hidden>
+        <div class="field" style="margin:0"><label for="qp">비밀번호 (선택)</label><input type="password" id="qp" maxlength="40" autocomplete="new-password" placeholder="4자 이상"></div>
+        <p class="note">${guest
+          ?'비밀글은 나와 운영자만 봅니다. 로그인하지 않았으니 <b>비밀번호를 정해 두세요</b> — 나중에 이 글을 다시 열고 댓글을 달 때 씁니다. 비워 두면 운영자만 볼 수 있습니다.'
+          :'비밀글은 나와 운영자만 봅니다. 이 계정으로 로그인하면 비밀번호 없이 열립니다. 로그인 없이 다른 기기에서 열고 싶을 때만 비밀번호를 정하세요.'}</p>
+      </div>
+      ${guest?'<p class="note">로그인하면 [내 문의]에서 내 글을 모아 보고, 비밀번호 없이 댓글로 이어서 대화할 수 있습니다. <button type="button" class="linkbtn" data-login>로그인</button></p>':''}
+      <p class="note">연락처는 답장에만 쓰고 1년 뒤 지웁니다.</p>
+      <p class="err" data-e></p>
+      <div><button class="btn primary sm" type="submit">문의 올리기</button></div></form>`);
+    const sw=d.querySelector('#qs'),pwb=d.querySelector('#pwb');
+    sw.onchange=()=>{pwb.hidden=!sw.checked;if(sw.checked)d.querySelector('#qp').focus()};
+    const lg=d.querySelector('[data-login]');if(lg)lg.onclick=()=>S.login(location.origin+'/qna/?write='+(d.querySelector('#qc').value));
+    setTimeout(()=>d.querySelector('#qt').focus(),30);
+    d.querySelector('form').onsubmit=async e=>{e.preventDefault();const er=d.querySelector('[data-e]');
+      const t=d.querySelector('#qt').value.trim(),b=d.querySelector('#qb').value.trim(),secret=sw.checked,pw=secret?d.querySelector('#qp').value.trim():'';
+      if(t.length<2){er.textContent='제목을 두 글자 이상 적어 주세요';return}
+      if(b.length<5){er.textContent='내용을 한두 문장으로 적어 주세요';return}
+      if(pw&&pw.length<4){er.textContent='비밀번호는 4자 이상으로 정해 주세요';return}
+      if(guest&&secret&&!pw&&!confirm('비밀번호 없이 비밀글로 올리면, 로그인하지 않은 상태에서는 나도 이 글을 다시 열 수 없습니다(운영자만 볼 수 있음). 이대로 올릴까요?'))return;
+      const btn=d.querySelector('button[type=submit]');btn.disabled=true;
+      const {data:id,error}=await sb.rpc('qna_post',{p_category:d.querySelector('#qc').value,p_title:t,p_body:b,p_secret:secret,p_pw:pw||null,
+        p_nick:guest?d.querySelector('#qn').value.trim()||null:null,p_contact:d.querySelector('#qr').value.trim()||null});
+      btn.disabled=false;
+      if(error){er.textContent=error.message;return}
+      if(pw)pwMem[id]=pw;
+      d.close();filter='all';page=0;setSeg();await load();
+      if(!secret||!guest||pw)open(id);
+      else dlg('문의를 올렸습니다','<p style="margin:0">운영자가 확인하고 연락처가 있으면 그쪽으로도 답장 드립니다.</p>')};
+  }
+
+  function setSeg(){document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',x.dataset.f===filter))}
+  document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{filter=b.dataset.f;page=0;setSeg();load()});
+  list.addEventListener('click',e=>{const b=e.target.closest('.qr');if(b)open(b.dataset.id)});
+  pager.addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(b){page=+b.dataset.p;load();window.scrollTo({top:0})}});
+  document.getElementById('newBtn').onclick=()=>openNew('');
+  await load();
+  if(params.get('id'))open(params.get('id'));
+  else if(params.has('write'))openNew(params.get('write'));
+})();
+</script>
+</body>
+</html>
