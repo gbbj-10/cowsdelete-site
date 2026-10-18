@@ -218,7 +218,7 @@
       const pct=w.next?Math.min(100,Math.round(w.points/w.next*100)):100;
       box.innerHTML=`${S.gradeIcon(w.grade,28)}<span><b>${S.GRADES[w.grade]}</b> · 기여 ${w.points}점</span>
         <span class="meter" title="${w.next?S.GRADES[w.grade+1]+'까지 '+Math.max(0,w.next-w.points)+'점':(w.grade===9?'운영자':'명장')}"><i style="width:${pct}%"></i></span>
-        <span>${w.users} 중 ${w.rank}위${w.grade===4?` · 명장 컷 ${w.master_cut}점`:''}</span>
+        ${w.grade===9?'<span>카우스 소거법 운영자</span>':`<span>${w.users} 중 ${w.rank}위${w.grade===4?` · 명장 컷 ${w.master_cut}점`:''}</span>`}
         <span>크레딧 <b>${w.credits}</b>${w.pending?` · 확정 대기 ${w.pending}`:''}</span>
         <span class="sp"><button class="linkbtn" data-guide>등급 안내</button><a class="linkbtn" href="/requests/">요청 게시판</a></span>`;}
     box.querySelector('[data-guide]').onclick=S.gradeGuide;
