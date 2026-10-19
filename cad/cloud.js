@@ -81,7 +81,7 @@
   const acct = $('span', { class: 'acct' });
   const bCloudSave = $('button', { class: 'tbtn', title: '클라우드에 저장 (로그인 필요)', text: '클라우드 저장' });
   const bMine = $('button', { class: 'tbtn', title: '내가 저장한 도면', text: '내 도면' });
-  const bFeedback = $('button', { class: 'tbtn', title: '의견·없는 기능 알려주기', text: '의견' });
+  const bFeedback = $('button', { class: 'tbtn', title: '문의 게시판 — 없는 기능·불편한 점을 남기면 운영자가 답합니다 (새 탭)', text: '문의' });
   const bHome = $('a', { class: 'tbtn', href: CFG.homeUrl || '../', title: '카우스 소거법 홈', text: '홈' });
   const bShare = $('button', { class: 'tbtn', title: '블록이나 도면을 커뮤니티에 공유', text: '공유' });
   const bComm = $('a', { class: 'tbtn', href: '/community/', target: '_blank', rel: 'noopener', title: '공유 블록·도면 찾기', text: '커뮤니티' });
@@ -270,7 +270,9 @@
   window.addEventListener('error', e => evt('error', { msg: String(e.message || '').slice(0, 200), at: `${String(e.filename || '').split('/').pop()}:${e.lineno || 0}` }));
   window.addEventListener('unhandledrejection', e => evt('error', { msg: String((e.reason && e.reason.message) || e.reason || '').slice(0, 200), at: 'promise' }));
 
-  bFeedback.onclick = () => {
+  /* 의견 → 답변을 받을 수 있는 문의 게시판으로 (새 탭: 그리던 도면은 그대로) */
+  bFeedback.onclick = () => { window.open('/qna/?write=cad', '_blank', 'noopener'); };
+  const _oldFeedback = () => {
     const ta = $('textarea', { class: 'cl-ta', maxlength: '1000', placeholder: '예: DIMORD(세로좌표 치수)가 없어요 / 해치 패턴 ANSI32가 필요해요 / 이 버튼이 헷갈려요' });
     ta.onkeydown = e => e.stopPropagation();
     const ok = $('button', { class: 'tbtn primary', text: '보내기' });
