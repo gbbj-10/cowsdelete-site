@@ -75,7 +75,11 @@
 .v3h .btn{background:var(--chrome-2);color:var(--ink);border:1px solid var(--rule);border-radius:5px;padding:3px 9px;font:500 12px var(--sans);cursor:pointer}
 .v3h .btn.go{background:#3a8a5c;border-color:#3a8a5c;color:#fff}
 .v3c{position:relative;flex:1;min-height:0}
-.v3c canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab}
+.v3c canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}.v3c canvas.dragging{cursor:grabbing}
+.v3v{position:absolute;top:8px;right:8px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.v3v button{background:rgba(32,37,45,.85);color:var(--ink);border:1px solid var(--rule);border-radius:5px;padding:3px 8px;font:500 12px var(--sans);cursor:pointer}
+.v3v button:hover{border-color:#6f9fd0}.v3v button[aria-pressed=true]{background:#e0702a;border-color:#e0702a;color:#fff}
+.v3hint{position:absolute;top:40px;right:10px;text-align:right;color:var(--ink-dim);font-size:11.5px;pointer-events:none;opacity:.8}
 .v3s{position:absolute;left:8px;bottom:8px;right:8px;font-size:12px;line-height:1.5;pointer-events:none}
 .v3s .i{color:var(--ink-dim)}.v3s .w{color:#f1c232}.v3s .e{color:var(--danger)}.v3s .ok{color:var(--ok)}
 .v3e{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink-dim);font-size:13px;text-align:center;padding:20px;pointer-events:none}
@@ -90,10 +94,11 @@
     <span class="seg" role="group" aria-label="보기"><button data-m="2d">2D</button><button data-m="split">2D | 3D</button><button data-m="3d">3D</button></span>
     <label>형상 <select id="l3kind"><option value="auto">자동</option><option value="extrude">돌출(판재)</option><option value="revolve">회전체</option></select></label>
     <label>두께 <input id="l3t" type="number" min="0.1" step="any" value="10" title="측면도가 없을 때 쓰는 두께(mm)"></label>
+    <label>시험 도면 <select id="l3case"><option value="">불러오기…</option></select></label>
     <span class="sp"></span>
     <button class="btn" id="l3stl" title="3D 모양을 STL 파일로 저장">STL</button>
     <button class="btn go" id="l3step" title="편집 가능한 3D 파일(STEP). 처음 한 번 엔진(약 7MB)을 받습니다">STEP 저장</button>
-  </div><div class="v3c"><canvas id="l3cv"></canvas><div class="v3e" id="l3empty">2D에 닫힌 윤곽(원·사각형·폴리선)을 그리면 3D가 생깁니다.<br>정면도 오른쪽(또는 위)에 측면도를 그리면 두께·회전체를 알아서 읽습니다.</div><div class="v3s" id="l3st"></div></div>`;
+  </div><div class="v3c"><canvas id="l3cv"></canvas><div class="v3v" role="group" aria-label="시점"><button data-v="iso" title="등각">등각</button><button data-v="front" title="도면 정면 그대로">정면</button><button data-v="top" title="위에서">윗면</button><button data-v="right" title="오른쪽에서">측면</button><button data-v="fit" title="화면에 맞춤 (더블클릭)">맞춤</button><button data-v="spin" id="l3spin" aria-pressed="false" title="천천히 돌려 보기">돌려보기</button></div><div class="v3hint">드래그: 돌리기 · 오른쪽/가운데 드래그: 이동 · 휠: 확대 · 더블클릭: 맞춤</div><div class="v3e" id="l3empty">2D에 닫힌 윤곽(원·사각형·폴리선)을 그리면 3D가 생깁니다.<br>정면도 오른쪽(또는 위)에 측면도를 그리면 두께·회전체를 알아서 읽습니다.</div><div class="v3s" id="l3st"></div></div>`;
   viewEl.after(pane);
   const side = work.querySelector('.side');
   function sideW() { const w = side ? side.getBoundingClientRect().width : 252; return Math.round(w || 252) + 'px'; }
@@ -121,6 +126,18 @@
   LAB.setMode = setMode;
   const kindSel = pane.querySelector('#l3kind'), tIn = pane.querySelector('#l3t'), stEl = pane.querySelector('#l3st'), emptyEl = pane.querySelector('#l3empty');
   kindSel.onchange = () => rebuild(true); tIn.onchange = () => rebuild(true);
+  const caseSel = pane.querySelector('#l3case');
+  function fillCases() { const L = window.LABCASES || []; if (caseSel.options.length > 1 || !L.length) return; for (const c of L) { const o = document.createElement('option'); o.value = c.id; o.textContent = c.lv + '. ' + c.title; caseSel.append(o); } }
+  setTimeout(fillCases, 0); setTimeout(fillCases, 1500);
+  caseSel.addEventListener('keydown', e => e.stopPropagation());
+  LAB.loadCase = id => { const c = (window.LABCASES || []).find(x => x.id === id); if (!c) return false;
+    runBatch([{ cmd: 'clear' }].concat(c.cmds)); try { zoomExtents(); } catch (_) { } log('시험 도면: ' + c.lv + '. ' + c.title + ' — 기대: ' + c.expect + ' (Ctrl+Z로 되돌리기)', 'ok'); return true; };
+  caseSel.onchange = () => { const id = caseSel.value; caseSel.value = ''; if (!id) return;
+    if (doc.entities.length && !confirm('지금 도면을 지우고 시험 도면을 불러올까요? (Ctrl+Z로 되돌릴 수 있습니다)')) return;
+    LAB.loadCase(id); if (mode === '2d') setMode('split'); else rebuild(true); };
+  const spinBtn = pane.querySelector('#l3spin');
+  pane.querySelector('.v3v').onclick = e => { const b = e.target.closest('button'); if (!b || !T) return; const v = b.dataset.v;
+    if (v === 'fit') { fit3(); draw3(); } else if (v === 'spin') { spin = !spin; b.setAttribute('aria-pressed', String(spin)); } else setView(v === 'front' ? 'front' : v); };
   tIn.addEventListener('keydown', e => e.stopPropagation()); kindSel.addEventListener('keydown', e => e.stopPropagation());
 
   /* ---------------- 3D 엔진 (three.js) 지연 로딩 ---------------- */
@@ -128,44 +145,67 @@
   function loadScript(src) { return new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('불러오기 실패: ' + src)); document.head.appendChild(s); }); }
   function ensure3D() {
     if (T) return Promise.resolve(T);
-    if (!loading3) { const t0 = performance.now(); loading3 = loadScript('three-lab.js?v=1').then(() => { T = window.THREE_LAB; LAB.loadMs = Math.round(performance.now() - t0); init3(); return T; }); }
+    if (!loading3) { const t0 = performance.now(); loading3 = loadScript('three-lab.js?v=2').then(() => { T = window.THREE_LAB; LAB.loadMs = Math.round(performance.now() - t0); init3(); return T; }); }
     return loading3;
   }
   // 페이지가 뜨고 2.5초 뒤 쉬는 시간에 미리 받아 둠 (3D 버튼을 처음 눌러도 바로 뜨게)
   setTimeout(() => (window.requestIdleCallback || (f => setTimeout(f, 1)))(() => ensure3D().catch(() => { })), 2500);
 
-  let renderer, scene, cam, root, cv3, ro3;
-  const orb = { th: -0.9, ph: 1.05, r: 300, tx: 0, ty: 0, tz: 0 };
+  /* 3D 창 = 모델을 손으로 돌리는 영역
+     왼쪽 드래그: 드래그한 방향으로 모델이 굴러감 · 오른쪽/가운데 드래그(또는 Shift): 이동
+     휠: 확대·축소 · 더블클릭: 화면에 맞춤 · 두 손가락: 확대·이동 */
+  let renderer, scene, cam, pivot, base, root, cv3, ro3, spin = false;
+  const vw = { dist: 300, tx: 0, tz: 0 };
   function init3() {
     cv3 = pane.querySelector('#l3cv');
     renderer = new T.WebGLRenderer({ canvas: cv3, antialias: true, preserveDrawingBuffer: true });
     renderer.setClearColor(0x0d1014, 1);
     scene = new T.Scene();
-    cam = new T.PerspectiveCamera(35, 1, 0.1, 1e6);
+    cam = new T.PerspectiveCamera(35, 1, 0.1, 1e6); cam.up.set(0, 0, 1);
     scene.add(new T.HemisphereLight(0xdfe8f5, 0x20262e, 0.9));
-    const L1 = new T.DirectionalLight(0xffffff, 1.6); L1.position.set(1, -1.4, 2.2); scene.add(L1);
+    const L1 = new T.DirectionalLight(0xffffff, 1.6); L1.position.set(0.8, -1.6, 1.4); scene.add(L1);
     const L2 = new T.DirectionalLight(0x9fb7d6, 0.5); L2.position.set(-1.5, 1, -1); scene.add(L2);
-    root = new T.Group(); scene.add(root);
+    // pivot(사용자 회전) → base(도면 XY를 정면으로 세움) → root(모델 중심을 원점으로)
+    pivot = new T.Group(); base = new T.Group(); root = new T.Group();
+    base.rotation.x = Math.PI / 2; pivot.add(base); base.add(root); scene.add(pivot);
+    setView('iso', true);
     ro3 = new ResizeObserver(resize3); ro3.observe(pane.querySelector('.v3c'));
-    let drag = null;
-    cv3.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, b: e.button, th: orb.th, ph: orb.ph, tx: orb.tx, ty: orb.ty, tz: orb.tz }; cv3.setPointerCapture(e.pointerId); cv3.style.cursor = 'grabbing'; });
+    const pts = new Map(); let drag = null, pinch = null;
+    const rot = (ax, ay, az, a) => { const q = new T.Quaternion().setFromAxisAngle(new T.Vector3(ax, ay, az), a); pivot.quaternion.premultiply(q); };
+    cv3.addEventListener('pointerdown', e => {
+      e.preventDefault(); cv3.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, dist: vw.dist, tx: vw.tx, tz: vw.tz }; drag = null; }
+      else drag = { x: e.clientX, y: e.clientY, pan: e.button === 1 || e.button === 2 || e.shiftKey };
+      spin = false; spinBtn && spinBtn.setAttribute('aria-pressed', 'false'); cv3.classList.add('dragging');
+    });
     cv3.addEventListener('pointermove', e => {
-      if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-      if (drag.b === 0 && !e.shiftKey) { orb.th = drag.th - dx * 0.008; orb.ph = Math.max(0.05, Math.min(Math.PI - 0.05, drag.ph - dy * 0.008)); }
-      else {
-        const k = orb.r * 0.0016, th = orb.th, ph = orb.ph;
-        const rx = -Math.sin(th), ry = Math.cos(th);
-        const ux = -Math.cos(ph) * Math.cos(th), uy = -Math.cos(ph) * Math.sin(th), uz = Math.sin(ph);
-        orb.tx = drag.tx - (rx * dx - ux * dy) * k; orb.ty = drag.ty - (ry * dx - uy * dy) * k; orb.tz = drag.tz + uz * dy * k;
+      if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const k = vw.dist * 0.0012;
+      if (pinch && pts.size === 2) {
+        const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        vw.dist = Math.max(1e-3, pinch.dist * pinch.d / Math.max(1, d)); vw.tx = pinch.tx - (mx - pinch.mx) * k; vw.tz = pinch.tz + (my - pinch.my) * k; draw3(); return;
       }
+      if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+      if (drag.pan) { vw.tx -= dx * k; vw.tz += dy * k; }
+      else { rot(0, 0, 1, dx * 0.009); rot(1, 0, 0, dy * 0.009); }
       draw3();
     });
-    const end = e => { drag = null; cv3.style.cursor = 'grab'; };
+    const end = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) { drag = null; cv3.classList.remove('dragging'); } };
     cv3.addEventListener('pointerup', end); cv3.addEventListener('pointercancel', end);
-    cv3.addEventListener('wheel', e => { e.preventDefault(); orb.r *= Math.exp(e.deltaY * 0.0012); draw3(); }, { passive: false });
+    cv3.addEventListener('wheel', e => { e.preventDefault(); e.stopPropagation(); vw.dist *= Math.exp(e.deltaY * 0.0012); draw3(); }, { passive: false });
     cv3.addEventListener('dblclick', () => { fit3(); draw3(); });
-    cv3.addEventListener('contextmenu', e => e.preventDefault());
+    cv3.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); });
+    const loop = () => { if (spin && mode !== '2d') { rot(0, 0, 1, 0.012); draw3(); } requestAnimationFrame(loop); }; requestAnimationFrame(loop);
   }
+  // 시점: 정면 = 도면 그대로, 등각 = 오른쪽 위에서 비스듬히
+  function setView(v, keepFit) {
+    const q = new T.Quaternion(), qa = (x, y, z, a) => new T.Quaternion().setFromAxisAngle(new T.Vector3(x, y, z), a);
+    if (v === 'iso') q.premultiply(qa(0, 0, 1, -Math.PI / 4)).premultiply(qa(1, 0, 0, Math.atan(1 / Math.SQRT2)));
+    else if (v === 'top') q.premultiply(qa(1, 0, 0, Math.PI / 2));
+    else if (v === 'right') q.premultiply(qa(0, 0, 1, -Math.PI / 2));
+    pivot.quaternion.copy(q); if (!keepFit) { vw.tx = 0; vw.tz = 0; } draw3();
+  }
+  LAB.setView = v => { if (pivot) setView(v); };
   function resize3() {
     if (!renderer) return; const c = pane.querySelector('.v3c').getBoundingClientRect();
     const w = Math.max(1, c.width), h = Math.max(1, c.height);
@@ -173,15 +213,18 @@
   }
   function draw3() {
     if (!renderer) return;
-    const { th, ph, r } = orb;
-    cam.up.set(0, 0, 1);
-    cam.position.set(orb.tx + r * Math.sin(ph) * Math.cos(th), orb.ty + r * Math.sin(ph) * Math.sin(th), orb.tz + r * Math.cos(ph));
-    cam.lookAt(orb.tx, orb.ty, orb.tz); renderer.render(scene, cam);
+    cam.position.set(vw.tx, -vw.dist, vw.tz); cam.lookAt(vw.tx, 0, vw.tz); renderer.render(scene, cam);
+  }
+  // 모델 중심을 회전 중심으로 옮기고 화면에 맞춤
+  function centerModel() {
+    root.position.set(0, 0, 0); const bb = new T.Box3();
+    root.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); bb.union(o.geometry.boundingBox); } });
+    if (bb.isEmpty()) return null; const c = bb.getCenter(new T.Vector3()); root.position.set(-c.x, -c.y, -c.z); return bb;
   }
   function fit3() {
-    const bb = new T.Box3().setFromObject(root); if (bb.isEmpty()) return;
-    const s = bb.getBoundingSphere(new T.Sphere()); orb.tx = s.center.x; orb.ty = s.center.y; orb.tz = s.center.z;
-    orb.r = s.radius / Math.sin(cam.fov * D2R_ / 2) * 1.15;
+    const bb = centerModel(); if (!bb) return;
+    const r = bb.getSize(new T.Vector3()).length() / 2; vw.tx = 0; vw.tz = 0;
+    vw.dist = r / Math.sin(cam.fov * D2R_ / 2) * 1.08 / Math.min(1, cam.aspect || 1) ** 0.5;
   }
 
   /* ---------------- 2D → 닫힌 윤곽 ---------------- */
@@ -227,21 +270,32 @@
       else if (e.type === 'arc') open.push(arcPts(e.c, e.r, e.a0, e.a1, 96));
       else if (e.type === 'ellipse') { let a1 = e.a1; while (a1 <= e.a0) a1 += 360; const s = []; for (let i = 0; i <= 48; i++) s.push(ellPt(e, e.a0 + (a1 - e.a0) * i / 48)); open.push(s); }
     }
-    // 열린 선·호 이어 붙이기
-    const used = new Array(open.length).fill(false), near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) <= tol;
-    for (let i = 0; i < open.length; i++) {
-      if (used[i]) continue; used[i] = true; let chain = open[i].slice(), grew = true;
-      while (grew && !near(chain[0], chain[chain.length - 1])) {
-        grew = false;
-        for (let j = 0; j < open.length; j++) {
-          if (used[j]) continue; const s = open[j], end = chain[chain.length - 1], beg = chain[0];
-          if (near(end, s[0])) chain = chain.concat(s.slice(1)); else if (near(end, s[s.length - 1])) chain = chain.concat(s.slice(0, -1).reverse());
-          else if (near(beg, s[s.length - 1])) chain = s.slice(0, -1).concat(chain); else if (near(beg, s[0])) chain = s.slice(1).reverse().concat(chain); else continue;
-          used[j] = true; grew = true; break;
+    // 열린 선·호 이어 붙이기 (1차: 정밀 / 2차: 손그림처럼 벌어진 끝 메우기)
+    function chainAll(list, tl) {
+      const used = new Array(list.length).fill(false), near = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) <= tl, out = [], left = []; let gap = 0;
+      const g = (a, b) => { const d = Math.hypot(a.x - b.x, a.y - b.y); if (d > gap) gap = d; };
+      for (let i = 0; i < list.length; i++) {
+        if (used[i]) continue; used[i] = true; let chain = list[i].slice(), grew = true; const parts = [i];
+        while (grew && !(chain.length > 3 && near(chain[0], chain[chain.length - 1]))) {
+          grew = false;
+          for (let j = 0; j < list.length; j++) {
+            if (used[j]) continue; const sg = list[j], end = chain[chain.length - 1], beg = chain[0];
+            if (near(end, sg[0])) { g(end, sg[0]); chain = chain.concat(sg.slice(1)); }
+            else if (near(end, sg[sg.length - 1])) { g(end, sg[sg.length - 1]); chain = chain.concat(sg.slice(0, -1).reverse()); }
+            else if (near(beg, sg[sg.length - 1])) { g(beg, sg[sg.length - 1]); chain = sg.slice(0, -1).concat(chain); }
+            else if (near(beg, sg[0])) { g(beg, sg[0]); chain = sg.slice(1).reverse().concat(chain); }
+            else continue;
+            used[j] = true; parts.push(j); grew = true; break;
+          }
         }
+        if (chain.length > 3 && near(chain[0], chain[chain.length - 1])) { g(chain[0], chain[chain.length - 1]); out.push({ pts: dedupe(chain, tl / 10) }); }
+        else for (const k of parts) left.push(list[k]);
       }
-      if (chain.length > 3 && near(chain[0], chain[chain.length - 1])) loops.push({ pts: dedupe(chain, tol / 10) });
+      return { out, left, gap };
     }
+    const c1 = chainAll(open, tol); loops.push(...c1.out);
+    let gapFixed = 0, openLeft = 0;
+    if (c1.left.length) { const c2 = chainAll(c1.left, Math.max(tol * 10, Math.hypot(bb.w, bb.h) * 0.006)); loops.push(...c2.out); if (c2.out.length) gapFixed = c2.gap; openLeft = c2.left.length; }
     for (const L of loops) { L.a = Math.abs(area(L.pts)); L.bb = bboxOf(L.pts); }
     // 포함 관계 (가장 작은 바깥 윤곽이 부모)
     const ok = loops.filter(L => L.pts.length >= 3 && L.a > tol * tol);
@@ -251,17 +305,36 @@
       for (let j = i - 1; j >= 0; j--) { const P = ok[j]; if (P.bb.x0 - tol <= L.bb.x0 && P.bb.x1 + tol >= L.bb.x1 && P.bb.y0 - tol <= L.bb.y0 && P.bb.y1 + tol >= L.bb.y1 && inPoly(L.pts[0], P.pts) && P.a > L.a * 1.0001) { L.parent = P; break; } }
     }
     for (const L of ok) if (L.parent) L.parent.kids.push(L);
-    return { loops: ok, tol };
+    // 문자 위치 (도곽·표제란 판단용)
+    let texts = []; try { texts = flatEnts(visibleEnts()).filter(e => e.type === 'text' && e.p).map(e => e.p); } catch (_) { }
+    return { loops: ok, tol, gapFixed, openLeft, texts };
   }
 
   /* ---------------- 정면·측면 판단 → 3D 계획 ---------------- */
   const fmt3 = v => (Math.round(v * 100) / 100).toString();
   function overlap(a0, a1, b0, b1) { return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0)); }
   function plan() {
-    const { loops, tol } = collectLoops();
-    const tops = loops.filter(L => !L.parent);
+    const { loops, tol, gapFixed, openLeft, texts } = collectLoops();
+    let tops = loops.filter(L => !L.parent);
     if (!tops.length) return { empty: true };
     const warn = [], info = []; var bigDiff = false;
+    if (gapFixed > tol) info.push(`벌어진 선 끝을 이어 붙였습니다 (최대 ${fmt3(gapFixed)}mm)`);
+    if (openLeft) info.push(`닫히지 않은 선 묶음 ${openLeft}개는 건너뛰었습니다`);
+    const isRect = L => !L.circle && Math.abs(L.a - L.bb.w * L.bb.h) / (L.bb.w * L.bb.h) < 0.01;
+    const textsIn = L => texts.filter(q => q.x > L.bb.x0 && q.x < L.bb.x1 && q.y > L.bb.y0 && q.y < L.bb.y1 && inPoly(q, L.pts)).length;
+    // 도곽(테두리) 건너뛰기: 사각형 안에 큰 윤곽들이 있고, 이중 테두리이거나 안에 문자가 있으면 테두리로 보고 안쪽을 꺼냄
+    let frames = 0;
+    for (let guard = 0; guard < 4; guard++) {
+      const fr = tops.find(L => isRect(L) && (L.kids.some(k => isRect(k) && k.a > L.a * 0.7) ||
+        (L.kids.filter(k => k.a > L.a * 0.02).length >= 2 && L.kids.some(k => k.a > L.a * 0.08) && textsIn(L) >= 2)));
+      if (!fr) break; frames++;
+      tops = tops.filter(L => L !== fr).concat(fr.kids); for (const k of fr.kids) k.parent = null;
+    }
+    if (frames) info.push(`도면 테두리(도곽) ${frames}개는 건너뛰었습니다`);
+    // 표제란(문자가 2개 이상 든 사각형)은 정면·측면 후보에서 뺌
+    const titles = tops.filter(L => isRect(L) && textsIn(L) >= 2 && !L.kids.some(k => k.a > L.a * 0.08));
+    if (titles.length) { tops = tops.filter(L => !titles.includes(L)); info.push('표제란은 건너뛰었습니다'); }
+    if (!tops.length) return { empty: true };
     // 정면도: 원이 바깥 윤곽이면서 같은 중심의 원이 있는 뷰 우선, 없으면 가장 큰 뷰
     const isRound = L => L.circle && L.kids.some(k => k.circle && Math.hypot(k.circle.c.x - L.circle.c.x, k.circle.c.y - L.circle.c.y) <= tol * 4);
     let front = tops.find(isRound) || tops.find(L => L.circle) || tops[0];
@@ -278,7 +351,9 @@
     const others = tops.filter(L => L !== front && L !== sideV).length;
     if (others) info.push(`나머지 윤곽 ${others}개는 3D에 쓰지 않았습니다`);
     let kind = kindSel.value;
-    if (kind === 'auto') kind = (front.circle && sideV) ? 'revolve' : 'extrude';
+    const sideRect = sideV && (sideV.circle || isRect(sideV));
+    if (kind === 'auto') kind = (front.circle && sideV && !sideV.circle) ? 'revolve' : (!front.circle && sideV && dir === 'h' && !sideRect) ? 'intersect' : 'extrude';
+    if (sideV && sideV.kids.length && kind !== 'intersect') info.push(`측면도 안쪽 윤곽 ${sideV.kids.length}개(키홈·홈 등)는 아직 3D에 반영하지 않았습니다`);
     if (kind === 'revolve' && !front.circle) { warn.push('정면도 바깥 윤곽이 원이 아니라서 돌출로 만들었습니다'); kind = 'extrude'; }
     if (kind === 'revolve' && !sideV) { warn.push('측면도가 없어 회전체 길이를 몰라 두께만큼 돌출했습니다'); kind = 'extrude'; }
 
@@ -294,13 +369,20 @@
       let t = +tIn.value || 10, tSrc = '입력한 두께';
       if (sideV) {
         t = dir === 'h' ? sideV.bb.w : sideV.bb.h; tSrc = '측면도';
-        if (sideV.pts.length > 4 && !sideV.circle) { const rectish = Math.abs(sideV.a - sideV.bb.w * sideV.bb.h) / (sideV.bb.w * sideV.bb.h) < 0.02; if (!rectish) warn.push('측면도가 단순 사각형이 아니어서 두께만 읽었습니다 (계단·턱 모양은 아직 반영 안 됨)'); }
+        if (!sideRect) warn.push(dir === 'v' ? '윗면도 모양은 아직 두께로만 읽습니다 (측면도를 정면도 오른쪽에 그려 주세요)' : '측면도 모양은 두께로만 읽었습니다 (형상: 자동으로 두면 2면 교차로 만듭니다)');
       }
       // 안쪽 윤곽: 비어 있으면 구멍, 안에 또 윤곽이 있으면 턱·보스 선으로 보고 그 안쪽을 구멍으로
       const holes = []; let steps = 0;
       (function walk(L) { for (const k of L.kids) { if (k.kids.length) { steps++; walk(k); } else holes.push(k); } })(front);
-      if (steps) info.push(`안쪽 윤곽 ${steps}개는 턱·보스 선으로 보고 뚫지 않았습니다 (회전체면 측면도를 그려 주세요)`);
+      if (steps) info.push(`안쪽 윤곽 ${steps}개는 턱·보스(카운터보어 등) 선으로 보고 안쪽 구멍만 뚫었습니다`);
       return { kind, front, holes, t, tSrc, warn, info, tol };
+    }
+    if (kind === 'intersect') {
+      // 2면 교차: 정면도를 깊이만큼, 측면도를 너비만큼 각각 돌출해 겹치는 부분만 남김 (정밀 엔진)
+      const holes = []; let steps = 0;
+      (function walk(L) { for (const k of L.kids) { if (k.kids.length) { steps++; walk(k); } else holes.push(k); } })(front);
+      if (steps) info.push(`안쪽 윤곽 ${steps}개는 턱·보스 선으로 보고 안쪽 구멍만 뚫었습니다`);
+      return { kind, front, holes, side: sideV, sideHoles: sideV.kids.filter(k => !k.kids.length), t: sideV.bb.w, warn, info, tol };
     }
     // 회전체: 측면도 윤곽을 축 방향으로 잘라 구간별 반지름을 읽음
     const fc = front.circle.c, R0 = front.circle.r;
@@ -346,10 +428,22 @@
   let lastPlan = null, lastKey = '';
   function build(pl) {
     while (root.children.length) { const c = root.children.pop(); c.geometry && c.geometry.dispose(); }
+    const segN = pl.holes.length > 300 ? 10 : pl.holes.length > 60 ? 24 : 72;
+    if (pl.kind === 'intersect') {
+      if (!occR) {
+        stEl.innerHTML += '<br><span class="i">정밀 계산 엔진을 받는 중입니다 (처음 한 번, 약 6MB)…</span>';
+        ensureOCC().then(() => rebuild(true)).catch(e => { stEl.innerHTML += '<br><span class="e">정밀 엔진을 받지 못했습니다: ' + e.message + '</span>'; });
+        return { waiting: true };
+      }
+      const m = solidFor(occR, pl).mesh({ tolerance: 0.05, angularTolerance: 0.25 });
+      const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(m.vertices, 3));
+      if (m.normals && m.normals.length === m.vertices.length) g.setAttribute('normal', new T.Float32BufferAttribute(m.normals, 3)); g.setIndex(m.triangles); if (!g.attributes.normal) g.computeVertexNormals();
+      addMesh(g); return {};
+    }
     if (pl.kind === 'extrude') {
       const o = { x: (pl.front.bb.x0 + pl.front.bb.x1) / 2, y: (pl.front.bb.y0 + pl.front.bb.y1) / 2 };
       const sh = shapeFrom(pl.front, o, false); for (const h of pl.holes) sh.holes.push(shapeFrom(h, o, true));
-      addMesh(new T.ExtrudeGeometry(sh, { depth: pl.t, bevelEnabled: false, curveSegments: 72 }));
+      addMesh(new T.ExtrudeGeometry(sh, { depth: pl.t, bevelEnabled: false, curveSegments: segN }));
       return { o };
     }
     const o = pl.fc;
@@ -358,7 +452,7 @@
         const r = (s.rA + s.rB) / 2, sh = new T.Shape(); sh.absarc(0, 0, r, 0, Math.PI * 2, false);
         if (pl.bore > 0) { const b = new T.Path(); b.absarc(0, 0, pl.bore, 0, Math.PI * 2, true); sh.holes.push(b); }
         for (const h of pl.holes) { const hb = h.bb, cx = (hb.x0 + hb.x1) / 2 - o.x, cy = (hb.y0 + hb.y1) / 2 - o.y, hr = Math.max(hb.w, hb.h) / 2, d = Math.hypot(cx, cy); if (d + hr < r - pl.tol && d - hr > pl.bore + pl.tol) sh.holes.push(shapeFrom(h, o, true)); }
-        const g = new T.ExtrudeGeometry(sh, { depth: s.L, bevelEnabled: false, curveSegments: 72 }); g.translate(0, 0, s.z); addMesh(g);
+        const g = new T.ExtrudeGeometry(sh, { depth: s.L, bevelEnabled: false, curveSegments: segN }); g.translate(0, 0, s.z); addMesh(g);
       } else {
         const rb = pl.bore, pts = [new T.Vector2(rb, 0), new T.Vector2(s.rA, 0), new T.Vector2(s.rB, s.L), new T.Vector2(rb, s.L), new T.Vector2(rb, 0)];
         const g = new T.LatheGeometry(pts, 96); g.rotateX(Math.PI / 2); g.translate(0, 0, s.z); addMesh(g);
@@ -369,6 +463,7 @@
   function status(pl) {
     const L = [];
     if (pl.kind === 'extrude') L.push(`<span class="ok">돌출</span> <span class="i">· 두께 ${fmt3(pl.t)} (${pl.tSrc}) · 구멍 ${pl.holes.length}개</span>`);
+    else if (pl.kind === 'intersect') L.push(`<span class="ok">2면 교차 (정밀)</span> <span class="i">· 너비 ${fmt3(pl.front.bb.w)} · 높이 ${fmt3(pl.front.bb.h)} · 깊이 ${fmt3(pl.t)} · 정면 구멍 ${pl.holes.length}개${pl.sideHoles.length ? ' · 측면 구멍 ' + pl.sideHoles.length + '개' : ''}</span>`);
     else L.push(`<span class="ok">회전체</span> <span class="i">· 외경 Ø${fmt3(pl.front.circle.r * 2)} · 길이 ${fmt3(pl.total)} · 구간 ${pl.segs.length}개${pl.bore ? ' · 보어 Ø' + fmt3(pl.bore * 2) : ''} · 구멍 ${pl.holes.length}개</span>`);
     for (const w of pl.warn) L.push(`<span class="w">⚠ ${w}</span>`);
     for (const i of pl.info) L.push(`<span class="i">· ${i}</span>`);
@@ -380,11 +475,11 @@
     try { pl = plan(); } catch (err) { stEl.innerHTML = `<span class="e">3D로 바꾸지 못했습니다: ${err.message}</span>`; return; }
     if (pl.empty) { while (root.children.length) root.children.pop(); emptyEl.style.display = ''; stEl.textContent = ''; lastPlan = null; draw3(); return; }
     emptyEl.style.display = 'none';
-    const key = JSON.stringify([pl.kind, pl.t, pl.segs, pl.bore, pl.front.pts.length, pl.front.bb, pl.holes.map(h => h.bb)]);
+    const key = JSON.stringify([pl.kind, pl.t, pl.segs, pl.bore, pl.front.pts.length, pl.front.bb, pl.holes.map(h => h.bb), pl.side && pl.side.pts.length, pl.side && pl.side.bb, !!occR]);
     const first = !lastPlan;
     lastPlan = pl; status(pl);
     if (key === lastKey && !force) return; lastKey = key;
-    build(pl); if (first || force) fit3(); draw3();
+    const b = build(pl); if (b && b.waiting) { lastKey = ''; draw3(); return; } if (first || force) fit3(); else centerModel(); draw3();
   }
   LAB.rebuild = rebuild; LAB.plan = () => plan();
 
@@ -406,12 +501,12 @@
   };
 
   /* ---------------- 저장: STEP (OpenCascade는 이때만 받음) ---------------- */
-  let occP = null;
+  let occP = null, occR = null;
   function ensureOCC() {
     if (!occP) {
       const t0 = performance.now();
       occP = Promise.all([import(new URL('replicad-lab.mjs?v=1', location.href).href), import(OCC_BASE + 'replicad_single.js')]).then(async ([R, M]) => {
-        const oc = await M.default({ locateFile: () => OCC_BASE + 'replicad_single.wasm' }); R.setOC(oc); LAB.occMs = Math.round(performance.now() - t0); return R;
+        const oc = await M.default({ locateFile: () => OCC_BASE + 'replicad_single.wasm' }); R.setOC(oc); occR = R; LAB.occMs = Math.round(performance.now() - t0); return R;
       });
       occP.catch(() => { occP = null; });
     }
@@ -423,11 +518,23 @@
     if (loop.circle) return R.drawCircle(loop.circle.r).translate(loop.circle.c.x - o.x, loop.circle.c.y - o.y);
     const p = loop.pts; let d = R.draw([p[0].x - o.x, p[0].y - o.y]); for (let i = 1; i < p.length; i++) d = d.lineTo([p[i].x - o.x, p[i].y - o.y]); return d.close();
   }
-  async function makeSolid(R, pl) {
-    if (pl.kind === 'extrude') {
+  // 구멍은 하나씩 뚫지 않고 한꺼번에 (1,000개도 몇 초)
+  function holeTools(R, holes, o, z0, len) { return holes.map(h => h.circle ? R.makeCylinder(h.circle.r, len, [h.circle.c.x - o.x, h.circle.c.y - o.y, z0], [0, 0, 1]) : rDraw(R, h, o).sketchOnPlane('XY', z0).extrude(len)); }
+  function cutAll(R, s, tools) { return !tools.length ? s : s.cut(tools.length === 1 ? tools[0] : R.makeCompound(tools)); }
+  function solidFor(R, pl) {
+    if (pl.kind === 'extrude' || pl.kind === 'intersect') {
       const o = { x: (pl.front.bb.x0 + pl.front.bb.x1) / 2, y: (pl.front.bb.y0 + pl.front.bb.y1) / 2 };
-      let d = rDraw(R, pl.front, o); for (const h of pl.holes) d = d.cut(rDraw(R, h, o));
-      return d.sketchOnPlane().extrude(pl.t);
+      let s = rDraw(R, pl.front, o).sketchOnPlane().extrude(pl.t);
+      s = cutAll(R, s, holeTools(R, pl.holes, o, -1, pl.t + 2));
+      if (pl.kind === 'intersect') {
+        // 측면도: (높이, 깊이) → YZ 평면, 너비 방향(X)으로 돌출
+        const sb = pl.side.bb, toYZ = q => [q.y - o.y, q.x - sb.x0];
+        const sd = loop => { if (loop.circle) return R.drawCircle(loop.circle.r).translate(loop.circle.c.y - o.y, loop.circle.c.x - sb.x0); const pp = loop.pts.map(toYZ); let d = R.draw(pp[0]); for (let i = 1; i < pp.length; i++) d = d.lineTo(pp[i]); return d.close(); };
+        let d = sd(pl.side); for (const h of pl.sideHoles) d = d.cut(sd(h));
+        const W = pl.front.bb, sideSolid = d.sketchOnPlane('YZ', W.x0 - o.x - 1).extrude(W.w + 2);
+        s = s.intersect(sideSolid);
+      }
+      return s;
     }
     const o = pl.fc; let s = null;
     for (const g of pl.segs) {
@@ -436,16 +543,16 @@
       else part = R.drawCircle(Math.max(g.rA, 1e-3)).sketchOnPlane('XY', g.z).loftWith(R.drawCircle(Math.max(g.rB, 1e-3)).sketchOnPlane('XY', g.z + g.L));
       s = s ? s.fuse(part) : part;
     }
-    const len = pl.total + 2;
-    if (pl.bore > 0) s = s.cut(R.drawCircle(pl.bore).sketchOnPlane('XY', -1).extrude(len));
-    for (const h of pl.holes) s = s.cut(rDraw(R, h, o).sketchOnPlane('XY', -1).extrude(len));
-    return s;
+    const len = pl.total + 2, tools = holeTools(R, pl.holes, o, -1, len);
+    if (pl.bore > 0) tools.push(R.makeCylinder(pl.bore, len, [0, 0, -1], [0, 0, 1]));
+    return cutAll(R, s, tools);
   }
+  async function makeSolid(R, pl) { return solidFor(R, pl); }
   stepBtn.onclick = async () => {
     if (!lastPlan) { log('3D로 만들 윤곽이 없습니다', 'err'); return; }
     const old = stepBtn.textContent; stepBtn.disabled = true; stepBtn.textContent = occP ? 'STEP 만드는 중…' : '엔진 받는 중…';
     try {
-      const t0 = performance.now(); const R = await ensureOCC(); stepBtn.textContent = 'STEP 만드는 중…';
+      const t0 = performance.now(); const R = await ensureOCC(); stepBtn.textContent = lastPlan.holes && lastPlan.holes.length > 200 ? `STEP 만드는 중… (구멍 ${lastPlan.holes.length}개, 몇 초 걸립니다)` : 'STEP 만드는 중…'; await new Promise(r => setTimeout(r, 60));
       const solid = await makeSolid(R, lastPlan); const blob = solid.blobSTEP();
       LAB.stepMs = Math.round(performance.now() - t0); LAB.stepBytes = blob.size; LAB.lastStep = blob;
       if (!LAB.noDownload) download(blob, baseName() + '.step');

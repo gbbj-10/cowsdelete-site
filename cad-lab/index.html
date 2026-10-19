@@ -5080,7 +5080,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
       return {ok:!errs.length,commands:cmds.length,errors:errs.slice(0,30),ids:(r.results||[]).slice(0,400).map(x=>x&&(x.id||x.ids)||null),...summary()}},
     mucca_state:()=>summary(),
     mucca_list:a=>{const L=cad.list({type:a.type,layer:a.layer}),n=Math.max(1,Math.min(1000,a.limit||200));return {total:L.length,items:L.slice(0,n)}},
-    mucca_snapshot:async a=>{await waitReplay();const url=cad.snapshot({fit:a.fit!==false});return {png:url.slice(url.indexOf(',')+1),note:`무카 CAD 화면 ${cv.width}×${cv.height}px · 도형 ${doc.entities.length}개`}},
+    mucca_snapshot:async a=>{if(window.LABREF){const _r=LABREF.next();if(_r)return _r}await waitReplay();const url=cad.snapshot({fit:a.fit!==false});return {png:url.slice(url.indexOf(',')+1),note:`무카 CAD 화면 ${cv.width}×${cv.height}px · 도형 ${doc.entities.length}개`}},
     mucca_undo:async a=>{await waitReplay();const n=Math.max(1,Math.min(50,a.steps||1));for(let i=0;i<n;i++)undo();return summary()}
   };
   async function handleCall({id,tool,args}){let ok=true,result=null,error='';
@@ -5093,7 +5093,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
     if(d.kind==='start'){const h=document.getElementById('aiLoginHelp');if(h)h.hidden=true;AIC.busy=true;bAi.textContent='중지';aiSt.textContent='Claude가 도면을 설계하는 중…'}
     else if(d.kind==='tool'){aiSt.textContent='Claude · '+(TOOLKO[d.name]||d.name)+'…'}
     else if(d.kind==='text'){aiSt.textContent=d.text.slice(0,300)}
-    else if(d.kind==='done'||d.kind==='error'){AIC.busy=false;bAi.textContent='그리기';
+    else if(d.kind==='done'||d.kind==='error'){window.LABREF&&LABREF.done();AIC.busy=false;bAi.textContent='그리기';
       const t=(d.text||'').trim().slice(0,400)||(d.kind==='done'&&d.ok?'완료':'실패');aiSt.textContent=t;log((d.kind==='done'&&d.ok?'Claude: ':'AI 실패: ')+t,d.kind==='done'&&d.ok?'ok':'err');
       if(!(d.kind==='done'&&d.ok)&&/authenticat|oauth|\blog ?in\b|401|credential|로그인이 필요/i.test(t))loginHelp()}}
   /* 연결 프로그램이 예전 버전일 때: [새 연결 파일 받기] → 다시 설치하면 자동으로 이어짐 */
@@ -5130,7 +5130,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,es:null,code:''
       if(!AIC.claude){aiSt.textContent='이 PC에 Claude Code가 없습니다. [Claude 연결] 창의 ③을 따라 설치·로그인하세요.';openAic();return}
       const req=aiIn.value.trim();if(!req){aiIn.focus();return}
       log('AI 요청(내 Claude): '+req,'me');aiSt.textContent='Claude Code 실행 중…';
-      const r=await post('/prompt',{text:req,newChat:AIC.newChat});AIC.newChat=false;
+      const r=await post('/prompt',{text:window.LABREF?LABREF.wrap(req):req,newChat:AIC.newChat});AIC.newChat=false;
       if(!r.ok){aiSt.textContent=r.error||'실패';log('AI 실패: '+(r.error||''),'err')}
       return}
     if(sampleFn&&prevAi)return prevAi.call(bAi,ev);
@@ -5596,6 +5596,8 @@ window.cad=Object.freeze({
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
 <script src="../cad/cloud.js?v=20261019a"></script>
-<script src="lab3d.js?v=1"></script>
+<script src="lab3d.js?v=3"></script>
+<script src="labref.js?v=2"></script>
+<script src="labcases.js?v=1"></script>
 </body>
 </html>
