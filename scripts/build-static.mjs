@@ -75,7 +75,7 @@ ${body}
   <div class="tb">
     <div><span class="h">도명</span>카우스 소거법, 소처럼 일하는 흑우들을 없애자</div>
     <div><span class="h">커뮤니티</span><a href="/community/">블록·도면</a> / <a href="/board/">갤러리</a> / <a href="/requests/">요청</a></div>
-    <div><span class="h">안내</span><a href="/beta/">베타 이용 안내</a><br><a href="/privacy/">개인정보처리방침</a></div>
+    <div><span class="h">안내</span><a href="/beta/">베타 이용 안내</a><br><a href="/privacy/">개인정보처리방침</a> · <a href="/oss/">오픈소스 고지</a></div>
     <div><span class="h">채널</span><a href="https://www.youtube.com/@cowsdelete" target="_blank" rel="noopener">YouTube @cowsdelete</a></div>
   </div>
 </div></footer>
@@ -160,7 +160,7 @@ const day = iso => String(iso || new Date().toISOString()).slice(0, 10);
 const latest = [...posts, ...items, ...reqs].reduce((m, x) => (x.updated_at || x.created_at) > m ? (x.updated_at || x.created_at) : m, '2026-10-18');
 const urls = [
   ['/', latest, '1.0'], ['/mucca/', latest, '0.9'], ['/board/', latest, '0.9'], ...Object.keys(GAL).map(s => [`/board/?g=${s}`, latest, '0.7']),
-  ['/community/', latest, '0.8'], ['/requests/', latest, '0.7'], ['/qna/', latest, '0.5'], ['/beta/', '2026-10-18', '0.4'], ['/privacy/', '2026-10-18', '0.3'],
+  ['/community/', latest, '0.8'], ['/requests/', latest, '0.7'], ['/qna/', latest, '0.5'], ['/beta/', '2026-10-18', '0.4'], ['/privacy/', '2026-10-18', '0.3'], ['/oss/', '2026-10-20', '0.2'],
   ...posts.map(p => [`/p/${p.id}/`, p.updated_at, '0.6']), ...items.map(i => [`/s/${i.id}/`, i.updated_at, '0.6']), ...reqs.map(r => [`/r/${r.id}/`, r.updated_at, '0.5'])
 ];
 const sm = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(([u, d, pr]) => `  <url><loc>${SITE}${esc(u)}</loc><lastmod>${day(d)}</lastmod><priority>${pr}</priority></url>`).join('\n')}\n</urlset>\n`;

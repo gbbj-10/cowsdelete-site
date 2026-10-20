@@ -353,7 +353,7 @@
       box.append($('h2', { text: '카카오로 로그인하고 시작하세요' }),
         $('p', { text: '로그인하면 도면을 클라우드에 저장하고, 공유 블록을 내 캐드로 가져올 수 있습니다. 무료 베타입니다.' }),
         $('button', { class: 'kakao', text: '카카오로 시작하기', onclick: login }),
-        $('div', { class: 'links' }, $('a', { href: '/', text: '홈' }), $('a', { href: '/community/', text: '커뮤니티 둘러보기' }), $('a', { href: '/beta/', text: '베타 이용 안내' }), $('a', { href: '/privacy/', text: '개인정보처리방침' })));
+        $('div', { class: 'links' }, $('a', { href: '/', text: '홈' }), $('a', { href: '/community/', text: '커뮤니티 둘러보기' }), $('a', { href: '/beta/', text: '베타 이용 안내' }), $('a', { href: '/privacy/', text: '개인정보처리방침' }), $('a', { href: '/oss/', text: '오픈소스 고지' })));
     }
     if (state === 'nickname') {
       const inp = $('input', { class: 'cl-in', maxlength: '12', placeholder: '예: 도면장인_01', autocomplete: 'off', 'aria-label': '닉네임' });

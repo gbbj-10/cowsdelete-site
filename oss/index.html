@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>오픈소스 고지 — 카우스 소거법</title>
+<meta name="description" content="무카 CAD와 cowsdelete 사이트가 사용하는 오픈소스 소프트웨어와 라이선스">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&family=Nanum+Gothic+Coding&display=swap">
+<link rel="stylesheet" href="/assets/site.css?v=20261018c">
+<style>
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 8px}
+.tw table{min-width:640px}
+.doc .src{word-break:break-all}
+.doc pre{white-space:pre-wrap;font:12.5px/1.6 'Nanum Gothic Coding',monospace;background:rgba(127,127,127,.08);border:1px solid rgba(127,127,127,.25);border-radius:6px;padding:12px 14px;overflow-x:auto}
+</style>
+</head>
+<body>
+<header class="site-top"><div class="wrap">
+  <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법<small>Development Storage</small></span></a>
+  <nav class="site-nav">
+    <a href="/cad/">무카 CAD</a>
+    <a href="/community/">커뮤니티</a>
+    <a href="/requests/">요청</a>
+    <a href="/qna/">문의</a>
+    <span class="who" data-who></span>
+  </nav>
+</div></header>
+<main class="doc">
+<h1>오픈소스 고지</h1>
+<p class="when">최종 수정: 2026년 10월 20일</p>
+<p>무카 CAD와 cowsdelete 사이트(이하 '서비스')는 아래 오픈소스 소프트웨어를 사용합니다. 각 소프트웨어의 저작권과 라이선스를 아래와 같이 알립니다. 서비스의 나머지 코드는 카우스 소거법이 직접 만든 것입니다.</p>
+
+<h2>1. 무카 CAD</h2>
+<div class="tw"><table>
+<tr><th>소프트웨어</th><th>어디에 쓰나</th><th>저작권</th><th>라이선스</th></tr>
+<tr><td><b>acad-ts</b> 3.6.0<br><span class="src"><a href="https://github.com/node-projects/acad-ts" target="_blank" rel="noopener">github.com/node-projects/acad-ts</a></span></td><td>DWG 파일 열기와 DWG 저장. 이용자 브라우저 안에서만 변환하며 파일을 서버로 보내지 않습니다. 원본 코드를 고치지 않고 파일 하나로 묶어 <a href="/cad/vendor/acad-ts-3.6.0.min.js">/cad/vendor/</a>에 함께 배포합니다.</td><td>Copyright (c) 2026 Jochen Kühner<br>Copyright (c) 2021 Albert Domenech</td><td>MIT (<a href="/cad/vendor/acad-ts-LICENSE.txt">전문</a>)</td></tr>
+<tr><td><b>ACadSharp</b><br><span class="src"><a href="https://github.com/DomCR/ACadSharp" target="_blank" rel="noopener">github.com/DomCR/ACadSharp</a></span></td><td>acad-ts의 원본(C#) 라이브러리</td><td>Copyright (c) 2021 Albert Domenech</td><td>MIT</td></tr>
+<tr><td><b>PDF.js</b> 3.11.174<br><span class="src"><a href="https://github.com/mozilla/pdf.js" target="_blank" rel="noopener">github.com/mozilla/pdf.js</a></span></td><td>AI 입력칸에 PDF를 첨부할 때 쪽을 그림으로 바꾸기. PDF를 첨부할 때만 cdnjs에서 받습니다.</td><td>Mozilla Foundation</td><td>Apache License 2.0 (<a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">전문</a>)</td></tr>
+<tr><td><b>IBM Plex Sans KR</b><br><span class="src"><a href="https://github.com/IBM/plex" target="_blank" rel="noopener">github.com/IBM/plex</a></span></td><td>화면 글꼴, PDF 출력 때 한글 글자 모양을 PDF 안에 넣기</td><td>Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"</td><td>SIL Open Font License 1.1 (<a href="https://openfontlicense.org/open-font-license-official-text/" target="_blank" rel="noopener">전문</a>)</td></tr>
+</table></div>
+
+<h2>2. 사이트 전체</h2>
+<div class="tw"><table>
+<tr><th>소프트웨어</th><th>어디에 쓰나</th><th>저작권</th><th>라이선스</th></tr>
+<tr><td><b>supabase-js</b> 2.117.3<br><span class="src"><a href="https://github.com/supabase/supabase-js" target="_blank" rel="noopener">github.com/supabase/supabase-js</a></span></td><td>로그인, 클라우드 저장, 커뮤니티·게시판</td><td>Copyright (c) 2020 Supabase</td><td>MIT</td></tr>
+<tr><td><b>IBM Plex Mono</b></td><td>숫자·코드 글꼴</td><td>Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"</td><td>SIL Open Font License 1.1</td></tr>
+<tr><td><b>나눔고딕코딩</b> (Nanum Gothic Coding)</td><td>코드·표제란 글꼴</td><td>Copyright (c) 2009 NAVER Corporation</td><td>SIL Open Font License 1.1</td></tr>
+</table></div>
+
+<h2>3. 시험판 (운영자 전용 /cad-lab/)</h2>
+<div class="tw"><table>
+<tr><th>소프트웨어</th><th>어디에 쓰나</th><th>저작권</th><th>라이선스</th></tr>
+<tr><td><b>three.js</b> 0.186.1<br><span class="src"><a href="https://github.com/mrdoob/three.js" target="_blank" rel="noopener">github.com/mrdoob/three.js</a></span></td><td>3D 미리보기 화면 (필요한 부분만 묶어 배포)</td><td>Copyright © 2010-2026 three.js authors</td><td>MIT</td></tr>
+<tr><td><b>replicad</b> 1.1.0<br><span class="src"><a href="https://github.com/sgenoud/replicad" target="_blank" rel="noopener">github.com/sgenoud/replicad</a></span></td><td>2D 도면에서 3D 모델 만들기 (묶어 배포)</td><td>Copyright 2023 QuaroTech Sàrl</td><td>MIT</td></tr>
+<tr><td><b>replicad-opencascadejs</b> 1.1.0 (Open CASCADE Technology 기반)<br><span class="src"><a href="https://github.com/sgenoud/replicad" target="_blank" rel="noopener">github.com/sgenoud/replicad</a> · <a href="https://dev.opencascade.org" target="_blank" rel="noopener">dev.opencascade.org</a></span></td><td>3D 형상 계산·STEP 저장. 수정하지 않은 원본을 필요할 때 jsDelivr에서 받습니다.</td><td>Open CASCADE SAS 외</td><td>GNU LGPL 2.1 (<a href="https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html" target="_blank" rel="noopener">전문</a>)</td></tr>
+</table></div>
+
+<h2>4. MIT 라이선스 전문</h2>
+<p>위에서 MIT로 표시한 소프트웨어(acad-ts, ACadSharp, supabase-js, three.js, replicad)는 아래 조건으로 배포됩니다. 각 저작권 표시는 위 표에 적었습니다.</p>
+<pre>Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+
+<h2>5. 상표</h2>
+<p>AutoCAD, DWG는 Autodesk, Inc.의 상표입니다. 무카 CAD는 Autodesk와 관계없는 독립 프로그램이며, DWG 파일을 읽고 쓰는 데 위 오픈소스를 사용합니다.</p>
+
+<h2>6. 문의</h2>
+<p>빠진 고지나 소스 요청은 <a href="/qna/">문의 게시판</a> 또는 <a href="mailto:kkun@kakao.com">kkun@kakao.com</a>으로 알려 주세요.</p>
+</main>
+<footer class="titleblock"><div class="wrap">
+  <div class="tb">
+    <div><span class="h">도명</span>카우스 소거법, 소처럼 일하는 흑우들을 없애자</div>
+    <div><span class="h">무카 CAD</span><a href="/cad/">열기</a> / <a href="/community/">커뮤니티</a></div>
+    <div><span class="h">안내</span><a href="/beta/">베타 이용 안내</a><br><a href="/privacy/">개인정보처리방침</a> · <a href="/oss/">오픈소스 고지</a></div>
+    <div><span class="h">채널</span><a href="https://www.youtube.com/@cowsdelete" target="_blank" rel="noopener">YouTube @cowsdelete</a></div>
+  </div>
+</div></footer>
+<script src="/assets/config.js?v=20261018c"></script>
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/site.js?v=20261018c"></script>
+</body>
+</html>

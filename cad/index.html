@@ -259,7 +259,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.8.4</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.8.7</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -1674,6 +1674,15 @@ async function offer(filename,data){if(!dl){openText('파일 저장','이 화면
   try{await dl.save({filename,data});log(filename+' 저장','ok')}catch(err){if(err&&err.code==='declined')log('저장을 취소했습니다');else if(err&&err.code==='rate_limited')toast('저장 창이 이미 열려 있습니다');else{log('저장 실패: '+(err&&err.message||err),'err');if(typeof data==='string')openText('파일 내용','저장 대신 아래 내용을 복사하세요.',data)}}}
 document.getElementById('bSave').onclick=()=>offer('mucca-drawing.json',JSON.stringify(doc,null,1));
 document.getElementById('bDxf').onclick=()=>{const txt=exportDXF();if(dl)offer('mucca-drawing_dxf.zip',zipStore('mucca-drawing.dxf',new TextEncoder().encode(txt)));else openText('DXF 내보내기','아래 내용을 mucca-drawing.dxf 로 저장하세요.',txt)};
+/* DWG 저장: DXF 내보내기 결과를 브라우저 안에서 DWG(AutoCAD 2013 형식)로 바꿔 저장 */
+async function saveDwg(){if(!window.MuccaDWG){log('DWG 변환 도구를 불러오지 못했습니다. [출력 ▾] › DXF 내보내기로 저장한 뒤 AutoCAD에서 여세요.','err');return}
+  if(!doc.entities.length){log('저장할 도형이 없습니다.','err');return}
+  const t0=performance.now(),first=MuccaDWG.firstTime;log(`DWG로 저장하는 중…${first?' (처음 한 번은 변환 도구 약 250KB를 받습니다)':''}`,'me');
+  try{const bytes=await MuccaDWG.fromDxf(exportDXF(),'AC1027');
+    await offer('mucca-drawing.dwg',new Blob([bytes],{type:'application/acad'}));
+    log(`DWG 저장 (AutoCAD 2013 형식 · ${(bytes.length/1024).toFixed(0)}KB · ${((performance.now()-t0)/1000).toFixed(1)}초). 해치·여러 줄 문자·치수는 DXF 내보내기와 같이 선·문자로 풀어서 저장됩니다.`,'ok');
+    window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE'})}
+  catch(e){log(`DWG 저장 실패 (${String(e&&e.message||e).slice(0,120)}). [출력 ▾] › DXF 내보내기로 저장해 주세요.`,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE_FAIL'})}}
 document.getElementById('bPng').onclick=()=>{const prev=new Set(sel);sel.clear();render();cv.toBlob(b=>{sel=prev;dirty=true;if(b)offer('mucca-drawing.png',b)},'image/png')};
 document.getElementById('bNew').onclick=()=>{pushUndo();const d=freshDoc();doc=d;sel.clear();changed();zoomExtents();log('새 도면 (취소로 되돌릴 수 있음)','ok')};
 /* PDF·사진은 AI 입력칸 첨부로, DWG는 DXF 변환 안내 */
@@ -1682,11 +1691,11 @@ async function openSpecial(f){
     const FALLBACK='AutoCAD에서 [다른 이름으로 저장 › DXF]로 저장하거나, 무료 ODA File Converter로 DXF로 바꾼 뒤 [열기]로 여세요.';
     if(!window.MuccaDWG){log(`${f.name}: DWG 변환 도구를 불러오지 못했습니다. ${FALLBACK}`,'err');return true}
     const first=MuccaDWG.firstTime,t0=performance.now();
-    log(`${f.name}: DWG를 DXF로 바꾸는 중…${first?' (처음 한 번은 변환 도구 약 2MB를 받습니다. 파일은 서버로 올라가지 않고 이 브라우저 안에서만 바뀝니다)':''}`,'me');
-    try{const dxf=await MuccaDWG.toDxf(f);
-      log(`DWG 변환 완료 (${((performance.now()-t0)/1000).toFixed(1)}초) — 가져오는 중…`,'ok');
-      await openFile(new File([dxf],f.name.replace(/\.dwg$/i,'.dxf')));
-      if(first)log('DWG 변환: LibreDWG(GPLv3 오픈소스) 사용. 다중 지시선·표·3D 객체 등 일부는 빠질 수 있습니다.','');
+    log(`${f.name}: DWG 읽는 중…${first?' (처음 한 번은 변환 도구 약 250KB를 받습니다. 파일은 서버로 올라가지 않고 이 브라우저 안에서만 바뀝니다)':''}`,'me');
+    try{const r=await MuccaDWG.toDxf(f);
+      log(`DWG(AutoCAD ${MuccaDWG.NAMES[r.ver]||r.ver} 형식) 변환 완료 (${((performance.now()-t0)/1000).toFixed(1)}초) — 가져오는 중…`,'ok');
+      await openFile(new File([r.dxf],f.name.replace(/\.dwg$/i,'.dxf')));
+      if(first)log('DWG 변환: 오픈소스 acad-ts(MIT) 사용. 다중 지시선·표·3D 객체 등 일부는 빠질 수 있습니다. (오픈소스 고지: cowsdelete.com/oss/)','');
       window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_OK'})}
     catch(e){log(`${f.name}: DWG 변환 실패 (${String(e&&e.message||e).slice(0,120)}). ${FALLBACK}`,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_FAIL'})}
     return true}
@@ -4823,7 +4832,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.8.6';
+const APP_VER='v1.8.7';
 const OFL_TEXT=`Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
@@ -4925,11 +4934,14 @@ function infoDialog(){
   <li>그린 도면은 사용자의 것입니다. 도면 데이터는 사용자의 브라우저에서 처리되며, 저장·내보내기는 사용자가 직접 실행합니다.</li></ul>
   <p style="margin:0 0 4px"><b>상표 안내</b></p>
   <ul style="margin:0 0 10px;padding-left:18px"><li>AutoCAD, DWG 는 Autodesk, Inc. 의 등록상표 또는 상표입니다.</li>
-  <li>무카 CAD 는 Autodesk, Inc. 와 제휴·후원·보증 관계가 없는 독립 프로그램입니다. 「AutoCAD 호환」「AutoCAD 연동」 표기는 조작 방식과 파일(DXF·LISP) 주고받기 호환을 설명하기 위한 것입니다.</li>
+  <li>무카 CAD 는 Autodesk, Inc. 와 제휴·후원·보증 관계가 없는 독립 프로그램입니다. 「AutoCAD 호환」「AutoCAD 연동」 표기는 조작 방식과 파일(DXF·DWG·LISP) 주고받기 호환을 설명하기 위한 것입니다.</li>
   <li>화면 디자인·아이콘·명령 구현은 무카 CAD 가 직접 만든 것이며 Autodesk 의 코드·이미지·아이콘을 쓰지 않습니다.</li></ul>
   <p style="margin:0 0 4px"><b>사용한 글꼴</b></p>
   <ul style="margin:0 0 8px;padding-left:18px"><li>IBM Plex Sans KR · IBM Plex Mono — Copyright © 2017 IBM Corp. (Reserved Font Name "Plex"), SIL Open Font License 1.1. 화면 글꼴과 PDF·도면 문자 윤곽선에 씁니다. 글꼴 이름을 바꾸거나 글꼴만 따로 판매하지 않습니다.</li>
-  <li>이 프로그램은 외부 코드 라이브러리를 쓰지 않습니다.</li></ul>`;
+</ul>
+  <p style="margin:0 0 4px"><b>사용한 오픈소스</b></p>
+  <ul style="margin:0 0 8px;padding-left:18px"><li>DWG 열기·저장: acad-ts (MIT, ACadSharp 이식) · PDF 첨부: PDF.js (Apache-2.0) · 로그인·저장: supabase-js (MIT)</li>
+  <li>저작권 표시와 라이선스 전문: <a href="/oss/" target="_blank" rel="noopener">오픈소스 고지</a></li></ul>`;
   const d=document.createElement('details');const s=document.createElement('summary');s.textContent='SIL Open Font License 1.1 전문 보기';s.style.cursor='pointer';
   const pre=document.createElement('pre');pre.id='oflText';pre.textContent=OFL_TEXT;pre.style.cssText='margin-top:8px;max-height:220px;overflow:auto;background:var(--ground);border:1px solid var(--rule);border-radius:6px;padding:8px';
   d.append(s,pre);p.append(d);
@@ -4954,11 +4966,12 @@ TOOLS.about=()=>{infoDialog();return null};
 .outMenu button:hover .k,.outMenu button:focus-visible .k{color:#dfe8ff}`;
   document.head.appendChild(st);
   const wrap=document.createElement('span');wrap.className='outWrap';
-  const b=document.createElement('button');b.className='tbtn';b.id='bOut';b.title='출력 — DXF · PNG · PDF';
+  const b=document.createElement('button');b.className='tbtn';b.id='bOut';b.title='출력 — DXF · DWG · PNG · PDF';
   b.setAttribute('aria-haspopup','menu');b.setAttribute('aria-expanded','false');b.textContent='출력 ▾';
   const m=document.createElement('div');m.className='outMenu';m.id='outMenu';m.setAttribute('role','menu');m.hidden=true;
   const items=[
     {id:'miDxf',label:'DXF 내보내기',key:'',src:dxf},
+    {id:'miDwg',label:'DWG 저장 (AutoCAD 2013)',key:'DWGOUT',run:()=>saveDwg()},
     {id:'miPng',label:'PNG 이미지 저장',key:'',src:png},
     {id:'miPdf',label:'PDF 내보내기',key:'Ctrl+P',src:pdf,run:()=>openPlot()}
   ];
@@ -5530,7 +5543,8 @@ TOOLS.options=()=>{setTimeout(()=>{
 /* 별칭 보강: PDF 출력 · 한글 단어 */
 Object.assign(ALIAS,{PDF:'plot',EXPORTPDF:'plot',PLOTPDF:'plot'});
 /* v1.8.5: 사용 기록에서 자주 나온 없는 명령 */
-Object.assign(ALIAS,{MLEADER:'leader',MLEA:'leader',MLEAD:'leader',DIML:'dimlin',PLI:'polyline',APPLODE:'appload',APLOAD:'appload',ARE:'area',ACISOUT:'acisout',STLOUT:'acisout',EXPORT3D:'acisout'});
+TOOLS.dwgout=()=>{saveDwg();return null};CMD_KO.dwgout='DWG 저장';
+Object.assign(ALIAS,{DWGOUT:'dwgout',EXPORTDWG:'dwgout',SAVEDWG:'dwgout',MLEADER:'leader',MLEA:'leader',MLEAD:'leader',DIML:'dimlin',PLI:'polyline',APPLODE:'appload',APLOAD:'appload',ARE:'area',ACISOUT:'acisout',STLOUT:'acisout',EXPORT3D:'acisout'});
 TOOLS.acisout=()=>{log('ACISOUT(3D 내보내기)은 준비 중입니다. 지금은 2D 도면을 [출력 ▾] › DXF·PDF로 내보낼 수 있습니다.','err');return null};
 CMD_KO.acisout='3D 내보내기 (준비 중)';
 Object.assign(KO_CMD,{네모:'rect',네모박스:'rect',박스:'rect',사각:'rect',직사각형:'rect',사각박스:'rect',전체:'zoomext',전체보기:'zoomext',줌전체:'zoomext',피디에프:'plot',출력:'plot',인쇄:'plot',옵션:'options',설정:'options'});
@@ -5626,7 +5640,7 @@ window.cad=Object.freeze({
 /* ================= 시작 ================= */
 (async function boot(){
   resize();syncToggles();renderLayers();renderProps();updateInfo();
-  log('무카 CAD 베타 v1.8.4 · AutoCAD 호환 조작(Autodesk 와 무관한 독립 프로그램 · 상단 [정보]): 클릭→클릭 = 선택 창, 누른 채 끌기 = 올가미, 그립 클릭 = 신축(Space로 이동·회전·축척·대칭), 오른쪽 클릭 = 메뉴, Space = 반복, Shift = 임시 직교.');
+  log('무카 CAD 베타 '+APP_VER+' · AutoCAD 호환 조작(Autodesk 와 무관한 독립 프로그램 · 상단 [정보]): 클릭→클릭 = 선택 창, 누른 채 끌기 = 올가미, 그립 클릭 = 신축(Space로 이동·회전·축척·대칭), 오른쪽 클릭 = 메뉴, Space = 반복, Shift = 임시 직교.');
   runBatch(shaftCmds(),{record:false});undoStack=[];redoStack=[];
   try{await document.fonts.ready}catch(_){}
   resize();zoomExtents();dirty=true;
@@ -5636,11 +5650,11 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [Claude 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261020b"></script>
+<script src="../assets/config.js?v=20261020c"></script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
-<script src="cloud.js?v=20261019a"></script>
+<script src="cloud.js?v=20261020a"></script>
 <script src="airef.js?v=1"></script>
-<script src="dwg.js?v=1"></script>
+<script src="dwg.js?v=3"></script>
 </body>
 </html>
