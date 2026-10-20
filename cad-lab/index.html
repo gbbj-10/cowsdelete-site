@@ -260,7 +260,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.8.7</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.8.8</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -4833,7 +4833,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.8.7';
+const APP_VER='v1.8.8';
 const OFL_TEXT=`Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
@@ -5548,6 +5548,10 @@ TOOLS.dwgout=()=>{saveDwg();return null};CMD_KO.dwgout='DWG 저장';
 Object.assign(ALIAS,{DWGOUT:'dwgout',EXPORTDWG:'dwgout',SAVEDWG:'dwgout',MLEADER:'leader',MLEA:'leader',MLEAD:'leader',DIML:'dimlin',PLI:'polyline',APPLODE:'appload',APLOAD:'appload',ARE:'area',ACISOUT:'acisout',STLOUT:'acisout',EXPORT3D:'acisout'});
 TOOLS.acisout=()=>{log('ACISOUT(3D 내보내기)은 준비 중입니다. 지금은 2D 도면을 [출력 ▾] › DXF·PDF로 내보낼 수 있습니다.','err');return null};
 CMD_KO.acisout='3D 내보내기 (준비 중)';
+/* v1.8.8: AutoCAD 3D 명령 → 준비 중 안내 (사용 기록에 REVOLVE 등) */
+TOOLS.cmd3d=()=>{log('3D 모델링 명령(EXTRUDE·REVOLVE·BOX 등)은 준비 중입니다. 무카 CAD는 지금 2D 도면용이며, 2D 도면에서 3D를 만드는 기능을 시험하고 있습니다.','err');return null};
+CMD_KO.cmd3d='3D 모델링 (준비 중)';
+for(const k of ['EXT','EXTRUDE','REVOLVE','REV','BOX','CYLINDER','CYL','SPHERE','CONE','WEDGE','TORUS','PRESSPULL','UNION','UNI','SUBTRACT','SU','INTERSECT','IN','LOFT','SWEEP','3DROTATE','3DMOVE','3DORBIT','3DO','SOLIDEDIT','SLICE','SL','THICKEN','POLYSOLID','SHELL'])if(!ALIAS[k])ALIAS[k]='cmd3d';
 Object.assign(KO_CMD,{네모:'rect',네모박스:'rect',박스:'rect',사각:'rect',직사각형:'rect',사각박스:'rect',전체:'zoomext',전체보기:'zoomext',줌전체:'zoomext',피디에프:'plot',출력:'plot',인쇄:'plot',옵션:'options',설정:'options'});
 TOOLS.zoomext=()=>{zoomExtents();log('줌 전체 (ZE)','ok');return null};CMD_KO.zoomext='줌 전체';
 ALIAS['3D']='view3d';ALIAS['3DVIEW']='view3d';ALIAS['2D3D']='view3d';TOOLS.view3d=()=>{if(window.LAB3D)LAB3D.toggle();else log('3D 기능을 불러오는 중입니다','err');return null};
@@ -5652,7 +5656,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [Claude 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261020c"></script>
+<script src="../assets/config.js?v=20261021a"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
