@@ -1682,7 +1682,7 @@ async function openSpecial(f){
     const FALLBACK='AutoCAD에서 [다른 이름으로 저장 › DXF]로 저장하거나, 무료 ODA File Converter로 DXF로 바꾼 뒤 [열기]로 여세요.';
     if(!window.MuccaDWG){log(`${f.name}: DWG 변환 도구를 불러오지 못했습니다. ${FALLBACK}`,'err');return true}
     const first=MuccaDWG.firstTime,t0=performance.now();
-    log(`${f.name}: DWG를 DXF로 바꾸는 중…${first?' (처음 한 번은 변환 도구 약 4MB를 받습니다. 파일은 서버로 올라가지 않고 이 브라우저 안에서만 바뀝니다)':''}`,'me');
+    log(`${f.name}: DWG를 DXF로 바꾸는 중…${first?' (처음 한 번은 변환 도구 약 2MB를 받습니다. 파일은 서버로 올라가지 않고 이 브라우저 안에서만 바뀝니다)':''}`,'me');
     try{const dxf=await MuccaDWG.toDxf(f);
       log(`DWG 변환 완료 (${((performance.now()-t0)/1000).toFixed(1)}초) — 가져오는 중…`,'ok');
       await openFile(new File([dxf],f.name.replace(/\.dwg$/i,'.dxf')));
