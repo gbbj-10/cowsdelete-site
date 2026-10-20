@@ -1611,7 +1611,7 @@ function exportDXF(){
   w(0,'SECTION');w(2,'HEADER');w(9,'$ACADVER');w(1,'AC1009');w(9,'$INSUNITS');w(70,4);w(9,'$LTSCALE');w(40,doc.ltscale||1);w(0,'ENDSEC');
   w(0,'SECTION');w(2,'TABLES');
   w(0,'TABLE');w(2,'LTYPE');w(70,Object.keys(LT).length);
-  for(const v of Object.values(LT)){w(0,'LTYPE');w(2,v.name.toUpperCase());w(70,0);w(3,v.ko);w(72,65);w(73,v.pat.length);w(40,v.pat.reduce((s,x)=>s+Math.abs(x),0));for(const x of v.pat)w(49,x)}
+  for(const v of Object.values(LT)){w(0,'LTYPE');w(2,v.name.toUpperCase());w(70,0);w(3,dxfStr(v.ko));w(72,65);w(73,v.pat.length);w(40,v.pat.reduce((s,x)=>s+Math.abs(x),0));for(const x of v.pat)w(49,x)}
   w(0,'ENDTAB');
   w(0,'TABLE');w(2,'LAYER');w(70,doc.layers.length);
   for(const l of doc.layers){w(0,'LAYER');w(2,dxfStr(l.name));w(70,(l.frozen?1:0)|(l.locked?4:0));w(62,l.visible?l.aci:-l.aci);w(6,LT[l.lt].name.toUpperCase())}
@@ -2396,7 +2396,7 @@ exportDXF=function(){
   const o=[],w=(code,val)=>{o.push(String(code));o.push(typeof val==='number'?(Number.isInteger(val)?String(val):(+val).toFixed(6)):String(val))};
   w(0,'SECTION');w(2,'HEADER');w(9,'$ACADVER');w(1,'AC1009');w(9,'$INSUNITS');w(70,4);w(9,'$LTSCALE');w(40,doc.ltscale||1);w(0,'ENDSEC');
   w(0,'SECTION');w(2,'TABLES');w(0,'TABLE');w(2,'LTYPE');w(70,Object.keys(LT).length);
-  for(const v of Object.values(LT)){w(0,'LTYPE');w(2,v.name.toUpperCase());w(70,0);w(3,v.ko);w(72,65);w(73,v.pat.length);w(40,v.pat.reduce((s,x)=>s+Math.abs(x),0));for(const x of v.pat)w(49,x)}
+  for(const v of Object.values(LT)){w(0,'LTYPE');w(2,v.name.toUpperCase());w(70,0);w(3,dxfStr(v.ko));w(72,65);w(73,v.pat.length);w(40,v.pat.reduce((s,x)=>s+Math.abs(x),0));for(const x of v.pat)w(49,x)}
   w(0,'ENDTAB');w(0,'TABLE');w(2,'LAYER');w(70,doc.layers.length);
   for(const l of doc.layers){w(0,'LAYER');w(2,dxfStr(l.name));w(70,(l.frozen?1:0)|(l.locked?4:0));w(62,l.visible?l.aci:-l.aci);w(6,LT[l.lt].name.toUpperCase())}
   w(0,'ENDTAB');w(0,'ENDSEC');
@@ -5655,6 +5655,6 @@ window.cad=Object.freeze({
 <script src="../assets/vendor/supabase.js"></script>
 <script src="cloud.js?v=20261020a"></script>
 <script src="airef.js?v=1"></script>
-<script src="dwg.js?v=3"></script>
+<script src="dwg.js?v=5"></script>
 </body>
 </html>
