@@ -270,8 +270,8 @@
   window.addEventListener('error', e => evt('error', { msg: String(e.message || '').slice(0, 200), at: `${String(e.filename || '').split('/').pop()}:${e.lineno || 0}` }));
   window.addEventListener('unhandledrejection', e => evt('error', { msg: String((e.reason && e.reason.message) || e.reason || '').slice(0, 200), at: 'promise' }));
 
-  /* 의견 → 답변을 받을 수 있는 문의 게시판으로 (새 탭: 그리던 도면은 그대로) */
-  bFeedback.onclick = () => { window.open('/qna/?write=cad', '_blank', 'noopener'); };
+  /* 문의 → 문의 게시판 목록부터 (내 문의 확인 + [문의 쓰기]), 새 탭: 그리던 도면은 그대로 */
+  bFeedback.onclick = () => { window.open('/qna/?from=cad', '_blank', 'noopener'); };
   const _oldFeedback = () => {
     const ta = $('textarea', { class: 'cl-ta', maxlength: '1000', placeholder: '예: DIMORD(세로좌표 치수)가 없어요 / 해치 패턴 ANSI32가 필요해요 / 이 버튼이 헷갈려요' });
     ta.onkeydown = e => e.stopPropagation();

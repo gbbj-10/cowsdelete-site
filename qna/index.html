@@ -272,7 +272,9 @@ input[type=password]:focus{outline:none;border-color:var(--sky)}
   document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{filter=b.dataset.f;page=0;setSeg();load()});
   list.addEventListener('click',e=>{const b=e.target.closest('.qr');if(b)open(b.dataset.id)});
   pager.addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(b){page=+b.dataset.p;load();window.scrollTo({top:0})}});
-  document.getElementById('newBtn').onclick=()=>openNew('');
+  /* 무카 CAD 등에서 [문의]로 들어오면(?from=cad) 목록을 먼저 보여 주고, [문의 쓰기]의 분류만 미리 골라 둠 */
+  const fromCat=CAT[params.get('from')]?params.get('from'):'';
+  document.getElementById('newBtn').onclick=()=>openNew(fromCat);
   await load();
   if(params.get('id'))open(params.get('id'));
   else if(params.has('write'))openNew(params.get('write'));
