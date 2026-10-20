@@ -1680,7 +1680,7 @@ async function saveDwg(){if(!window.MuccaDWG){log('DWG 변환 도구를 불러�
   const t0=performance.now(),first=MuccaDWG.firstTime;log(`DWG로 저장하는 중…${first?' (처음 한 번은 변환 도구 약 250KB를 받습니다)':''}`,'me');
   try{const bytes=await MuccaDWG.fromDxf(exportDXF(),'AC1027');
     await offer('mucca-drawing.dwg',new Blob([bytes],{type:'application/acad'}));
-    log(`DWG 저장 (AutoCAD 2013 형식 · ${(bytes.length/1024).toFixed(0)}KB · ${((performance.now()-t0)/1000).toFixed(1)}초). 해치·여러 줄 문자·치수는 DXF 내보내기와 같이 선·문자로 풀어서 저장됩니다.`,'ok');
+    log(`DWG 저장 (AutoCAD 2013 형식 · ${(bytes.length/1024).toFixed(0)}KB · ${((performance.now()-t0)/1000).toFixed(1)}초). 해치·여러 줄 문자·치수는 DXF 내보내기와 같이 선·문자로 풀어서 저장됩니다. AutoCAD 2013 이상에서 열립니다. 안 열리면 [출력 ▾] › DXF 내보내기를 쓰세요(DXF가 더 안정적입니다).`,'ok');
     window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE'})}
   catch(e){log(`DWG 저장 실패 (${String(e&&e.message||e).slice(0,120)}). [출력 ▾] › DXF 내보내기로 저장해 주세요.`,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE_FAIL'})}}
 document.getElementById('bPng').onclick=()=>{const prev=new Set(sel);sel.clear();render();cv.toBlob(b=>{sel=prev;dirty=true;if(b)offer('mucca-drawing.png',b)},'image/png')};
