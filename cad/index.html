@@ -1678,7 +1678,18 @@ document.getElementById('bPng').onclick=()=>{const prev=new Set(sel);sel.clear()
 document.getElementById('bNew').onclick=()=>{pushUndo();const d=freshDoc();doc=d;sel.clear();changed();zoomExtents();log('새 도면 (취소로 되돌릴 수 있음)','ok')};
 /* PDF·사진은 AI 입력칸 첨부로, DWG는 DXF 변환 안내 */
 async function openSpecial(f){
-  if(/\.dwg$/i.test(f.name)){log(`${f.name}: DWG는 아직 바로 열 수 없습니다. AutoCAD에서 [다른 이름으로 저장 › DXF]로 저장하거나, 무료 ODA File Converter로 DXF로 바꾼 뒤 [열기]로 여세요.`,'err');return true}
+  if(/\.dwg$/i.test(f.name)){
+    const FALLBACK='AutoCAD에서 [다른 이름으로 저장 › DXF]로 저장하거나, 무료 ODA File Converter로 DXF로 바꾼 뒤 [열기]로 여세요.';
+    if(!window.MuccaDWG){log(`${f.name}: DWG 변환 도구를 불러오지 못했습니다. ${FALLBACK}`,'err');return true}
+    const first=MuccaDWG.firstTime,t0=performance.now();
+    log(`${f.name}: DWG를 DXF로 바꾸는 중…${first?' (처음 한 번은 변환 도구 약 4MB를 받습니다. 파일은 서버로 올라가지 않고 이 브라우저 안에서만 바뀝니다)':''}`,'me');
+    try{const dxf=await MuccaDWG.toDxf(f);
+      log(`DWG 변환 완료 (${((performance.now()-t0)/1000).toFixed(1)}초) — 가져오는 중…`,'ok');
+      await openFile(new File([dxf],f.name.replace(/\.dwg$/i,'.dxf')));
+      if(first)log('DWG 변환: LibreDWG(GPLv3 오픈소스) 사용. 다중 지시선·표·3D 객체 등 일부는 빠질 수 있습니다.','');
+      window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_OK'})}
+    catch(e){log(`${f.name}: DWG 변환 실패 (${String(e&&e.message||e).slice(0,120)}). ${FALLBACK}`,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_FAIL'})}
+    return true}
   if(window.AIREF&&AIREF.accepts(f)&&!/\.(json|dxf|txt)$/i.test(f.name)){
     const side=document.getElementById('side');if(side&&matchMedia('(max-width:820px)').matches)side.classList.add('open');
     log(`${f.name}: PDF·사진은 도형으로 바로 열리지 않아서, 오른쪽 AI 입력칸에 참고 그림으로 넣습니다…`,'me');
@@ -4812,7 +4823,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.8.5';
+const APP_VER='v1.8.6';
 const OFL_TEXT=`Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
@@ -5520,8 +5531,8 @@ TOOLS.options=()=>{setTimeout(()=>{
 Object.assign(ALIAS,{PDF:'plot',EXPORTPDF:'plot',PLOTPDF:'plot'});
 /* v1.8.5: 사용 기록에서 자주 나온 없는 명령 */
 Object.assign(ALIAS,{MLEADER:'leader',MLEA:'leader',MLEAD:'leader',DIML:'dimlin',PLI:'polyline',APPLODE:'appload',APLOAD:'appload',ARE:'area',ACISOUT:'acisout',STLOUT:'acisout',EXPORT3D:'acisout'});
-TOOLS.acisout=()=>{log('무카 CAD는 2D 캐드라 3D 내보내기(ACISOUT·STLOUT)는 아직 없습니다. 2D 도면은 [출력 ▾] › DXF·PDF로 내보낼 수 있습니다.','err');return null};
-CMD_KO.acisout='3D 내보내기 (미지원 안내)';
+TOOLS.acisout=()=>{log('ACISOUT(3D 내보내기)은 준비 중입니다. 지금은 2D 도면을 [출력 ▾] › DXF·PDF로 내보낼 수 있습니다.','err');return null};
+CMD_KO.acisout='3D 내보내기 (준비 중)';
 Object.assign(KO_CMD,{네모:'rect',네모박스:'rect',박스:'rect',사각:'rect',직사각형:'rect',사각박스:'rect',전체:'zoomext',전체보기:'zoomext',줌전체:'zoomext',피디에프:'plot',출력:'plot',인쇄:'plot',옵션:'options',설정:'options'});
 TOOLS.zoomext=()=>{zoomExtents();log('줌 전체 (ZE)','ok');return null};CMD_KO.zoomext='줌 전체';
 const ALIAS_DEF=Object.assign({},ALIAS),KEYMAP_DEF=Object.assign({},KEYMAP),SC_KEY='muccacad.shortcuts.v1';
@@ -5625,10 +5636,11 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [Claude 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261020a"></script>
+<script src="../assets/config.js?v=20261020b"></script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
 <script src="cloud.js?v=20261019a"></script>
 <script src="airef.js?v=1"></script>
+<script src="dwg.js?v=1"></script>
 </body>
 </html>

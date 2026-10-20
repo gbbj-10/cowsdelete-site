@@ -9,6 +9,7 @@ hook = "ALIAS['3D']='view3d';ALIAS['3DVIEW']='view3d';ALIAS['2D3D']='view3d';TOO
 s = s.replace('const ALIAS_DEF=Object.assign({},ALIAS)', hook + 'const ALIAS_DEF=Object.assign({},ALIAS)', 1)
 # AI 채팅 참고 이미지(📎)는 본 캐드(cad/airef.js)에 들어감 → 테스트판은 경로만 맞춤
 s = s.replace('<script src="airef.js', '<script src="../cad/airef.js', 1)
+s = s.replace('<script src="dwg.js', '<script src="../cad/dwg.js', 1)
 assert '../cad/airef.js' in s, 'airef path'
 assert s.count('lab3d.js') == 1 and 'view3d' in s and 'noindex' in s and 'lab-' in s, 'patch failed'
 pathlib.Path('cad-lab').mkdir(exist_ok=True)
