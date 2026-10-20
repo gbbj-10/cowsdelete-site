@@ -249,7 +249,7 @@ input[type=password]:focus{outline:none;border-color:var(--sky)}
       <div><button class="btn primary sm" type="submit">문의 올리기</button></div></form>`);
     const sw=d.querySelector('#qs'),pwb=d.querySelector('#pwb');
     sw.onchange=()=>{pwb.hidden=!sw.checked;if(sw.checked)d.querySelector('#qp').focus()};
-    const lg=d.querySelector('[data-login]');if(lg)lg.onclick=()=>S.login(location.origin+'/qna/?write='+(d.querySelector('#qc').value));
+    const lg=d.querySelector('[data-login]');if(lg)lg.onclick=()=>S.login(location.origin+'/qna/?resume='+(d.querySelector('#qc').value));
     setTimeout(()=>d.querySelector('#qt').focus(),30);
     d.querySelector('form').onsubmit=async e=>{e.preventDefault();const er=d.querySelector('[data-e]');
       const t=d.querySelector('#qt').value.trim(),b=d.querySelector('#qb').value.trim(),secret=sw.checked,pw=secret?d.querySelector('#qp').value.trim():'';
@@ -272,12 +272,13 @@ input[type=password]:focus{outline:none;border-color:var(--sky)}
   document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{filter=b.dataset.f;page=0;setSeg();load()});
   list.addEventListener('click',e=>{const b=e.target.closest('.qr');if(b)open(b.dataset.id)});
   pager.addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(b){page=+b.dataset.p;load();window.scrollTo({top:0})}});
-  /* 무카 CAD 등에서 [문의]로 들어오면(?from=cad) 목록을 먼저 보여 주고, [문의 쓰기]의 분류만 미리 골라 둠 */
-  const fromCat=CAT[params.get('from')]?params.get('from'):'';
+  /* 어디서 [문의하기]로 들어와도 목록을 먼저 보여 주고, [문의 쓰기]의 분류만 미리 골라 둠 (?from=cad·auto·etc, 예전 링크 ?write= 도 같게) */
+  const pick=k=>CAT[params.get(k)]?params.get(k):'';
+  const fromCat=pick('from')||pick('write');
   document.getElementById('newBtn').onclick=()=>openNew(fromCat);
   await load();
   if(params.get('id'))open(params.get('id'));
-  else if(params.has('write'))openNew(params.get('write'));
+  else if(params.has('resume'))openNew(pick('resume')); /* 로그인하고 돌아온 경우만 글쓰기 창을 다시 엶 */
 })();
 </script>
 </body>
