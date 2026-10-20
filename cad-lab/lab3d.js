@@ -299,9 +299,43 @@
     if (leftN) for (const [u, v] of E) { const c = comp.get(u); const b = best.get(c); if (!(b && b.A > tol * tol * 4)) leftSegs.push([nodes[u], nodes[v]]); }
     return { loops: out.filter(l => l.pts.length >= 3), left: leftSegs, leftN, snap };
   }
+
+  // 3D로 바꿀 도형: CAD에서 선택한 것이 있으면 그것만 (부품도에서 부품 하나 고르기)
+  function srcEnts() {
+    try { if (typeof sel !== 'undefined' && sel.size) { const L = doc.entities.filter(e => sel.has(e.id)); if (L.length) return flatEnts(L); } } catch (_) { }
+    try { return flatEnts(visibleEnts()); } catch (_) { return doc.entities.slice(); }
+  }
+  LAB.srcEnts = srcEnts;
+  LAB._loops = () => { const r = collectLoops(); return r.loops.filter(L => !L.parent).map(L => ({ bb: [L.bb.x0, L.bb.y0, L.bb.x1, L.bb.y1].map(v => +v.toFixed(1)), n: L.pts.length, c: !!L.circle, kids: L.kids.length })); };
+
+  // 뷰 실루엣 보강: 같은 뷰의 조각(외형선·해치 경계)을 모아 높이마다 가장 넓은 범위로 채움 (부분 단면·구멍으로 끊긴 윤곽용)
+  function rowHull(L, tol) {
+    const segs = [];
+    for (const e of srcEnts()) {
+      if (IGN_LAYERS.has(e.layer) && e.layer !== '해치') continue;
+      if (e.type === 'line') segs.push([e.a, e.b]);
+      else if (e.type === 'polyline') { const P = plPts(e); for (let i = 0; i < P.length - 1; i++) segs.push([P[i], P[i + 1]]); }
+      else if (e.type === 'arc') { const P = arcPts(e.c, e.r, e.a0, e.a1, 48); for (let i = 0; i < P.length - 1; i++) segs.push([P[i], P[i + 1]]); }
+      else if (e.type === 'hatch' && Array.isArray(e.loops)) for (const lp of e.loops) for (let i = 0; i < lp.length; i++) segs.push([lp[i], lp[(i + 1) % lp.length]]);
+    }
+    let bb = { ...L.bb }; const g = L.bb.h * 0.12; const inY = sg => Math.max(sg[0].y, sg[1].y) >= bb.y0 - tol && Math.min(sg[0].y, sg[1].y) <= bb.y1 + tol;
+    const use = new Set(); let grew = true;
+    while (grew) { grew = false; segs.forEach((sg, i) => { if (use.has(i) || !inY(sg)) return; const x0 = Math.min(sg[0].x, sg[1].x), x1 = Math.max(sg[0].x, sg[1].x); if (x1 < bb.x0 - g || x0 > bb.x1 + g) return; use.add(i); if (x0 < bb.x0 || x1 > bb.x1) { bb.x0 = Math.min(bb.x0, x0); bb.x1 = Math.max(bb.x1, x1); grew = true; } }); }
+    const S2 = [...use].map(i => segs[i]), N = 120, left = [], right = [];
+    for (let k = 0; k <= N; k++) {
+      const y = L.bb.y0 + (L.bb.y1 - L.bb.y0) * (k === 0 ? 0.0005 : k === N ? 0.9995 : k / N); let lo = Infinity, hi = -Infinity;
+      for (const [a, b] of S2) { if ((a.y - y) * (b.y - y) > 0) continue; if (a.y === b.y) { lo = Math.min(lo, a.x, b.x); hi = Math.max(hi, a.x, b.x); continue; } const x = a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y); lo = Math.min(lo, x); hi = Math.max(hi, x); }
+      if (lo < hi) { left.push({ x: lo, y }); right.push({ x: hi, y }); }
+    }
+    let pts = dedupe(left.concat(right.reverse()), tol / 4);
+    // 일직선 위 점은 합침 (점이 많으면 정밀 엔진이 느려짐)
+    for (let pass = 0; pass < 3; pass++) { const q = []; for (let i = 0, n = pts.length; i < n; i++) { const A = q.length ? q[q.length - 1] : pts[(i - 1 + n) % n], B = pts[i], C = pts[(i + 1) % n]; const L = Math.hypot(C.x - A.x, C.y - A.y) || 1; if (Math.abs((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) / L > tol * 0.3) q.push(B); } pts = q; }
+    const a = Math.abs(area(pts));
+    return a > L.a * 1.02 ? { pts, bb: bboxOf(pts), a, half: L.half, kids: L.kids } : L;
+  }
   function collectLoops(hiddenOnly) {
     let ents = [];
-    try { ents = flatEnts(visibleEnts()); } catch (_) { ents = doc.entities.slice(); }
+    ents = srcEnts();
     const isHid = e => e.layer === '숨은선' || /hidden|dashed/i.test(String(e.lt || ''));
     ents = ents.filter(e => ['line', 'polyline', 'circle', 'arc', 'ellipse'].includes(e.type) && (hiddenOnly ? isHid(e) : (!IGN_LAYERS.has(e.layer) && !(e.lt && IGN_LT.has(String(e.lt).toLowerCase())))));
     if (!ents.length) return { loops: [], tol: 0.01 };
@@ -315,7 +349,7 @@
     for (const e of ents) {
       if (e.type === 'circle') loops.push({ circle: { c: { x: e.c.x, y: e.c.y }, r: Math.abs(e.r) }, pts: arcPts(e.c, Math.abs(e.r), 0, 360, 96).slice(0, -1) });
       else if (e.type === 'ellipse' && e.a0 == null) { const s = []; for (let i = 0; i < 96; i++) s.push(ellPt(e, i * 360 / 96)); loops.push({ pts: s }); }
-      else if (e.type === 'polyline') { const p = plPts(e); const cl = e.closed || (p.length > 2 && Math.hypot(p[0].x - p[p.length - 1].x, p[0].y - p[p.length - 1].y) <= tol); if (cl) loops.push({ pts: dedupe(p, tol / 10) }); else open.push(p); }
+      else if (e.type === 'polyline') { const p = plPts(e); const cl = e.closed || (p.length > 2 && Math.hypot(p[0].x - p[p.length - 1].x, p[0].y - p[p.length - 1].y) <= tol); open.push(cl ? p.concat([p[0]]) : p); }   /* 닫힌 폴리선도 선들과 한 그래프로 → 단면도 윤곽이 하나로 이어짐 */
       else if (e.type === 'line') open.push([{ x: e.a.x, y: e.a.y }, { x: e.b.x, y: e.b.y }]);
       else if (e.type === 'arc') open.push(arcPts(e.c, e.r, e.a0, e.a1, 96));
       else if (e.type === 'ellipse') { let a1 = e.a1; while (a1 <= e.a0) a1 += 360; const s = []; for (let i = 0; i <= 48; i++) s.push(ellPt(e, e.a0 + (a1 - e.a0) * i / 48)); open.push(s); }
@@ -343,11 +377,31 @@
       }
       return { out, left, gap };
     }
+    // 대칭 도시(반쪽만 그린 뷰): 열린 윤곽 끝이 중심선 위에 2개 이상 있으면 그 사이를 중심선으로 닫음
+    const halfAx = [];
+    if (!hiddenOnly) {
+      let cls = []; try { cls = srcEnts().filter(e => e.type === 'line' && (e.layer === '중심선' || /center/i.test(String(e.lt || '')))); } catch (_) { }
+      const ends = []; for (const pc of open) { const a = pc[0], b = pc[pc.length - 1]; if (Math.hypot(a.x - b.x, a.y - b.y) > tol) ends.push(a, b); }
+      for (const e of cls) {
+        const L = Math.hypot(e.b.x - e.a.x, e.b.y - e.a.y); if (L < tol * 10) continue; const d = { x: (e.b.x - e.a.x) / L, y: (e.b.y - e.a.y) / L };
+        const on = ends.map(q => ({ q, u: (q.x - e.a.x) * d.x + (q.y - e.a.y) * d.y, s: (q.x - e.a.x) * -d.y + (q.y - e.a.y) * d.x })).filter(v => Math.abs(v.s) <= tol * 3 && v.u >= -tol && v.u <= L + tol).sort((a, b) => a.u - b.u);
+        const uniq = []; for (const v of on) if (!uniq.length || v.u - uniq[uniq.length - 1].u > tol) uniq.push(v);
+        if (uniq.length < 2) continue;
+        for (let i = 0; i < uniq.length - 1; i++) open.push([{ x: e.a.x + d.x * uniq[i].u, y: e.a.y + d.y * uniq[i].u }, { x: e.a.x + d.x * uniq[i + 1].u, y: e.a.y + d.y * uniq[i + 1].u }]);
+        halfAx.push({ a: e.a, d });
+      }
+    }
     // 선 전체를 평면 그래프로 보고 덩어리마다 가장 바깥 경계를 따라 돎 (T자·Y자 교차가 많은 실제 투상도용)
     const g1 = planarOuter(open, tol); loops.push(...g1.loops);
     let gapFixed = 0, openLeft = 0;
     if (g1.left.length) { const g2 = planarOuter(g1.left, Math.max(tol * 10, Math.hypot(bb.w, bb.h) * 0.006)); loops.push(...g2.loops); if (g2.loops.length) gapFixed = g2.snap; openLeft = g2.leftN; }
     for (const L of loops) { L.a = Math.abs(area(L.pts)); L.bb = bboxOf(L.pts); }
+    for (const L of loops) {
+      if (L.circle) continue; let bestA = null, bestSpan = 0;
+      for (const A of halfAx) { const us = L.pts.filter(q => Math.abs((q.x - A.a.x) * -A.d.y + (q.y - A.a.y) * A.d.x) <= tol * 2).map(q => (q.x - A.a.x) * A.d.x + (q.y - A.a.y) * A.d.y); if (us.length < 2) continue; const span = Math.max(...us) - Math.min(...us), ext = Math.abs(A.d.x) > 0.5 ? L.bb.w : L.bb.h; if (span > ext * 0.3 && span > bestSpan) { bestSpan = span; bestA = A; } }
+      // 축이 윤곽의 한쪽 끝에 있어야 반쪽 뷰 (가운데를 지나면 온전한 뷰)
+      if (bestA) { const ss = L.pts.map(q => (q.x - bestA.a.x) * -bestA.d.y + (q.y - bestA.a.y) * bestA.d.x); if (Math.min(...ss) > -tol * 3 || Math.max(...ss) < tol * 3) L.half = bestA; }
+    }
     // 포함 관계 (가장 작은 바깥 윤곽이 부모)
     const ok = loops.filter(L => L.pts.length >= 3 && L.a > tol * tol);
     ok.sort((a, b) => b.a - a.a);
@@ -357,14 +411,14 @@
     }
     for (const L of ok) if (L.parent) L.parent.kids.push(L);
     // 문자 위치 (도곽·표제란 판단용)
-    let texts = []; try { texts = flatEnts(visibleEnts()).filter(e => e.type === 'text' && e.p).map(e => e.p); } catch (_) { }
+    let texts = []; try { texts = srcEnts().filter(e => e.type === 'text' && e.p).map(e => e.p); } catch (_) { }
     return { loops: ok, tol, gapFixed, openLeft, texts };
   }
 
 
   /* ---------------- 단면도(해치) → 회전체: 실기 부품도처럼 한 장에 여러 부품 ---------------- */
   function sectionPlan() {
-    let ents = []; try { ents = flatEnts(visibleEnts()); } catch (_) { ents = doc.entities.slice(); }
+    let ents = srcEnts();
     const hatches = ents.filter(e => e.type === 'hatch' && Array.isArray(e.loops) && e.loops.length);
     const axes = ents.filter(e => e.type === 'line' && (e.layer === '중심선' || /center/i.test(String(e.lt || ''))) && Math.hypot(e.b.x - e.a.x, e.b.y - e.a.y) > 1e-6);
     if (!axes.length) return null;
@@ -498,7 +552,7 @@
     const cands = [S]; (function walk(L) { for (const k of L.kids) { cands.push(k); walk(k); } })(S);
     try { for (const L of collectLoops(true).loops) if (L.bb.x0 >= S.bb.x0 - t && L.bb.x1 <= S.bb.x1 + t && L.bb.y0 >= S.bb.y0 - t && L.bb.y1 <= S.bb.y1 + t) { L.hidden = true; cands.push(L); } } catch (_) { }
     const pick = (lo, hi) => { let best = null; for (const L of cands) { if (Math.abs(L.bb.y0 - lo) > t || Math.abs(L.bb.y1 - hi) > t) continue; const sc = (L === S ? 3 : 0) + (L.hidden ? 0 : 1) + L.a * 1e-9; if (!best || sc > best.sc) best = { L, sc }; } return best && best.L; };
-    let hid = []; try { hid = flatEnts(visibleEnts()).filter(e => (e.layer === '숨은선' || /hidden|dashed/i.test(String(e.lt || ''))) && e.type === 'line'); } catch (_) { }
+    let hid = []; try { hid = srcEnts().filter(e => (e.layer === '숨은선' || /hidden|dashed/i.test(String(e.lt || ''))) && e.type === 'line'); } catch (_) { }
     const hseg = hid.map(e => [e.a, e.b]).filter(([a, b]) => Math.abs(a.y - b.y) <= t * 0.5 && Math.min(a.x, b.x) >= pb.x0 - t && Math.max(a.x, b.x) <= pb.x1 + t && a.y >= pb.y0 - t && a.y <= pb.y1 + t);
     const depthOf = L => { const r0 = []; for (const [a, b] of hseg) if (Math.abs(a.y - L.bb.y0) <= t || Math.abs(a.y - L.bb.y1) <= t) r0.push([Math.min(a.x, b.x), Math.max(a.x, b.x)]); if (!r0.length) return null; return [Math.min(...r0.map(r => r[0])) - pb.x0, Math.max(...r0.map(r => r[1])) - pb.x0]; };
     const us = []; for (const q of SP) if (!us.some(u => Math.abs(u - q.x) <= tol)) us.push(q.x); us.sort((a, b) => a - b);
@@ -579,16 +633,46 @@
     // 정면도: 원이 바깥 윤곽이면서 같은 중심의 원이 있는 뷰 우선, 없으면 가장 큰 뷰
     const isRound = L => L.circle && L.kids.some(k => k.circle && Math.hypot(k.circle.c.x - L.circle.c.x, k.circle.c.y - L.circle.c.y) <= tol * 4);
     const bigA = Math.max(...tops.map(L => L.a));
-    let front = tops.find(L => isRound(L) && L.a >= bigA * 0.5) || tops.find(L => L.circle && L.a >= bigA * 0.5) || tops.reduce((m, L) => L.a > m.a ? L : m, tops[0]);
+    const nb = L => { let h = 0, v = 0; for (const M of tops) { if (M === L) continue; if (overlap(L.bb.y0, L.bb.y1, M.bb.y0, M.bb.y1) / Math.min(L.bb.h, M.bb.h) > 0.6 && (M.bb.x0 > L.bb.x1 - tol || M.bb.x1 < L.bb.x0 + tol)) h++; if (overlap(L.bb.x0, L.bb.x1, M.bb.x0, M.bb.x1) / Math.min(L.bb.w, M.bb.w) > 0.6 && (M.bb.y0 > L.bb.y1 - tol || M.bb.y1 < L.bb.y0 + tol)) v++; } return h && v; };
+    const hub = tops.filter(L => L.a >= bigA * 0.2 && nb(L)).sort((a, b) => b.a - a.a)[0];
+    let front = hub || tops.find(L => isRound(L) && L.a >= bigA * 0.5) || tops.find(L => L.circle && L.a >= bigA * 0.5) || tops.reduce((m, L) => L.a > m.a ? L : m, tops[0]);
     // 측면도: 정면과 가로(같은 높이) 또는 세로(같은 너비)로 나란한 가장 가까운 뷰
-    let sideV = null, dir = null, best = Infinity;
+    let sideV = null, dir = null, best = Infinity, sideH = null, bestH = Infinity, topV = null, bestV = Infinity;
     for (const L of tops) {
       if (L === front) continue;
       const oy = overlap(front.bb.y0, front.bb.y1, L.bb.y0, L.bb.y1) / Math.min(front.bb.h, L.bb.h);
       const ox = overlap(front.bb.x0, front.bb.x1, L.bb.x0, L.bb.x1) / Math.min(front.bb.w, L.bb.w);
       const dx = L.bb.x0 > front.bb.x1 ? L.bb.x0 - front.bb.x1 : front.bb.x0 - L.bb.x1, dy = L.bb.y0 > front.bb.y1 ? L.bb.y0 - front.bb.y1 : front.bb.y0 - L.bb.y1;
+      if (oy > 0.6 && dx > -tol && dx < bestH && L.bb.x0 > front.bb.x1 - tol) { bestH = dx; sideH = L; }
+      if (ox > 0.6 && dy > -tol && dy < bestV) { bestV = dy; topV = L; }
       if (oy > 0.6 && dx > -tol && dx < best) { best = dx; sideV = L; dir = 'h'; }
       if (ox > 0.6 && dy > -tol && dy < best) { best = dy; sideV = L; dir = 'v'; }
+    }
+
+    // ── 3면 교차: 정면·오른쪽 측면·윗면(또는 아래 단면) 세 장이 다 있으면
+    if (kindSel.value === 'auto' && sideH && topV && !front.circle) {
+      sideV = sideH; dir = 'h';
+      const secs = [];   // 윗면 쪽 뷰가 단면도(해치)면 그 단면 모양
+      for (const e of srcEnts()) if (e.type === 'hatch' && Array.isArray(e.loops)) for (const lp of e.loops) { const pts = lp.map(q => ({ x: q.x, y: q.y })), bb = bboxOf(pts); if (bb.x0 >= topV.bb.x0 - tol && bb.x1 <= topV.bb.x1 + tol && bb.y0 >= topV.bb.y0 - tol && bb.y1 <= topV.bb.y1 + tol && pts.length >= 3) secs.push({ pts, bb, a: Math.abs(area(pts)) }); }
+      const below = topV.bb.y1 <= front.bb.y0 + tol;
+      // 높이 구간: 받침(측면도에서 전체 길이로 이어진 아래 부분) / 지지부 / 몸통(측면도의 가장 큰 원)
+      // 높이 구간: 정면도 폭이 바뀌는 곳 → 받침 위 / 몸통 아래
+      const FP = front.pts, fAt = y => { let lo = Infinity, hi = -Infinity; for (let i = 0, n = FP.length; i < n; i++) { const a = FP[i], b = FP[(i + 1) % n]; if ((a.y - y) * (b.y - y) <= 0 && a.y !== b.y) { const x = a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y); lo = Math.min(lo, x); hi = Math.max(hi, x); } } return hi > lo ? hi - lo : 0; };
+      const N = 400, fy = k => front.bb.y0 + front.bb.h * k / N, wBot = fAt(fy(2)), wTop = fAt(fy(N - 2));
+      let baseTop = null, bossBot = null;
+      for (let k = 2; k < N; k++) if (fAt(fy(k)) < wBot * 0.95) { baseTop = fy(k - 1); break; }
+      for (let k = N - 2; k > 0; k--) if (fAt(fy(k)) < wTop * 0.95) { bossBot = fy(k + 1); break; }
+      let zones = null;
+      if (secs.length && baseTop != null && bossBot != null && bossBot > baseTop + tol) zones = { baseTop, bossBot };
+      const sideHoles = sideH.kids.filter(k => !k.kids.length && Math.max(k.bb.w, k.bb.h) > sideH.bb.h * 0.08);
+      const topHoles = []; (function walk(L) { for (const k of L.kids) { if (k.kids.length) walk(k); else if (!secs.some(sc => Math.abs(sc.bb.x0 - k.bb.x0) < tol * 4 && Math.abs(sc.bb.y1 - k.bb.y1) < tol * 4)) topHoles.push(k); } })(topV);
+      if (sideH.kids.length > sideHoles.length) info.push(`측면도의 작은 구멍 ${sideH.kids.length - sideHoles.length}개(탭 등)는 깊이를 몰라 뺐습니다`);
+      if (zones) info.push(`높이를 받침·지지부·몸통 3구간으로 나눠, 지지부는 ${below ? '아래' : '위'} 단면도의 해치 모양을 썼습니다`);
+      else if (secs.length) info.push('단면도 구간을 못 나눠 바깥 윤곽만 겹쳤습니다');
+      if (sideH.half || topV.half) info.push(`대칭 도시(반쪽) 뷰 ${[sideH.half && '측면도', topV.half && '단면도'].filter(Boolean).join('·')}를 중심선 기준으로 펼쳤습니다`);
+      const sH = rowHull(sideH, tol), tDepth = sideH.half ? 2 * Math.max(...sH.pts.map(q => Math.abs(q.x - sideH.half.a.x))) : sH.bb.w;
+      const sideX = rowHull(sideH, tol); if (sideX !== sideH) info.push('측면도의 끊긴 윤곽(부분 단면·구멍)을 높이별 최대 폭으로 이어 붙였습니다');
+      return { kind: 'tri', front, side: sideX, top: topV, below, secs, zones, sideHoles, topHoles, holes: [], t: tDepth, warn, info, tol };
     }
     const others = tops.filter(L => L !== front && L !== sideV).length;
     if (others) info.push(`나머지 윤곽 ${others}개는 3D에 쓰지 않았습니다`);
@@ -714,7 +798,7 @@
       });
       return {};
     }
-    if (pl.kind === 'intersect') {
+    if (pl.kind === 'intersect' || pl.kind === 'tri') {
       if (!occR) {
         stEl.innerHTML += '<br><span class="i">정밀 계산 엔진을 받는 중입니다 (처음 한 번, 약 6MB)…</span>';
         ensureOCC().then(() => rebuild(true)).catch(e => { stEl.innerHTML += '<br><span class="e">정밀 엔진을 받지 못했습니다: ' + e.message + '</span>'; });
@@ -750,8 +834,10 @@
     if (pl.kind === 'extrude') L.push(`<span class="ok">돌출</span> <span class="i">· 두께 ${fmt3(pl.t)} (${pl.tSrc}) · 구멍 ${pl.holes.length}개</span>`);
     else if (pl.kind === 'stack') L.push(`<span class="ok">단면 쌓기</span> <span class="i">· 길이 ${fmt3(pl.total)} · 구간 ${pl.segs.length}개 (${pl.desc}) · 구멍 ${pl.holes.length}개</span>`);
     else if (pl.kind === 'parts') { L.push(`<span class="ok">단면도 → 회전체 ${pl.parts.length}개</span>`); pl.parts.forEach((pt, i) => L.push(`<span class="i">· 부품 ${i + 1}: Ø${fmt3(pt.D)} × ${fmt3(pt.L)} (${pt.src}${pt.regs ? ' ' + pt.regs.length + '곳' : ''})</span>`)); }
+    else if (pl.kind === 'tri') L.push(`<span class="ok">3면 교차 (정밀)</span> <span class="i">· 너비 ${fmt3(pl.front.bb.w)} · 높이 ${fmt3(pl.front.bb.h)} · 깊이 ${fmt3(pl.t)}${pl.zones ? ' · 단면도 사용' : ''} · 구멍 ${pl.sideHoles.length + pl.topHoles.length}개</span>`);
     else if (pl.kind === 'intersect') L.push(`<span class="ok">2면 교차 (정밀)</span> <span class="i">· 너비 ${fmt3(pl.front.bb.w)} · 높이 ${fmt3(pl.front.bb.h)} · 깊이 ${fmt3(pl.t)} · 정면 구멍 ${pl.holes.length}개${pl.sideHoles.length ? ' · 측면 구멍 ' + pl.sideHoles.length + '개' : ''}</span>`);
     else L.push(`<span class="ok">회전체</span> <span class="i">· 외경 Ø${fmt3(pl.front.circle.r * 2)} · 길이 ${fmt3(pl.total)} · 구간 ${pl.segs.length}개${pl.bore ? ' · 보어 Ø' + fmt3(pl.bore * 2) : ''} · 구멍 ${pl.holes.length}개</span>`);
+    try { if (sel.size) L.push(`<span class="i">· 선택한 도형 ${sel.size}개만으로 만들었습니다 (Esc로 선택 해제하면 전체)</span>`); } catch (_) { }
     for (const w of pl.warn) L.push(`<span class="w">⚠ ${w}</span>`);
     for (const i of pl.info) L.push(`<span class="i">· ${i}</span>`);
     stEl.innerHTML = L.join('<br>');
@@ -762,13 +848,14 @@
     try { pl = plan(); } catch (err) { stEl.innerHTML = `<span class="e">3D로 바꾸지 못했습니다: ${err.message}</span>`; return; }
     if (pl.empty) { while (root.children.length) root.children.pop(); emptyEl.style.display = ''; stEl.textContent = ''; lastPlan = null; draw3(); return; }
     emptyEl.style.display = 'none';
-    const key = pl.kind === 'stack' ? JSON.stringify(['stack', pl.mode, pl.total, pl.segs.map(g => [g.z, g.L, g.cone ? [g.cone.rA, g.cone.rB] : g.loop.bb]), pl.holes.map(h => [h.loop.bb, h.z0, h.z1])]) : pl.kind === 'parts' ? JSON.stringify(['parts', pl.parts.map(p => [p.D, p.L, p.polys.length])]) : JSON.stringify([pl.kind, pl.t, pl.segs, pl.bore, pl.front.pts.length, pl.front.bb, pl.holes.map(h => h.bb), pl.side && pl.side.pts.length, pl.side && pl.side.bb, !!occR]);
+    const key = pl.kind === 'tri' ? JSON.stringify(['tri', pl.front.bb, pl.side.bb, pl.top.bb, pl.secs.length, pl.zones, !!occR, srcEnts().length]) : pl.kind === 'stack' ? JSON.stringify(['stack', pl.mode, pl.total, pl.segs.map(g => [g.z, g.L, g.cone ? [g.cone.rA, g.cone.rB] : g.loop.bb]), pl.holes.map(h => [h.loop.bb, h.z0, h.z1])]) : pl.kind === 'parts' ? JSON.stringify(['parts', pl.parts.map(p => [p.D, p.L, p.polys.length])]) : JSON.stringify([pl.kind, pl.t, pl.segs, pl.bore, pl.front.pts.length, pl.front.bb, pl.holes.map(h => h.bb), pl.side && pl.side.pts.length, pl.side && pl.side.bb, !!occR]);
     const first = !lastPlan;
     lastPlan = pl; status(pl);
     if (key === lastKey && !force) return; lastKey = key;
     const b = build(pl); if (b && b.waiting) { lastKey = ''; draw3(); return; } if (first || force) fit3(); else centerModel(); draw3();
   }
   LAB.rebuild = rebuild; LAB.plan = () => plan();
+  let selSig = ''; setInterval(() => { if (mode === '2d' || !T) return; let sg = ''; try { sg = sel.size + ':' + [...sel].slice(0, 50).join(','); } catch (_) { } if (sg !== selSig) { selSig = sg; rebuild(true); } }, 600);
 
   // 2D가 바뀌면 3D도 다시 (0.25초 모아서)
   let tmr = 0;
@@ -809,6 +896,37 @@
   function holeTools(R, holes, o, z0, len) { return holes.map(h => h.circle ? R.makeCylinder(h.circle.r, len, [h.circle.c.x - o.x, h.circle.c.y - o.y, z0], [0, 0, 1]) : rDraw(R, h, o).sketchOnPlane('XY', z0).extrude(len)); }
   function cutAll(R, s, tools) { return !tools.length ? s : s.cut(tools.length === 1 ? tools[0] : R.makeCompound(tools)); }
   function solidFor(R, pl) {
+    if (pl.kind === 'tri') {
+      const o = { x: (pl.front.bb.x0 + pl.front.bb.x1) / 2, y: (pl.front.bb.y0 + pl.front.bb.y1) / 2 }, W = pl.front.bb, D = pl.side.bb.w, sb = pl.side.bb, tb = pl.top.bb;
+      const poly = (pts, f) => { const pp = pts.map(f); let d = R.draw(pp[0]); for (let i = 1; i < pp.length; i++) d = d.lineTo(pp[i]); return d.close(); };
+      const drawL = (L, f) => L.circle ? (() => { const c = f(L.circle.c); return R.drawCircle(L.circle.r).translate(c[0], c[1]); })() : poly(L.pts, f);
+      const mir = (A, q) => { const u = (q.x - A.a.x) * A.d.x + (q.y - A.a.y) * A.d.y, w = (q.x - A.a.x) * -A.d.y + (q.y - A.a.y) * A.d.x; return { x: A.a.x + A.d.x * u + A.d.y * w, y: A.a.y + A.d.y * u - A.d.x * w }; };
+      const mirL = (A, L) => L.circle ? { circle: { c: mir(A, L.circle.c), r: L.circle.r } } : { pts: L.pts.map(q => mir(A, q)) };
+      // 반쪽 뷰면 중심선이 깊이 0 (대칭면)
+      const sZ0 = pl.side.half && Math.abs(pl.side.half.d.y) > 0.5 ? pl.side.half.a.x : sb.x0;
+      const tZ0 = pl.top.half && Math.abs(pl.top.half.d.x) > 0.5 ? pl.top.half.a.y : (pl.below ? tb.y1 : tb.y0);
+      const fF = q => [q.x - o.x, q.y - o.y], fS = q => [q.y - o.y, q.x - sZ0], fT = q => [q.x - o.x, pl.below ? tZ0 - q.y : q.y - tZ0];
+      const both = (L, f, A) => { let d = drawL(L, f); if (A) d = d.fuse(drawL(mirL(A, L), f)); return d; };
+      const zs = pl.side.pts.map(q => q.x - sZ0), zMin = pl.side.half ? -Math.max(...zs.map(Math.abs)) : Math.min(...zs), zMax = Math.max(...zs.map(z => pl.side.half ? Math.abs(z) : z));
+      const F = drawL(pl.front, fF).sketchOnPlane('XY', zMin - 1).extrude(zMax - zMin + 2);
+      let sd = both(pl.side, fS, pl.side.half); for (const h of pl.sideHoles) sd = sd.cut(both(h, fS, pl.side.half));
+      const S = sd.sketchOnPlane('YZ', W.x0 - o.x - 1).extrude(W.w + 2);
+      const yTop = W.y1 - o.y + 1, H = W.h + 2;
+      const onXZ = d => { let x = d.sketchOnPlane('XZ', -yTop).extrude(H); const b = x.boundingBox.bounds; if (b[1][1] < yTop - H / 2) return x; return x; };
+      let td = both(pl.top, fT, pl.top.half); for (const h of pl.topHoles) td = td.cut(both(h, fT, pl.top.half));
+      let T = onXZ(td);
+      const box = (y0, y1) => R.makeBox([W.x0 - o.x - 5, y0 - o.y, zMin - 5], [W.x1 - o.x + 5, y1 - o.y, zMax + 5]);
+      const FS = F.intersect(S); let s = FS.intersect(T);
+      if (pl.zones && pl.secs.length) {
+        let sec = null; for (const sc of pl.secs) { let d = poly(sc.pts, fT); if (pl.top.half) d = d.fuse(poly(sc.pts.map(q => mir(pl.top.half, q)), fT)); sec = sec ? sec.fuse(d) : d; }
+        const SEC = onXZ(sec);
+        const base = s.intersect(box(W.y0 - 1, pl.zones.baseTop));
+        const sup = FS.intersect(box(pl.zones.baseTop, pl.zones.bossBot)).intersect(SEC);
+        const boss = s.intersect(box(pl.zones.bossBot, W.y1 + 1));
+        s = base.fuse(sup).fuse(boss);
+      }
+      return s;
+    }
     if (pl.kind === 'stack') {
       const F = stackFrame(pl), M = pl.mode === 'B', PL = M ? 'YZ' : 'XY', off = z => (M ? F.axis0 : 0) + z;
       const dm = loop => { if (loop.circle) { const c = F.map(loop.circle.c); return R.drawCircle(loop.circle.r).translate(c.x, c.y); } const pp = loop.pts.map(F.map); let d = R.draw([pp[0].x, pp[0].y]); for (let i = 1; i < pp.length; i++) d = d.lineTo([pp[i].x, pp[i].y]); return d.close(); };
