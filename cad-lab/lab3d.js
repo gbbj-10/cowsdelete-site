@@ -862,7 +862,11 @@
         const e0 = (dir === 'h' ? h.bb.y0 - fc.y : h.bb.x0 - fc.x), e1 = (dir === 'h' ? h.bb.y1 - fc.y : h.bb.x1 - fc.x), tl = Math.max(tol, (e1 - e0) * 0.005);
         const m = Ls.filter(l => Math.abs(l.v - e0) <= tl || Math.abs(l.v - e1) <= tl); if (!m.length) continue;
         const u0 = Math.min(...m.map(l => l.u0)), u1 = Math.max(...m.map(l => l.u1)), tot = st[st.length - 1] - st[0];
-        if (u1 - u0 > tol && u1 - u0 < tot - tol * 2) { h.z0 = u0 - st[0]; h.z1 = u1 - st[0]; nb++; }
+        // 구멍 범위 바깥쪽에 재료가 없으면(플랜지 판만 뚫는 볼트 구멍 등) 관통으로 둠
+        const rAtZ = z => { let m = 0; for (const g of segs) if (z >= g.z - 1e-9 && z <= g.z + g.L + 1e-9) m = Math.max(m, g.rA + (g.rB - g.rA) * (z - g.z) / Math.max(g.L, 1e-9)); return m; };
+        const hc = { x: (h.bb.x0 + h.bb.x1) / 2 - fc.x, y: (h.bb.y0 + h.bb.y1) / 2 - fc.y }, dmin = Math.hypot(hc.x, hc.y) - Math.max(h.bb.w, h.bb.h) / 2;
+        const z0 = u0 - st[0], z1 = u1 - st[0], openBefore = z0 <= tol * 2 || rAtZ(z0 - tol * 3) < dmin, openAfter = z1 >= tot - tol * 2 || rAtZ(z1 + tol * 3) < dmin;
+        if (u1 - u0 > tol && u1 - u0 < tot - tol * 2 && !(openBefore && openAfter)) { h.z0 = z0; h.z1 = z1; nb++; }
       }
       if (nb) info.push(`막힌 구멍 ${nb}개는 측면도 선으로 깊이를 읽었습니다`);
     }
