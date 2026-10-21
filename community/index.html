@@ -62,8 +62,8 @@
       <button type="button" data-kind="drawing" aria-pressed="false">도면</button>
     </div>
     <select id="sort" aria-label="정렬">
+      <option value="copies" selected>많이 가져간 순</option>
       <option value="created_at">최근 올라온 순</option>
-      <option value="copies">많이 가져간 순</option>
       <option value="likes">좋아요 순</option>
       <option value="mine">내가 올린 것</option>
     </select>
@@ -133,8 +133,12 @@
     const groups=term?searchGroups(fallback||term):[];
     for(const g of groups)qb=qb.or(g.flatMap(v=>[`title.ilike.*${v}*`,`description.ilike.*${v}*`,`tags.cs.{"${v}"}`]).join(','));
     /* 최신순: 일반 사용자 글 → 운영자 묶음 블록 → 운영자 개별 블록, 각 묶음 안은 최신순 */
+    /* 기본(많이 가져간 순): 가져감 수가 1순위 → 같으면 좋아요 → 최신순 */
     if(!mine&&sortSel.value==='created_at')qb=qb.order('sort_group',{ascending:true});
-    qb=qb.order(mine?'created_at':sortSel.value,{ascending:false}).range(page*PAGE,page*PAGE+PAGE-1);
+    qb=qb.order(mine?'created_at':sortSel.value,{ascending:false});
+    if(!mine&&sortSel.value==='copies')qb=qb.order('likes',{ascending:false}).order('created_at',{ascending:false});
+    else if(!mine&&sortSel.value==='likes')qb=qb.order('copies',{ascending:false}).order('created_at',{ascending:false});
+    qb=qb.order('id',{ascending:true}).range(page*PAGE,page*PAGE+PAGE-1);
     const res=await qb, data=res.data, error=res.error;
     const n=res.count!=null?res.count:(data?page*PAGE+data.length+(data.length===PAGE?1:0):0);
     if(error){list.innerHTML=`<div class="empty">불러오지 못했습니다: ${esc(error.message)}</div>`;return}
