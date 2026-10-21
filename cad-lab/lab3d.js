@@ -430,6 +430,40 @@
   }
 
 
+  // 옆·위에서 뚫은 구멍 (정면·측면 두 장으로 추정)
+  //  가) 측면도의 원(보이거나 숨은) → 정면 가로(X) 방향 구멍, 깊이 = 정면도에서 원 위·아래 높이의 가로선 범위
+  //  나) 정면도·측면도 양쪽에 같은 폭·같은 높이 범위의 세로 숨은선 쌍 → 세로(Y) 방향 구멍
+  function crossHoles(front, side, tol) {
+    const out = { x: [], y: [] }; if (!side) return out;
+    const ents = srcEnts(), isHid = e => e.layer === '숨은선' || /hidden|dashed/i.test(String(e.lt || ''));
+    const inBB = (q, bb, m = 0) => q.x >= bb.x0 - m && q.x <= bb.x1 + m && q.y >= bb.y0 - m && q.y <= bb.y1 + m;
+    const segsOf = e => e.type === 'line' ? [[e.a, e.b]] : e.type === 'polyline' && e.pts && e.pts.length >= 2 ? (() => { const P = e.pts, a = P[0], b = P[P.length - 1], st = P.every(q => Math.abs((q.x - a.x) * (b.y - a.y) - (q.y - a.y) * (b.x - a.x)) <= tol * Math.hypot(b.x - a.x, b.y - a.y)); return st ? [[a, b]] : []; })() : [];
+    const fH = [], fV = [], sV = [];
+    for (const e of ents) { if (['중심선', '치수', '문자'].includes(e.layer)) continue; for (const [a, b] of segsOf(e)) {
+      if (inBB(a, front.bb, tol) && inBB(b, front.bb, tol)) { if (Math.abs(a.y - b.y) <= tol) fH.push({ y: a.y, x0: Math.min(a.x, b.x), x1: Math.max(a.x, b.x), hid: isHid(e) }); else if (Math.abs(a.x - b.x) <= tol && isHid(e)) fV.push({ x: a.x, y0: Math.min(a.y, b.y), y1: Math.max(a.y, b.y) }); }
+      else if (inBB(a, side.bb, tol) && inBB(b, side.bb, tol) && Math.abs(a.x - b.x) <= tol && isHid(e)) sV.push({ x: a.x, y0: Math.min(a.y, b.y), y1: Math.max(a.y, b.y) }); } }
+    // 가) 측면도 원
+    const seen = [];
+    for (const e of ents) { if (e.type !== 'circle' || !e.c || !inBB(e.c, side.bb, -tol)) continue; if (seen.some(q => Math.hypot(q.c.x - e.c.x, q.c.y - e.c.y) <= tol && Math.abs(q.r - e.r) <= tol)) continue; seen.push(e);
+      const m = fH.filter(l => Math.abs(Math.abs(l.y - e.c.y) - e.r) <= Math.max(tol, e.r * 0.02)); if (!m.length) continue;
+      let x0 = Math.min(...m.map(l => l.x0)), x1 = Math.max(...m.map(l => l.x1)); if (x1 - x0 <= tol) continue;
+      if (x0 <= front.bb.x0 + tol * 2) x0 = front.bb.x0 - 1; if (x1 >= front.bb.x1 - tol * 2) x1 = front.bb.x1 + 1;
+      out.x.push({ r: e.r, y: e.c.y, z: e.c.x - side.bb.x0, x0, x1 }); }
+    // 나) 세로 숨은선 쌍
+    const pairs = L => { const P = []; for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const a = L[i], b = L[j]; if (Math.abs(a.y0 - b.y0) <= tol * 2 && Math.abs(a.y1 - b.y1) <= tol * 2 && Math.abs(a.x - b.x) > tol * 2) P.push({ c: (a.x + b.x) / 2, w: Math.abs(a.x - b.x), y0: Math.min(a.y0, b.y0), y1: Math.max(a.y1, b.y1) }); } return P; };
+    const fp = pairs(fV), sp = pairs(sV);
+    for (const a of fp) { const b = sp.find(q => Math.abs(q.w - a.w) <= Math.max(tol * 2, a.w * 0.02) && Math.abs(q.y0 - a.y0) <= tol * 2 && Math.abs(q.y1 - a.y1) <= tol * 2); if (!b) continue;
+      if (out.y.some(h => Math.abs(h.x - a.c) <= tol && Math.abs(h.z - (b.c - side.bb.x0)) <= tol)) continue;
+      let y0 = a.y0, y1 = a.y1; if (y0 <= front.bb.y0 + tol * 2) y0 = front.bb.y0 - 1; if (y1 >= front.bb.y1 - tol * 2) y1 = front.bb.y1 + 1;
+      out.y.push({ r: a.w / 2, x: a.c, z: b.c - side.bb.x0, y0, y1 }); }
+    return out;
+  }
+  function crossTools(R, ch, o) {
+    const T = [];
+    for (const h of ch.x) T.push(R.makeCylinder(h.r, h.x1 - h.x0, [h.x0 - o.x, h.y - o.y, h.z], [1, 0, 0]));
+    for (const h of ch.y) T.push(R.makeCylinder(h.r, h.y1 - h.y0, [h.x - o.x, h.y0 - o.y, h.z], [0, 1, 0]));
+    return T;
+  }
   // 모따기 찾기 (육각·사각 너트, 볼트 머리): 정면도 바깥 윤곽 안쪽에 같은 중심의 원·호(모서리보다 작은 반지름)가 있고,
   //  측면도 끝면 가까이에 선 끝점이 모여 있으면(모따기 깊이) → 원뿔로 모서리를 깎음
   function findChamfer(front, side, t, tol, seg) {
@@ -814,14 +848,20 @@
         if (ds.length >= 6) { ds.sort((a, b) => a - b); const m = ds[ds.length >> 1]; if (Math.abs(m) > 1) { twist = m; info.push(`헬리컬: 측면도 비스듬한 선에서 비틀림 ${fmt3(m)}° 읽음`); } }
       }
       if (chamfer) info.push(`모따기: 정면도 원 Ø${fmt3(chamfer.rc * 2)}에서 시작, 깊이 ${[chamfer.dL, chamfer.dR].filter(Boolean).map(fmt3).join(' · ')} (육각 너트처럼 모서리를 원뿔로 깎음)`);
-      return { kind, front, holes, t, tSrc, chamfer, twist, warn, info, tol };
+      const cross = sideV && dir === 'h' ? crossHoles(front, sideV, tol) : { x: [], y: [] };
+      if (cross.x.length || cross.y.length) info.push(`옆 구멍 ${cross.x.length}개 · 위 구멍 ${cross.y.length}개 (측면 원·양쪽 숨은선으로 추정)`);
+      return { kind, front, holes, t, tSrc, chamfer, twist, cross, warn, info, tol };
     }
     if (kind === 'intersect') {
       // 2면 교차: 정면도를 깊이만큼, 측면도를 너비만큼 각각 돌출해 겹치는 부분만 남김 (정밀 엔진)
       const holes = []; let steps = 0;
       (function walk(L) { for (const k of L.kids) { if (k.kids.length) { steps++; walk(k); } else holes.push(k); } })(front);
       if (steps) info.push(`안쪽 윤곽 ${steps}개는 턱·보스 선으로 보고 안쪽 구멍만 뚫었습니다`);
-      return { kind, front, holes, side: sideV, sideHoles: sideV.kids.filter(k => !k.kids.length), t: sideV.bb.w, warn, info, tol };
+      const cross = crossHoles(front, sideV, tol);
+      // 측면도 원 구멍 중 깊이를 읽은 것은 측면 그림에서 빼지 않고 따로 뚫음
+      const sideHoles = sideV.kids.filter(k => !k.kids.length && !(k.circle && cross.x.some(h => Math.hypot(k.circle.c.y - h.y, k.circle.c.x - sideV.bb.x0 - h.z) <= tol * 2 && Math.abs(k.circle.r - h.r) <= tol * 2)));
+      if (cross.x.length || cross.y.length) info.push(`옆 구멍 ${cross.x.length}개 · 위 구멍 ${cross.y.length}개 (측면 원·양쪽 숨은선으로 추정)`);
+      return { kind, front, holes, side: sideV, sideHoles, cross, t: sideV.bb.w, warn, info, tol };
     }
     // 회전체: 측면도 윤곽을 축 방향으로 잘라 구간별 반지름을 읽음
     const fc = front.circle.c, R0 = front.circle.r;
@@ -1223,6 +1263,7 @@
         const W = pl.front.bb, sideSolid = d.sketchOnPlane('YZ', W.x0 - o.x - 1).extrude(W.w + 2);
         s = s.intersect(sideSolid);
       }
+      if (pl.cross && (pl.cross.x.length || pl.cross.y.length)) s = cutAll(R, s, crossTools(R, pl.cross, o));
       return s;
     }
     const o = pl.fc; let s = null;
