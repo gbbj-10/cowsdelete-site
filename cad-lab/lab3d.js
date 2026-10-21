@@ -748,6 +748,26 @@
 
     // ── 단면 쌓기: 측면도를 길이 방향으로 잘라, 구간마다 높이가 맞는 정면도 윤곽(육각·원·사각…)을 단면으로 씀
     //    구멍 깊이는 측면도 숨은선에서 읽음 (볼트·너트·축·보스 달린 판 등)
+    // ── 돌출 ∩ 회전: 정면이 둘레를 따라 반복되는 모양(스프로킷·기어)이고 측면 윤곽 반높이 = 정면 최대 반지름이면
+    //    정면 돌출과 측면 윤곽 회전체의 겹침 (톱니 끝 모따기 등)
+    if (kindSel.value === 'auto' && !front.circle && sideV && dir === 'h' && !sideV.circle && !isRect(sideV)) {
+      const c = { x: (front.bb.x0 + front.bb.x1) / 2, y: (front.bb.y0 + front.bb.y1) / 2 }, Rf = Math.max(...front.pts.map(q => Math.hypot(q.x - c.x, q.y - c.y)));
+      const sh = sideV.bb.h / 2, smid = (sideV.bb.y0 + sideV.bb.y1) / 2;
+      if (Math.abs(front.bb.w - front.bb.h) <= front.bb.w * 0.02 && Math.abs(Rf - sh) <= Rf * 0.02 && Math.abs(smid - c.y) <= Rf * 0.02 && front.pts.length >= 24) {
+        const P = sideV.pts.map(q => ({ u: q.x, v: q.y - c.y, key: q.key })), n = P.length;
+        let top = 0; for (let i = 1; i < n; i++) if (P[i].v > P[top].v) top = i;
+        const fw = [P[top]]; for (let i = 1; i < n; i++) { const q = P[(top + i) % n]; if (q.v < -tol) break; fw.push(q); if (q.v <= tol) break; }
+        const bw = []; for (let i = 1; i < n; i++) { const q = P[(top - i + n) % n]; if (q.v < -tol) break; bw.push(q); if (q.v <= tol) break; }
+        let ch = bw.reverse().concat(fw); if (ch[0].u > ch[ch.length - 1].u) ch = ch.reverse();
+        if (ch.length >= 3) {
+          const prof = [[0, ch[0].u - sideV.bb.x0, true]].concat(ch.map(q => [Math.max(0, q.v), q.u - sideV.bb.x0, q.key]), [[0, ch[ch.length - 1].u - sideV.bb.x0, true]]);
+          prof[1][2] = true; prof[prof.length - 2][2] = true;
+          const holes = []; (function walk(L) { for (const k of L.kids) { if (k.kids.length) walk(k); else holes.push(k); } })(front);
+          info.push('정면 돌출 ∩ 측면 윤곽 회전체 (톱니 끝 모따기 등)');
+          return { kind: 'extrev', front, side: sideV, c, prof, holes, t: sideV.bb.w, warn, info, tol };
+        }
+      }
+    }
     if ((kindSel.value === 'stack' || (kindSel.value === 'auto' && !front.circle)) && sideV && dir === 'h' && !sideV.circle) {   /* 정면이 원이면 회전체(막힌 구멍 깊이 포함)가 더 정확 */
       const st0 = stackPlan(front, sideV, tol, info, warn);
       if (st0) return st0;
@@ -817,6 +837,8 @@
     let bore = 0;
     for (const r of conc) if (!matches(r) && r < rMin - tol && (!bore || r < bore)) bore = r;   // 가장 안쪽 원 = 관통 구멍
     let unknown = conc.filter(r => r !== bore && !matches(r));
+    // 숨은선 동심원(뒤쪽 홈·자리파기)도 안쪽 단 후보
+    for (const e of srcEnts()) if (e.type === 'circle' && (e.layer === '숨은선' || /hidden|dashed/i.test(String(e.lt || ''))) && Math.hypot(e.c.x - fc.x, e.c.y - fc.y) <= tol * 4 && e.r < R0 - tol && e.r !== bore && !matches(e.r) && !unknown.some(r => Math.abs(r - e.r) <= tol)) unknown.push(e.r);
     // 안쪽 단(소켓·카운터보어 등): 측면도의 축과 나란한 선(숨은선 포함)이 같은 반지름에 있으면 그 길이만큼 판 구멍
     const steps = [];
     if (unknown.length) {
@@ -903,7 +925,7 @@
       });
       return {};
     }
-    if (pl.kind === 'intersect' || pl.kind === 'tri') {
+    if (pl.kind === 'intersect' || pl.kind === 'tri' || pl.kind === 'extrev') {
       if (!occR) {
         stEl.innerHTML += '<br><span class="i">정밀 계산 엔진을 받는 중입니다 (처음 한 번, 약 6MB)…</span>';
         ensureOCC().then(() => rebuild(true)).catch(e => { stEl.innerHTML += '<br><span class="e">정밀 엔진을 받지 못했습니다: ' + e.message + '</span>'; });
@@ -939,6 +961,7 @@
     if (pl.kind === 'extrude') L.push(`<span class="ok">돌출</span> <span class="i">· 두께 ${fmt3(pl.t)} (${pl.tSrc}) · 구멍 ${pl.holes.length}개</span>`);
     else if (pl.kind === 'stack') L.push(`<span class="ok">단면 쌓기</span> <span class="i">· 길이 ${fmt3(pl.total)} · 구간 ${pl.segs.length}개 (${pl.desc}) · 구멍 ${pl.holes.length}개</span>`);
     else if (pl.kind === 'parts') { L.push(`<span class="ok">단면도 → 회전체 ${pl.parts.length}개</span>`); pl.parts.forEach((pt, i) => L.push(`<span class="i">· 부품 ${i + 1}: Ø${fmt3(pt.D)} × ${fmt3(pt.L)} (${pt.src}${pt.regs ? ' ' + pt.regs.length + '곳' : ''})</span>`)); }
+    else if (pl.kind === 'extrev') L.push(`<span class="ok">돌출 ∩ 회전 (정밀)</span> <span class="i">· 두께 ${fmt3(pl.t)} · 구멍 ${pl.holes.length}개</span>`);
     else if (pl.kind === 'tri') L.push(`<span class="ok">3면 교차 (정밀)</span> <span class="i">· 너비 ${fmt3(pl.front.bb.w)} · 높이 ${fmt3(pl.front.bb.h)} · 깊이 ${fmt3(pl.t)}${pl.zones ? ' · 단면도 사용' : ''} · 구멍 ${pl.sideHoles.length + pl.topHoles.length}개</span>`);
     else if (pl.kind === 'intersect') L.push(`<span class="ok">2면 교차 (정밀)</span> <span class="i">· 너비 ${fmt3(pl.front.bb.w)} · 높이 ${fmt3(pl.front.bb.h)} · 깊이 ${fmt3(pl.t)} · 정면 구멍 ${pl.holes.length}개${pl.sideHoles.length ? ' · 측면 구멍 ' + pl.sideHoles.length + '개' : ''}</span>`);
     else L.push(`<span class="ok">회전체</span> <span class="i">· 외경 Ø${fmt3(pl.front.circle.r * 2)} · 길이 ${fmt3(pl.total)} · 구간 ${pl.segs.length}개${pl.bore ? ' · 보어 Ø' + fmt3(pl.bore * 2) : ''} · 구멍 ${pl.holes.length}개</span>`);
@@ -995,14 +1018,14 @@
   stepBtn.addEventListener('pointerenter', () => { ensureOCC().catch(() => { }); }, { once: true });
   // 닫힌 꼭짓점 목록 → 그림: 꺾이는 곳(20° 넘게)은 직선 꼭짓점, 그 사이 완만한 점들은 매끈한 곡선 하나로
   //  (점으로 쪼갠 곡선을 그대로 돌출하면 작은 평면 수십 개가 생겨 2D로 다시 뽑을 때 없는 선이 잔뜩 생김)
-  function polyDraw(R, pp) {
+  function polyDraw(R, pp, opt) {
     const xy = q => [q[0], q[1]];
     const lines = () => { let d = R.draw(xy(pp[0])); for (let i = 1; i < pp.length; i++) d = d.lineTo(xy(pp[i])); return d.close(); };
     if (!LAB.smooth || pp.length < 6 || !R.drawPointsInterpolation || !R.Blueprint) return lines();
     try {
       const P = pp.slice(); if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 1e-9) P.pop();
       const n = P.length, turn = i => { const a = P[(i - 1 + n) % n], b = P[i], c = P[(i + 1) % n], u = [b[0] - a[0], b[1] - a[1]], v = [c[0] - b[0], c[1] - b[1]]; return Math.abs(Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1])) * 180 / Math.PI; };
-      const corner = P.map((q, i) => !!q[2] || turn(i) > 20);
+      const kt = opt && opt.keyTurn || 0; const corner = P.map((q, i) => { const a = turn(i); return a > 20 || (!!q[2] && a >= kt); });
       let st = corner.indexOf(true); if (st < 0) return R.drawPointsInterpolation(P.concat([P[0]]).map(xy), {}, { closeShape: true });
       const curves = []; let i = st;
       do { let j = (i + 1) % n; const run = [P[i]]; while (!corner[j]) { run.push(P[j]); j = (j + 1) % n; } run.push(P[j]);
@@ -1104,6 +1127,13 @@
       const out = pl.parts.map(pt => { let s = null; for (const poly of pt.polys) { let d = R.draw([Math.max(0, poly[0].r), poly[0].u]); for (let i = 1; i < poly.length; i++) d = d.lineTo([Math.max(0, poly[i].r), poly[i].u]); const sol = d.close().sketchOnPlane('XZ').revolve(); s = s ? s.fuse(sol) : sol; } return s.translate([pt.x || 0, 0, 0]); });
       return out.length === 1 ? out[0] : R.makeCompound(out);
     }
+    if (pl.kind === 'extrev') {
+      const o = { x: (pl.front.bb.x0 + pl.front.bb.x1) / 2, y: (pl.front.bb.y0 + pl.front.bb.y1) / 2 };
+      let s = rDraw(R, pl.front, o).sketchOnPlane().extrude(pl.t);
+      const pr = []; for (const q of pl.prof) { const l = pr[pr.length - 1]; if (!l || Math.hypot(l[0] - q[0], l[1] - q[1]) > pl.tol * 0.05) pr.push(q.slice()); else if (q[2]) l[2] = true; }
+      try { const rv = polyDraw(R, pr, { keyTurn: 3 }).sketchOnPlane('XZ').revolve().translate([pl.c.x - o.x, pl.c.y - o.y, 0]); s = s.intersect(rv); } catch (_) { }
+      return cutAll(R, s, holeTools(R, pl.holes, o, -1, pl.t + 2));
+    }
     if (pl.kind === 'extrude' || pl.kind === 'intersect') {
       const o = { x: (pl.front.bb.x0 + pl.front.bb.x1) / 2, y: (pl.front.bb.y0 + pl.front.bb.y1) / 2 };
       let s = rDraw(R, pl.front, o).sketchOnPlane().extrude(pl.t);
@@ -1147,8 +1177,8 @@
   async function makeSolid(R, pl) {
     let s = solidFor(R, pl);
     // 매끈한 곡선으로 만든 교차(불리언)가 실패하면(부피가 크게 다름) 꺾은선 방식으로 다시
-    if (LAB.smooth && (pl.kind === 'intersect' || pl.kind === 'tri')) {
-      const v1 = volOf(R, s); LAB.smooth = false; let s2 = null; try { s2 = solidFor(R, pl); } catch (_) { } LAB.smooth = true;
+    if (LAB.smooth && (pl.kind === 'intersect' || pl.kind === 'tri' || pl.kind === 'extrev')) {
+      const v1 = volOf(R, s); if (pl.kind === 'extrev' && v1 > 0) return LAB.tidy ? tidy(s) : s; LAB.smooth = false; let s2 = null; try { s2 = solidFor(R, pl); } catch (_) { } LAB.smooth = true;
       const v2 = s2 ? volOf(R, s2) : null;
       if (s2 && v2 && (!v1 || v1 <= 0 || Math.abs(v1 - v2) / v2 > 0.1)) s = s2;
     }
