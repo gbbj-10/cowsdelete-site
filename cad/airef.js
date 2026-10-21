@@ -38,7 +38,7 @@
   let refs = [], queue = [], sentN = 0, busy = false;
   const isPdf = f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
   const isImg = f => /^image\//.test(f.type) || /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name || '');
-  const canDraw = () => { const A = window.__aic; return !!(A && A.state === 'on' && A.claude); };
+  const canDraw = () => { const A = window.__aic; return !!(A && A.state === 'on' && (A.claude || (A.engines && Object.values(A.engines).some(Boolean)))); };
 
   function fromCanvas(src, name) {
     const k = Math.min(1, MAXPX / Math.max(src.width, src.height)), w = Math.max(1, Math.round(src.width * k)), h = Math.max(1, Math.round(src.height * k));
@@ -110,7 +110,7 @@
     if (busy) return;
     if (!refs.length) tip.textContent = '손그림·제품 사진·PDF 도면을 넣으면 Claude가 보고 그립니다';
     else if (canDraw()) tip.textContent = `참고 이미지 ${refs.length}장 · 요청을 쓰고 [그리기]`;
-    else tip.textContent = `참고 이미지 ${refs.length}장 · 이 입력칸은 Claude 연결 + 내 PC의 Claude Code(Pro 이상)가 있어야 그립니다. 무료 요금제라면 같은 파일을 Claude 앱 대화창에 첨부하고 "무카 CAD에 그대로 그려줘"라고 쓰세요.`;
+    else tip.textContent = `참고 이미지 ${refs.length}장 · 이 입력칸은 Claude 연결 + 내 PC의 Claude Code(Pro 이상)·Codex CLI·Gemini CLI 중 하나가 있어야 그립니다. 무료 요금제라면 같은 파일을 Claude 앱 대화창에 첨부하고 "무카 CAD에 그대로 그려줘"라고 쓰세요.`;
   }
   paint();
   setInterval(() => { if (refs.length && !busy) paint(); }, 2000);
