@@ -262,6 +262,8 @@
       const n = nodes.length; nodes.push({ x: q.x, y: q.y }); const k = gx + ',' + gy; if (!grid.has(k)) grid.set(k, []); grid.get(k).push(n); return n;
     };
     let E = []; for (const [a, b] of segs) { const u = nodeOf(a), v = nodeOf(b); if (u !== v) E.push([u, v]); }
+    // 원래 선(선·호·곡선 하나)의 끝점 = 꼭짓점 표시 (3D에서 면 경계로 남김)
+    for (const p of polys) if (p.length >= 2) { nodes[nodeOf(p[0])].key = true; nodes[nodeOf(p[p.length - 1])].key = true; }
     // T자 교차: 다른 선 중간에 닿는 끝점에서 그 선을 쪼갬
     if (E.length && nodes.length) {
       let X0 = Infinity, Y0 = Infinity, X1 = -Infinity, Y1 = -Infinity; for (const q of nodes) { X0 = Math.min(X0, q.x); Y0 = Math.min(Y0, q.y); X1 = Math.max(X1, q.x); Y1 = Math.max(Y1, q.y); }
@@ -306,7 +308,7 @@
     try { return flatEnts(visibleEnts()); } catch (_) { return doc.entities.slice(); }
   }
   LAB.srcEnts = srcEnts;
-  LAB._dbg = () => ({ rowHull, collectLoops });
+  LAB._dbg = () => ({ rowHull, collectLoops, solid: pl => solidFor(occR, pl), ensureOCC });
   LAB._loops = () => { const r = collectLoops(); return r.loops.filter(L => !L.parent).map(L => ({ bb: [L.bb.x0, L.bb.y0, L.bb.x1, L.bb.y1].map(v => +v.toFixed(1)), n: L.pts.length, c: !!L.circle, kids: L.kids.length })); };
 
   // 뷰 실루엣 보강: 같은 뷰의 조각(외형선·해치 경계)을 모아 높이마다 가장 넓은 범위로 채움 (부분 단면·구멍으로 끊긴 윤곽용)
@@ -399,13 +401,21 @@
     const g1 = planarOuter(open, tol); loops.push(...g1.loops);
     let gapFixed = 0, openLeft = 0;
     if (g1.left.length) { const g2 = planarOuter(g1.left, Math.max(tol * 10, Math.hypot(bb.w, bb.h) * 0.006)); loops.push(...g2.loops); if (g2.loops.length) gapFixed = g2.snap; openLeft = g2.leftN; }
+    // 한 직선 위에 있는 꼭짓점 빼기 (다른 선과 교차해서 생긴 점 → 3D에서 면이 쪼개져 2D로 다시 뽑으면 없는 선이 생김)
+    const colTol = Math.max(1e-9, Math.hypot(bb.w, bb.h) * 1e-7);
+    for (const L of loops) if (!L.circle && L.pts.length > 3) { let P = L.pts; for (let pass = 0; pass < 2; pass++) { const q = []; for (let i = 0, n = P.length; i < n; i++) { const A = q.length ? q[q.length - 1] : P[(i - 1 + n) % n], B = P[i], C = P[(i + 1) % n], len = Math.hypot(C.x - A.x, C.y - A.y) || 1; const dev = Math.abs((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) / len; const dot = (B.x - A.x) * (C.x - B.x) + (B.y - A.y) * (C.y - B.y); if (dev > colTol || dot < 0) q.push(B); } P = q; } if (P.length >= 3) L.pts = P; }
     for (const L of loops) { L.a = Math.abs(area(L.pts)); L.bb = bboxOf(L.pts); }
+    // 호 여러 개로 그려진 원(한 바퀴): 모든 점이 중심에서 같은 거리면 원으로 봄 → 회전체 판단에 씀
+    for (const L of loops) if (!L.circle && L.pts.length >= 12) { const c = { x: (L.bb.x0 + L.bb.x1) / 2, y: (L.bb.y0 + L.bb.y1) / 2 }, rs = L.pts.map(q => Math.hypot(q.x - c.x, q.y - c.y)), r = (Math.max(...rs) + Math.min(...rs)) / 2; if (r > tol * 4 && Math.max(...rs) - Math.min(...rs) <= Math.max(tol * 2, r * 0.004) && Math.abs(L.bb.w - L.bb.h) <= tol * 4) L.circle = { c, r }; }
     for (const L of loops) {
       if (L.circle) continue; let bestA = null, bestSpan = 0;
       for (const A of halfAx) { const us = L.pts.filter(q => Math.abs((q.x - A.a.x) * -A.d.y + (q.y - A.a.y) * A.d.x) <= tol * 2).map(q => (q.x - A.a.x) * A.d.x + (q.y - A.a.y) * A.d.y); if (us.length < 2) continue; const span = Math.max(...us) - Math.min(...us), ext = Math.abs(A.d.x) > 0.5 ? L.bb.w : L.bb.h; if (span > ext * 0.3 && span > bestSpan) { bestSpan = span; bestA = A; } }
       // 축이 윤곽의 한쪽 끝에 있어야 반쪽 뷰 (가운데를 지나면 온전한 뷰)
       if (bestA) { const ss = L.pts.map(q => (q.x - bestA.a.x) * -bestA.d.y + (q.y - bestA.a.y) * bestA.d.x); if (Math.min(...ss) > -tol * 3 || Math.max(...ss) < tol * 3) L.half = bestA; }
     }
+    // 같은 자리에 겹친 윤곽(원 + 같은 원을 호로 또 그린 것 등)은 하나만
+    const uniqL = []; for (const L of loops) { if (uniqL.some(U => Math.abs(U.bb.x0 - L.bb.x0) <= tol && Math.abs(U.bb.y0 - L.bb.y0) <= tol && Math.abs(U.bb.x1 - L.bb.x1) <= tol && Math.abs(U.bb.y1 - L.bb.y1) <= tol && Math.abs(U.a - L.a) <= Math.max(U.a, L.a) * 0.01)) continue; uniqL.push(L); }
+    loops.length = 0; loops.push(...uniqL);
     // 포함 관계 (가장 작은 바깥 윤곽이 부모)
     const ok = loops.filter(L => L.pts.length >= 3 && L.a > tol * tol);
     ok.sort((a, b) => b.a - a.a);
@@ -420,6 +430,27 @@
   }
 
 
+  // 모따기 찾기 (육각·사각 너트, 볼트 머리): 정면도 바깥 윤곽 안쪽에 같은 중심의 원·호(모서리보다 작은 반지름)가 있고,
+  //  측면도 끝면 가까이에 선 끝점이 모여 있으면(모따기 깊이) → 원뿔로 모서리를 깎음
+  function findChamfer(front, side, t, tol) {
+    if (front.circle) return null;
+    const c = { x: (front.bb.x0 + front.bb.x1) / 2, y: (front.bb.y0 + front.bb.y1) / 2 };
+    const Rc = Math.max(...front.pts.map(q => Math.hypot(q.x - c.x, q.y - c.y))), Rin = Math.min(...front.pts.map(q => Math.hypot(q.x - c.x, q.y - c.y)));
+    const ents = srcEnts();
+    const arcs = ents.filter(e => (e.type === 'arc' || e.type === 'circle') && !IGN_LAYERS.has(e.layer) && e.c && Math.hypot(e.c.x - c.x, e.c.y - c.y) <= tol * 4 && e.r >= Rin * 0.85 && e.r < Rc - tol * 2);
+    if (!arcs.length) return null;
+    const rc = Math.min(...arcs.map(e => e.r));
+    const sx0 = side.bb.x0, sx1 = side.bb.x1, lim = Math.min(t * 0.35, Rc);
+    let dL = null, dR = null;
+    for (const e of ents) {
+      if (e.layer === '중심선' || e.layer === '치수' || e.layer === '문자') continue;
+      const P = e.type === 'line' ? [e.a, e.b] : e.type === 'polyline' ? [e.pts[0], e.pts[e.pts.length - 1]] : null; if (!P) continue;
+      for (const q of P) { if (q.y < side.bb.y0 - tol || q.y > side.bb.y1 + tol || q.x < sx0 - tol || q.x > sx1 + tol) continue;
+        const a = q.x - sx0, b = sx1 - q.x; if (a > tol * 2 && a < lim) dL = dL == null ? a : Math.min(dL, a); if (b > tol * 2 && b < lim) dR = dR == null ? b : Math.min(dR, b); }
+    }
+    if (dL == null && dR == null) return null;
+    return { c, rc, Rc, dL, dR };
+  }
   /* ---------------- 단면도(해치) → 회전체: 실기 부품도처럼 한 장에 여러 부품 ---------------- */
   function sectionPlan() {
     let ents = srcEnts();
@@ -541,12 +572,13 @@
   function stackPlan(front, side, tol, info0, warn0) {
     const a = stackTry(front, side, tol, 'A'), b = stackTry(front, side, tol, 'B');
     const score = r => r ? r.cover * 10 - r.assumed / Math.max(1, r.segs.length) * 3 - r.segs.length * 0.001 : -Infinity;
-    const best = score(a) >= score(b) ? a : b;
+    const best = score(a) >= score(b) ? a : b; LAB._stackAB = { a: a && { cover: a.cover, assumed: a.assumed, n: a.segs.length }, b: b && { cover: b.cover, assumed: b.assumed, n: b.segs.length } };
     if (!best) return null;
     const info = info0.slice();
     if (best.assumed) info.push(`맞는 단면 윤곽이 없는 구간 ${best.assumed}개는 둥근 단면으로 가정했습니다`);
     if (best.blind) info.push(`숨은선으로 깊이를 읽은 막힌 구멍·자리파기 ${best.blind}개`);
     const kinds = new Set(best.segs.map(g => g.cone ? '원뿔' : g.loop.circle ? '원' : g.loop === best.S ? '단면 윤곽' : '다각형'));
+    if (best.segs.some(g => g.loop === best.S)) { const ch = findChamfer(best.S, best.P, best.total, tol); if (ch) { best.chamfer = ch; info.push(`모따기: 정면도 원 Ø${fmt3(ch.rc * 2)}에서 시작 (육각 머리 모서리를 원뿔로 깎음)`); } }
     return Object.assign(best, { kind: 'stack', front, side, warn: warn0, info, tol, t: best.total, desc: [...kinds].join('·') + (best.mode === 'B' ? ' · 측면도 기준' : '') });
   }
   function stackTry(front, side, tol, mode) {
@@ -639,7 +671,10 @@
     const bigA = Math.max(...tops.map(L => L.a));
     const nb = L => { let h = 0, v = 0; for (const M of tops) { if (M === L) continue; if (overlap(L.bb.y0, L.bb.y1, M.bb.y0, M.bb.y1) / Math.min(L.bb.h, M.bb.h) > 0.6 && (M.bb.x0 > L.bb.x1 - tol || M.bb.x1 < L.bb.x0 + tol)) h++; if (overlap(L.bb.x0, L.bb.x1, M.bb.x0, M.bb.x1) / Math.min(L.bb.w, M.bb.w) > 0.6 && (M.bb.y0 > L.bb.y1 - tol || M.bb.y1 < L.bb.y0 + tol)) v++; } return h && v; };
     const hub = tops.filter(L => L.a >= bigA * 0.2 && nb(L)).sort((a, b) => b.a - a.a)[0];
-    let front = hub || tops.find(L => isRound(L) && L.a >= bigA * 0.5) || tops.find(L => L.circle && L.a >= bigA * 0.5) || tops.reduce((m, L) => L.a > m.a ? L : m, tops[0]);
+    // 원 뷰와 나란한 다른 뷰가 있으면 원 뷰를 정면으로 (볼트·축처럼 옆모습이 더 커도 회전체로 읽게)
+    const pairOf = L => tops.find(M => M !== L && ((overlap(L.bb.y0, L.bb.y1, M.bb.y0, M.bb.y1) / Math.min(L.bb.h, M.bb.h) > 0.6 && Math.abs(M.bb.h - L.bb.h) <= Math.max(L.bb.h, M.bb.h) * 0.15) || (overlap(L.bb.x0, L.bb.x1, M.bb.x0, M.bb.x1) / Math.min(L.bb.w, M.bb.w) > 0.6 && Math.abs(M.bb.w - L.bb.w) <= Math.max(L.bb.w, M.bb.w) * 0.15)));
+    const roundNb = !(hub && hub.circle) ? tops.filter(L => L !== hub && L.circle && L.a >= bigA * 0.05 && (hub ? nb(L) : pairOf(L))).sort((a, b) => b.a - a.a)[0] : null;
+    let front = roundNb || hub || tops.find(L => isRound(L) && L.a >= bigA * 0.5) || tops.find(L => L.circle && L.a >= bigA * 0.5) || tops.reduce((m, L) => L.a > m.a ? L : m, tops[0]);
     // 측면도: 정면과 가로(같은 높이) 또는 세로(같은 너비)로 나란한 가장 가까운 뷰
     let sideV = null, dir = null, best = Infinity, sideH = null, bestH = Infinity, topV = null, bestV = Infinity;
     for (const L of tops) {
@@ -713,7 +748,7 @@
 
     // ── 단면 쌓기: 측면도를 길이 방향으로 잘라, 구간마다 높이가 맞는 정면도 윤곽(육각·원·사각…)을 단면으로 씀
     //    구멍 깊이는 측면도 숨은선에서 읽음 (볼트·너트·축·보스 달린 판 등)
-    if ((kindSel.value === 'auto' || kindSel.value === 'stack') && sideV && dir === 'h' && !sideV.circle) {
+    if ((kindSel.value === 'stack' || (kindSel.value === 'auto' && !front.circle)) && sideV && dir === 'h' && !sideV.circle) {   /* 정면이 원이면 회전체(막힌 구멍 깊이 포함)가 더 정확 */
       const st0 = stackPlan(front, sideV, tol, info, warn);
       if (st0) return st0;
       if (kindSel.value === 'stack') warn.push('구간마다 맞는 정면 윤곽을 다 찾지 못해 다른 방식으로 만들었습니다');
@@ -744,7 +779,9 @@
       const holes = []; let steps = 0;
       (function walk(L) { for (const k of L.kids) { if (k.kids.length) { steps++; walk(k); } else holes.push(k); } })(front);
       if (steps) info.push(`안쪽 윤곽 ${steps}개는 턱·보스(카운터보어 등) 선으로 보고 안쪽 구멍만 뚫었습니다`);
-      return { kind, front, holes, t, tSrc, warn, info, tol };
+      const chamfer = sideV && dir === 'h' ? findChamfer(front, sideV, t, tol) : null;
+      if (chamfer) info.push(`모따기: 정면도 원 Ø${fmt3(chamfer.rc * 2)}에서 시작, 깊이 ${[chamfer.dL, chamfer.dR].filter(Boolean).map(fmt3).join(' · ')} (육각 너트처럼 모서리를 원뿔로 깎음)`);
+      return { kind, front, holes, t, tSrc, chamfer, warn, info, tol };
     }
     if (kind === 'intersect') {
       // 2면 교차: 정면도를 깊이만큼, 측면도를 너비만큼 각각 돌출해 겹치는 부분만 남김 (정밀 엔진)
@@ -779,9 +816,43 @@
     const matches = r => radii.some(x => Math.abs(x - r) <= Math.max(tol * 4, r * 0.01));
     let bore = 0;
     for (const r of conc) if (!matches(r) && r < rMin - tol && (!bore || r < bore)) bore = r;   // 가장 안쪽 원 = 관통 구멍
-    const unknown = conc.filter(r => r !== bore && !matches(r));
+    let unknown = conc.filter(r => r !== bore && !matches(r));
+    // 안쪽 단(소켓·카운터보어 등): 측면도의 축과 나란한 선(숨은선 포함)이 같은 반지름에 있으면 그 길이만큼 판 구멍
+    const steps = [];
+    if (unknown.length) {
+      const Ls = []; for (const e of srcEnts()) { if (!(e.type === 'line' || (e.type === 'polyline' && e.pts && e.pts.length >= 2)) || ['중심선', '치수', '문자'].includes(e.layer) || /center/i.test(String(e.lt || ''))) continue; const PP = e.type === 'line' ? [e.a, e.b] : e.pts.map(q => q), TT = PP.map(tr); if (Math.max(...TT.map(q => q.v)) - Math.min(...TT.map(q => q.v)) > tol) continue; const a = TT.reduce((m, q) => q.u < m.u ? q : m), b = TT.reduce((m, q) => q.u > m.u ? q : m); const u0 = Math.min(a.u, b.u), u1 = Math.max(a.u, b.u); if (u1 < st[0] - tol || u0 > st[st.length - 1] + tol) continue; Ls.push({ r: Math.abs(a.v - v0) * sc, u0, u1 }); }
+      for (const r of unknown) { const m = Ls.filter(l => Math.abs(l.r - r) <= Math.max(tol * 4, r * 0.01)); if (!m.length) continue; const u0 = Math.min(...m.map(l => l.u0)), u1 = Math.max(...m.map(l => l.u1)); if (u1 - u0 > tol) steps.push({ r, z0: u0 - st[0], z1: u1 - st[0] }); }
+      if (steps.length) { info.push(`안쪽 단 ${steps.map(q => 'Ø' + fmt3(q.r * 2) + ' 깊이 ' + fmt3(q.z1 - q.z0)).join(', ')} (측면도 선으로 깊이 읽음)`); unknown = unknown.filter(r => !steps.some(q => q.r === r)); }
+    }
     if (unknown.length) info.push(`측면도와 맞지 않는 동심원 ${unknown.map(r => 'Ø' + fmt3(r * 2)).join(', ')}은 건너뛰었습니다`);
-    return { kind, front, fc, segs, bore, holes, warn, info, tol, total: st[st.length - 1] - st[0] };
+    // 정면의 구멍(육각 렌치 홈 등) 깊이: 측면도에서 구멍 가장자리 높이에 축과 나란한 선이 있으면 그 길이만큼만
+    {
+      const Ls = []; for (const e of srcEnts()) { if (!(e.type === 'line' || (e.type === 'polyline' && e.pts && e.pts.length >= 2)) || ['중심선', '치수', '문자'].includes(e.layer) || /center/i.test(String(e.lt || ''))) continue; const PP = e.type === 'line' ? [e.a, e.b] : e.pts.map(q => q), TT = PP.map(tr); if (Math.max(...TT.map(q => q.v)) - Math.min(...TT.map(q => q.v)) > tol) continue; const a = TT.reduce((m, q) => q.u < m.u ? q : m), b = TT.reduce((m, q) => q.u > m.u ? q : m); const u0 = Math.min(a.u, b.u), u1 = Math.max(a.u, b.u); if (u1 < st[0] - tol || u0 > st[st.length - 1] + tol) continue; Ls.push({ v: (a.v - v0) * sc, u0, u1 }); }
+      let nb = 0;
+      for (const h of holes) {
+        const e0 = (dir === 'h' ? h.bb.y0 - fc.y : h.bb.x0 - fc.x), e1 = (dir === 'h' ? h.bb.y1 - fc.y : h.bb.x1 - fc.x), tl = Math.max(tol, (e1 - e0) * 0.005);
+        const m = Ls.filter(l => Math.abs(l.v - e0) <= tl || Math.abs(l.v - e1) <= tl); if (!m.length) continue;
+        const u0 = Math.min(...m.map(l => l.u0)), u1 = Math.max(...m.map(l => l.u1)), tot = st[st.length - 1] - st[0];
+        if (u1 - u0 > tol && u1 - u0 < tot - tol * 2) { h.z0 = u0 - st[0]; h.z1 = u1 - st[0]; nb++; }
+      }
+      if (nb) info.push(`막힌 구멍 ${nb}개는 측면도 선으로 깊이를 읽었습니다`);
+    }
+    // 회전체 윤곽(반쪽): 측면도 윤곽에서 축 위쪽 부분만 순서대로 (매끈하게 한 번에 돌리기용)
+    let prof = null;
+    try {
+      const P = sideV.pts.map(q => ({ u: tr(q).u, v: tr(q).v - v0, key: q.key })), n = P.length;
+      let top = 0; for (let i = 1; i < n; i++) if (P[i].v > P[top].v) top = i;
+      const fw = [P[top]]; for (let i = 1; i < n; i++) { const q = P[(top + i) % n]; if (q.v < -tol) break; fw.push(q); if (q.v <= tol) break; }
+      const bw = []; for (let i = 1; i < n; i++) { const q = P[(top - i + n) % n]; if (q.v < -tol) break; bw.push(q); if (q.v <= tol) break; }
+      let ch = bw.reverse().concat(fw); if (ch[0].u > ch[ch.length - 1].u) ch = ch.reverse();
+      if (ch.length >= 3 && Math.abs(ch[0].v) <= tol * 2 && Math.abs(ch[ch.length - 1].v) <= tol * 2) {
+        prof = ch.map(q => [Math.max(0, q.v * sc), q.u - st[0], q.key]); prof[0][0] = 0; prof[prof.length - 1][0] = 0; prof[0][2] = prof[prof.length - 1][2] = true;
+      } else if (ch.length >= 2) {
+        prof = [[0, ch[0].u - st[0], true]].concat(ch.map(q => [Math.max(0, q.v * sc), q.u - st[0], q.key]), [[0, ch[ch.length - 1].u - st[0], true]]);
+        prof[1][2] = true; prof[prof.length - 2][2] = true;
+      }
+    } catch (_) { prof = null; }
+    return { kind, front, fc, segs, prof, bore, steps, holes, warn, info, tol, total: st[st.length - 1] - st[0] };
   }
 
   /* ---------------- 3D 만들기 (three.js) ---------------- */
@@ -922,9 +993,42 @@
   }
   const stepBtn = pane.querySelector('#l3step');
   stepBtn.addEventListener('pointerenter', () => { ensureOCC().catch(() => { }); }, { once: true });
+  // 닫힌 꼭짓점 목록 → 그림: 꺾이는 곳(20° 넘게)은 직선 꼭짓점, 그 사이 완만한 점들은 매끈한 곡선 하나로
+  //  (점으로 쪼갠 곡선을 그대로 돌출하면 작은 평면 수십 개가 생겨 2D로 다시 뽑을 때 없는 선이 잔뜩 생김)
+  function polyDraw(R, pp) {
+    const xy = q => [q[0], q[1]];
+    const lines = () => { let d = R.draw(xy(pp[0])); for (let i = 1; i < pp.length; i++) d = d.lineTo(xy(pp[i])); return d.close(); };
+    if (!LAB.smooth || pp.length < 6 || !R.drawPointsInterpolation || !R.Blueprint) return lines();
+    try {
+      const P = pp.slice(); if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 1e-9) P.pop();
+      const n = P.length, turn = i => { const a = P[(i - 1 + n) % n], b = P[i], c = P[(i + 1) % n], u = [b[0] - a[0], b[1] - a[1]], v = [c[0] - b[0], c[1] - b[1]]; return Math.abs(Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1])) * 180 / Math.PI; };
+      const corner = P.map((q, i) => !!q[2] || turn(i) > 20);
+      let st = corner.indexOf(true); if (st < 0) return R.drawPointsInterpolation(P.concat([P[0]]).map(xy), {}, { closeShape: true });
+      const curves = []; let i = st;
+      do { let j = (i + 1) % n; const run = [P[i]]; while (!corner[j]) { run.push(P[j]); j = (j + 1) % n; } run.push(P[j]);
+        // 거의 곧은 구간(현에서 0.4% 이내)은 직선 하나로
+        const A = run[0], B = run[run.length - 1], ch = Math.hypot(B[0] - A[0], B[1] - A[1]) || 1;
+        const dev = Math.max(...run.map(q => Math.abs((q[0] - A[0]) * (B[1] - A[1]) - (q[1] - A[1]) * (B[0] - A[0])) / ch));
+        if (run.length > 2 && dev < ch * 0.004) curves.push(...R.draw(xy(A)).lineTo(xy(B)).done().blueprint.curves);
+        else if (run.length <= 3) for (let k = 0; k < run.length - 1; k++) curves.push(...R.draw(xy(run[k])).lineTo(xy(run[k + 1])).done().blueprint.curves);
+        else curves.push(...R.drawPointsInterpolation(run.map(xy)).blueprint.curves);
+        i = j; } while (i !== st);
+      return new R.Drawing(new R.Blueprint(curves));
+    } catch (_) { return lines(); }
+  }
+  LAB.smooth = true;
+  // 모따기 원뿔로 깎기: 끝면에서 반지름 rc, 깊이 d 에서 모서리 반지름 Rc 에 닿음 (축 = Z, 길이 0~t)
+  function chamferCut(R, s, ch, t, o, alongX) {
+    const Rb = ch.Rc * 1.3, kL = ch.dL ? (ch.Rc - ch.rc) / ch.dL : 0, kR = ch.dR ? (ch.Rc - ch.rc) / ch.dR : 0;
+    const pts = [[0, 0]]; if (ch.dL) pts.push([ch.rc, 0], [Rb, (Rb - ch.rc) / kL]); else pts.push([Rb, 0]);
+    if (ch.dR) pts.push([Rb, t - (Rb - ch.rc) / kR], [ch.rc, t]); else pts.push([Rb, t]);
+    pts.push([0, t]);
+    let d = R.draw(pts[0]); for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);
+    try { let cone = d.close().sketchOnPlane('XZ').revolve(); cone = alongX ? cone.rotate(90, [0, 0, 0], [0, 1, 0]).translate(alongX) : cone.translate([ch.c.x - o.x, ch.c.y - o.y, 0]); return s.intersect(cone); } catch (_) { return s; }
+  }
   function rDraw(R, loop, o) {
     if (loop.circle) return R.drawCircle(loop.circle.r).translate(loop.circle.c.x - o.x, loop.circle.c.y - o.y);
-    const p = loop.pts; let d = R.draw([p[0].x - o.x, p[0].y - o.y]); for (let i = 1; i < p.length; i++) d = d.lineTo([p[i].x - o.x, p[i].y - o.y]); return d.close();
+    return polyDraw(R, loop.pts.map(p => [p.x - o.x, p.y - o.y, p.key]));
   }
   // 구멍은 하나씩 뚫지 않고 한꺼번에 (1,000개도 몇 초)
   function holeTools(R, holes, o, z0, len) { return holes.map(h => h.circle ? R.makeCylinder(h.circle.r, len, [h.circle.c.x - o.x, h.circle.c.y - o.y, z0], [0, 0, 1]) : rDraw(R, h, o).sketchOnPlane('XY', z0).extrude(len)); }
@@ -932,7 +1036,7 @@
   function solidFor(R, pl) {
     if (pl.kind === 'tri') {
       const o = { x: (pl.front.bb.x0 + pl.front.bb.x1) / 2, y: (pl.front.bb.y0 + pl.front.bb.y1) / 2 }, W = pl.front.bb, D = pl.side.bb.w, sb = pl.side.bb, tb = pl.top.bb;
-      const poly = (pts, f) => { const pp = pts.map(f); let d = R.draw(pp[0]); for (let i = 1; i < pp.length; i++) d = d.lineTo(pp[i]); return d.close(); };
+      const poly = (pts, f) => polyDraw(R, pts.map(q => { const r = f(q); r[2] = q.key; return r; }));
       const drawL = (L, f) => L.circle ? (() => { const c = f(L.circle.c); return R.drawCircle(L.circle.r).translate(c[0], c[1]); })() : poly(L.pts, f);
       const mir = (A, q) => { const u = (q.x - A.a.x) * A.d.x + (q.y - A.a.y) * A.d.y, w = (q.x - A.a.x) * -A.d.y + (q.y - A.a.y) * A.d.x; return { x: A.a.x + A.d.x * u + A.d.y * w, y: A.a.y + A.d.y * u - A.d.x * w }; };
       const mirL = (A, L) => L.circle ? { circle: { c: mir(A, L.circle.c), r: L.circle.r } } : { pts: L.pts.map(q => mir(A, q)) };
@@ -981,7 +1085,7 @@
     }
     if (pl.kind === 'stack') {
       const F = stackFrame(pl), M = pl.mode === 'B', PL = M ? 'YZ' : 'XY', off = z => (M ? F.axis0 : 0) + z;
-      const dm = loop => { if (loop.circle) { const c = F.map(loop.circle.c); return R.drawCircle(loop.circle.r).translate(c.x, c.y); } const pp = loop.pts.map(F.map); let d = R.draw([pp[0].x, pp[0].y]); for (let i = 1; i < pp.length; i++) d = d.lineTo([pp[i].x, pp[i].y]); return d.close(); };
+      const dm = loop => { if (loop.circle) { const c = F.map(loop.circle.c); return R.drawCircle(loop.circle.r).translate(c.x, c.y); } return polyDraw(R, loop.pts.map(q => { const m = F.map(q); return [m.x, m.y, q.key]; })); };
       let s = null;
       for (const g of pl.segs) {
         let part;
@@ -992,6 +1096,8 @@
       const tools = pl.holes.map(h => { const z0 = h.z0 <= 1e-6 ? -1 : h.z0, z1 = h.z1 >= pl.total - 1e-6 ? pl.total + 1 : h.z1;
         if (h.loop.circle) { const c = F.map(h.loop.circle.c); return M ? R.makeCylinder(h.loop.circle.r, z1 - z0, [off(z0), c.x, c.y], [1, 0, 0]) : R.makeCylinder(h.loop.circle.r, z1 - z0, [c.x, c.y, z0], [0, 0, 1]); }
         return dm(h.loop).sketchOnPlane(PL, off(z0)).extrude(z1 - z0); });
+      if (pl.chamfer && !M) s = chamferCut(R, s, pl.chamfer, pl.total, F.o);
+      else if (pl.chamfer && M) { const c3 = F.map(pl.chamfer.c); s = chamferCut(R, s, Object.assign({}, pl.chamfer, { c: { x: 0, y: 0 } }), pl.total, { x: 0, y: 0 }, [F.axis0, c3.x, c3.y]); }
       return cutAll(R, s, tools);
     }
     if (pl.kind === 'parts') {
@@ -1001,11 +1107,12 @@
     if (pl.kind === 'extrude' || pl.kind === 'intersect') {
       const o = { x: (pl.front.bb.x0 + pl.front.bb.x1) / 2, y: (pl.front.bb.y0 + pl.front.bb.y1) / 2 };
       let s = rDraw(R, pl.front, o).sketchOnPlane().extrude(pl.t);
+      if (pl.chamfer) s = chamferCut(R, s, pl.chamfer, pl.t, o);
       s = cutAll(R, s, holeTools(R, pl.holes, o, -1, pl.t + 2));
       if (pl.kind === 'intersect') {
         // 측면도: (높이, 깊이) → YZ 평면, 너비 방향(X)으로 돌출
         const sb = pl.side.bb, toYZ = q => [q.y - o.y, q.x - sb.x0];
-        const sd = loop => { if (loop.circle) return R.drawCircle(loop.circle.r).translate(loop.circle.c.y - o.y, loop.circle.c.x - sb.x0); const pp = loop.pts.map(toYZ); let d = R.draw(pp[0]); for (let i = 1; i < pp.length; i++) d = d.lineTo(pp[i]); return d.close(); };
+        const sd = loop => { if (loop.circle) return R.drawCircle(loop.circle.r).translate(loop.circle.c.y - o.y, loop.circle.c.x - sb.x0); return polyDraw(R, loop.pts.map(q => { const r = toYZ(q); r[2] = q.key; return r; })); };
         let d = sd(pl.side); for (const h of pl.sideHoles) d = d.cut(sd(h));
         const W = pl.front.bb, sideSolid = d.sketchOnPlane('YZ', W.x0 - o.x - 1).extrude(W.w + 2);
         s = s.intersect(sideSolid);
@@ -1013,17 +1120,40 @@
       return s;
     }
     const o = pl.fc; let s = null;
-    for (const g of pl.segs) {
+    // 측면도 반쪽 윤곽을 그대로 한 번에 돌림 (둥근 머리·모따기가 매끈한 면 하나로 → 구간마다 생기던 원 모양 경계선 없음)
+    if (LAB.smooth) {
+      try {
+        if (!pl.prof) throw new Error('no profile');
+        const pr = []; for (const q of pl.prof) { const l = pr[pr.length - 1]; if (!l || Math.hypot(l[0] - q[0], l[1] - q[1]) > pl.tol * 0.05) pr.push(q.slice()); else if (q[2]) l[2] = true; }
+        s = polyDraw(R, pr).sketchOnPlane('XZ').revolve(); LAB._revErr = null;
+      } catch (e) { s = null; LAB._revErr = String(e && e.message || e); }
+    }
+    if (!s) for (const g of pl.segs) {
       let part;
       if (Math.abs(g.rA - g.rB) <= pl.tol) part = R.drawCircle((g.rA + g.rB) / 2).sketchOnPlane('XY', g.z).extrude(g.L);
       else part = R.drawCircle(Math.max(g.rA, 1e-3)).sketchOnPlane('XY', g.z).loftWith(R.drawCircle(Math.max(g.rB, 1e-3)).sketchOnPlane('XY', g.z + g.L));
       s = s ? s.fuse(part) : part;
     }
-    const len = pl.total + 2, tools = holeTools(R, pl.holes, o, -1, len);
+    const len = pl.total + 2, tools = holeTools(R, pl.holes.filter(h => h.z0 == null), o, -1, len);
+    for (const h of pl.holes.filter(h => h.z0 != null)) { const z0 = h.z0 <= pl.tol ? -1 : h.z0, z1 = h.z1 >= pl.total - pl.tol ? pl.total + 1 : h.z1; tools.push(...holeTools(R, [h], o, z0, z1 - z0)); }
     if (pl.bore > 0) tools.push(R.makeCylinder(pl.bore, len, [0, 0, -1], [0, 0, 1]));
+    for (const q of pl.steps || []) { const z0 = q.z0 <= pl.tol ? -1 : q.z0, z1 = q.z1 >= pl.total - pl.tol ? pl.total + 1 : q.z1; tools.push(R.makeCylinder(q.r, z1 - z0, [0, 0, z0], [0, 0, 1])); }
     return cutAll(R, s, tools);
   }
-  async function makeSolid(R, pl) { return solidFor(R, pl); }
+  // 같은 평면·같은 원통으로 나뉜 면을 하나로 합침 (구간을 나눠 만든 3D에 생기는 쓸데없는 경계선 정리 → 2D로 다시 뽑았을 때 없는 선이 안 생김)
+  function tidy(s) { try { const t = s && s.simplify ? s.simplify() : s; return t || s; } catch (_) { return s; } }
+  LAB.tidy = true;
+  const volOf = (R, s) => { try { return R.measureVolume ? R.measureVolume(s) : null; } catch (_) { return null; } };
+  async function makeSolid(R, pl) {
+    let s = solidFor(R, pl);
+    // 매끈한 곡선으로 만든 교차(불리언)가 실패하면(부피가 크게 다름) 꺾은선 방식으로 다시
+    if (LAB.smooth && (pl.kind === 'intersect' || pl.kind === 'tri')) {
+      const v1 = volOf(R, s); LAB.smooth = false; let s2 = null; try { s2 = solidFor(R, pl); } catch (_) { } LAB.smooth = true;
+      const v2 = s2 ? volOf(R, s2) : null;
+      if (s2 && v2 && (!v1 || v1 <= 0 || Math.abs(v1 - v2) / v2 > 0.1)) s = s2;
+    }
+    return LAB.tidy ? tidy(s) : s;
+  }
   stepBtn.onclick = async () => {
     if (!lastPlan) { log('3D로 만들 윤곽이 없습니다', 'err'); return; }
     const old = stepBtn.textContent; stepBtn.disabled = true; stepBtn.textContent = occP ? 'STEP 만드는 중…' : '엔진 받는 중…';
