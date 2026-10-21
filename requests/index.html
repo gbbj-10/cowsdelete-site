@@ -125,12 +125,12 @@
       <span class="side"><span class="chipb ${r.status}">${STATUS[r.status]}</span>${r.bounty?`<span class="chipb bounty">현상금 ${r.bounty}</span>`:''}</span>
       <span><p class="t">${esc(r.title)}</p><span class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · ${day(r.created_at)}</span>
         ${(r.tags||[]).length?`<span class="tags">${r.tags.map(t=>`<span>#${esc(t)}</span>`).join('')}</span>`:''}</span>
-      <span class="n">답 ${r.answers}</span></button>`;
+      <span class="n">답 ${r.answers}${r.staff_reply?' · 운영자 답변':''}</span></button>`;
   }
 
   async function load(){
     if(filter==='mine'&&!S.user){list.innerHTML='<div class="empty">내 요청을 보려면 로그인하세요.</div>';return}
-    let qb=sb.from('requests').select('id,title,tags,bounty,status,answers,author_nick,author_grade,created_at').order('created_at',{ascending:false}).limit(60);
+    let qb=sb.from('requests').select('id,title,tags,bounty,status,answers,author_nick,author_grade,created_at,staff_reply').order('created_at',{ascending:false}).limit(60);
     qb=filter==='mine'?qb.eq('owner',S.user.id):qb.eq('status',filter);
     const {data,error}=await qb;
     if(error){list.innerHTML=`<div class="empty">불러오지 못했습니다: ${esc(error.message)}</div>`;return}
@@ -152,6 +152,7 @@
       <div class="by" style="color:var(--ink-3);font-size:14px;margin-bottom:12px">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · ${new Date(r.created_at).toLocaleDateString('ko-KR')}</div>
       ${r.body?`<p class="rq-body">${esc(r.body)}</p>`:''}
       ${(r.tags||[]).length?`<div class="tags">${r.tags.map(t=>`<span>#${esc(t)}</span>`).join('')}</div>`:''}
+      ${r.staff_reply?`<div class="staff-reply" style="margin:16px 0 0;padding:12px 14px;border:1px solid var(--line,#2a3a55);border-left:3px solid #f2c94c;border-radius:8px"><div style="font-size:13px;color:var(--ink-3);margin-bottom:6px">운영자 답변 · 흑우${r.staff_reply_at?' · '+new Date(r.staff_reply_at).toLocaleDateString('ko-KR'):''}</div><p class="rq-body" style="margin:0">${esc(r.staff_reply)}</p></div>`:''}
       <h4 style="margin:22px 0 0">답 ${(ans||[]).length}</h4>
       <div class="ans">${answers||'<p class="note">아직 답이 없습니다. 무카 CAD에서 그려서 [공유]한 뒤 여기서 답으로 걸어 주세요.</p>'}</div>
       <p class="err" data-err></p>
