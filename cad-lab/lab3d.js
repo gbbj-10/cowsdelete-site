@@ -761,7 +761,11 @@
         const bw = []; for (let i = 1; i < n; i++) { const q = P[(top - i + n) % n]; if (q.v < -tol) break; bw.push(q); if (q.v <= tol) break; }
         let ch = bw.reverse().concat(fw); if (ch[0].u > ch[ch.length - 1].u) ch = ch.reverse();
         if (ch.length >= 3) {
-          const prof = [[0, ch[0].u - sideV.bb.x0, true]].concat(ch.map(q => [Math.max(0, q.v), q.u - sideV.bb.x0, q.key]), [[0, ch[ch.length - 1].u - sideV.bb.x0, true]]);
+          // 측면 윤곽 위쪽 끝선(높이마다 가장 큰 반지름)으로 다시 뽑아 잔물결 없앰
+          const SP = sideV.pts, u0 = sideV.bb.x0, u1 = sideV.bb.x1, N = 240, env = [];
+          for (let k = 0; k <= N; k++) { const u = u0 + (u1 - u0) * (k === 0 ? 0.0005 : k === N ? 0.9995 : k / N); let m = 0; for (let i = 0, n = SP.length; i < n; i++) { const a = SP[i], b = SP[(i + 1) % n]; if ((a.x - u) * (b.x - u) > 0 || a.x === b.x) continue; m = Math.max(m, a.y + (b.y - a.y) * (u - a.x) / (b.x - a.x) - c.y); } env.push([m, u - u0]); }
+          let ev = env; for (let pass = 0; pass < 4; pass++) { const q = [ev[0]]; for (let i = 1; i < ev.length - 1; i++) { const A = q[q.length - 1], B = ev[i], C = ev[i + 1], L = Math.hypot(C[0] - A[0], C[1] - A[1]) || 1; if (Math.abs((B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0])) / L > tol * 0.5) q.push(B); } q.push(ev[ev.length - 1]); ev = q; }
+          const prof = [[0, 0, true]].concat(ev.map(q => [q[0], q[1]]), [[0, u1 - u0, true]]);
           prof[1][2] = true; prof[prof.length - 2][2] = true;
           const holes = []; (function walk(L) { for (const k of L.kids) { if (k.kids.length) walk(k); else holes.push(k); } })(front);
           info.push('정면 돌출 ∩ 측면 윤곽 회전체 (톱니 끝 모따기 등)');
@@ -1203,7 +1207,7 @@
       const o = { x: (pl.front.bb.x0 + pl.front.bb.x1) / 2, y: (pl.front.bb.y0 + pl.front.bb.y1) / 2 };
       let s = rDraw(R, pl.front, o).sketchOnPlane().extrude(pl.t);
       const pr = []; for (const q of pl.prof) { const l = pr[pr.length - 1]; if (!l || Math.hypot(l[0] - q[0], l[1] - q[1]) > pl.tol * 0.05) pr.push(q.slice()); else if (q[2]) l[2] = true; }
-      try { const rv = polyDraw(R, pr, { keyTurn: 3 }).sketchOnPlane('XZ').revolve().translate([pl.c.x - o.x, pl.c.y - o.y, 0]); s = s.intersect(rv); } catch (_) { }
+      try { const rv = polyDraw(R, pr, { keyTurn: 90 }).sketchOnPlane('XZ').revolve().translate([pl.c.x - o.x, pl.c.y - o.y, 0]); s = s.intersect(rv); } catch (_) { }
       return cutAll(R, s, holeTools(R, pl.holes, o, -1, pl.t + 2));
     }
     if (pl.kind === 'extrude' || pl.kind === 'intersect') {
