@@ -844,6 +844,9 @@
     let bore = 0;
     for (const r of conc) if (!matches(r) && r < rMin - tol && (!bore || r < bore)) bore = r;   // 가장 안쪽 원 = 관통 구멍
     let unknown = conc.filter(r => r !== bore && !matches(r));
+    // 보어 모서리 모따기: 보어보다 조금 큰 동심원 (양쪽 끝 45°)
+    let boreCh = 0;
+    if (bore > 0) { const c = unknown.filter(r => r > bore + tol && r < bore * 1.12 + tol * 2); if (c.length) { boreCh = Math.min(...c) - bore; unknown = unknown.filter(r => !c.includes(r)); info.push(`보어 모따기 ${fmt3(boreCh)}`); } }
     // 숨은선 동심원(뒤쪽 홈·자리파기)도 안쪽 단 후보
     for (const e of srcEnts()) if (e.type === 'circle' && (e.layer === '숨은선' || /hidden|dashed/i.test(String(e.lt || ''))) && Math.hypot(e.c.x - fc.x, e.c.y - fc.y) <= tol * 4 && e.r < R0 - tol && e.r !== bore && !matches(e.r) && !unknown.some(r => Math.abs(r - e.r) <= tol)) unknown.push(e.r);
     // 안쪽 단(소켓·카운터보어 등): 측면도의 축과 나란한 선(숨은선 포함)이 같은 반지름에 있으면 그 길이만큼 판 구멍
@@ -888,7 +891,11 @@
         const rr = conc.concat(radii).filter(r => r > tol);
         const rin = Math.max(...rr.filter(r => r < Rp - rb * 0.3)), rout = Math.min(...rr.filter(r => r > Rp + rb * 0.3));
         if (!isFinite(rin) || !isFinite(rout)) continue;
-        balls = { rb, Rp, zb, centers: cs.map(c => ({ x: c.x - fc.x, y: c.y - fc.y })), rin, rout };
+        // 링 안쪽 모서리 모따기: 틈 경계 바로 바깥의 동심원 (정면에 보이는 원)
+        const allR = conc.concat(unknown), gap = rout - rin;
+        const rinC = Math.min(rin, ...allR.filter(r => r < rin - tol && r > rin - gap * 0.3)), routC = Math.max(rout, ...allR.filter(r => r > rout + tol && r < rout + gap * 0.3));
+        balls = { rb, Rp, zb, centers: cs.map(c => ({ x: c.x - fc.x, y: c.y - fc.y })), rin, rout, rinC, routC };
+        unknown = unknown.filter(r => Math.abs(r - rinC) > tol && Math.abs(r - routC) > tol);
         unknown = unknown.filter(r => Math.abs(r - rin) > tol * 2 && Math.abs(r - rout) > tol * 2);
         info.push(`볼 베어링: 볼 ${cs.length}개 (Ø${fmt3(rb * 2)}, 피치원 Ø${fmt3(Rp * 2)}), 링 사이 틈 Ø${fmt3(rin * 2)}~Ø${fmt3(rout * 2)}`);
         break;
@@ -910,7 +917,7 @@
         prof[1][2] = true; prof[prof.length - 2][2] = true;
       }
     } catch (_) { prof = null; }
-    return { kind, front, fc, segs, prof, bore, steps, balls, holes, warn, info, tol, total: st[st.length - 1] - st[0] };
+    return { kind, front, fc, segs, prof, bore, boreCh, steps, balls, holes, warn, info, tol, total: st[st.length - 1] - st[0] };
   }
 
   /* ---------------- 3D 만들기 (three.js) ---------------- */
@@ -1091,7 +1098,8 @@
   }
   // 구멍은 하나씩 뚫지 않고 한꺼번에 (1,000개도 몇 초)
   function holeTools(R, holes, o, z0, len) { return holes.map(h => h.circle ? R.makeCylinder(h.circle.r, len, [h.circle.c.x - o.x, h.circle.c.y - o.y, z0], [0, 0, 1]) : rDraw(R, h, o).sketchOnPlane('XY', z0).extrude(len)); }
-  function cutAll(R, s, tools) { return !tools.length ? s : s.cut(tools.length === 1 ? tools[0] : R.makeCompound(tools)); }
+  // 겹치는 도구(보어+모따기 등)를 한 묶음으로 빼면 일부가 안 빠지는 경우가 있어, 적으면 하나씩 뺌
+  function cutAll(R, s, tools) { if (!tools.length) return s; if (tools.length <= 12) { for (const t of tools) s = s.cut(t); return s; } return s.cut(R.makeCompound(tools)); }
   function solidFor(R, pl) {
     if (pl.kind === 'tri') {
       const o = { x: (pl.front.bb.x0 + pl.front.bb.x1) / 2, y: (pl.front.bb.y0 + pl.front.bb.y1) / 2 }, W = pl.front.bb, D = pl.side.bb.w, sb = pl.side.bb, tb = pl.top.bb;
@@ -1201,13 +1209,19 @@
       s = s ? s.fuse(part) : part;
     }
     const len = pl.total + 2, tools = holeTools(R, pl.holes.filter(h => h.z0 == null), o, -1, len);
-    for (const h of pl.holes.filter(h => h.z0 != null)) { const z0 = h.z0 <= pl.tol ? -1 : h.z0, z1 = h.z1 >= pl.total - pl.tol ? pl.total + 1 : h.z1; tools.push(...holeTools(R, [h], o, z0, z1 - z0)); }
+    for (const h of pl.holes.filter(h => h.z0 != null)) { const z0 = h.z0 <= Math.max(pl.tol * 4, pl.total * 0.03) ? -1 : h.z0, z1 = h.z1 >= pl.total - Math.max(pl.tol * 4, pl.total * 0.03) ? pl.total + 1 : h.z1; tools.push(...holeTools(R, [h], o, z0, z1 - z0)); }
     if (pl.bore > 0) tools.push(R.makeCylinder(pl.bore, len, [0, 0, -1], [0, 0, 1]));
-    for (const q of pl.steps || []) { const z0 = q.z0 <= pl.tol ? -1 : q.z0, z1 = q.z1 >= pl.total - pl.tol ? pl.total + 1 : q.z1; tools.push(R.makeCylinder(q.r, z1 - z0, [0, 0, z0], [0, 0, 1])); }
+    if (pl.bore > 0 && pl.boreCh > 0) { const b = pl.bore, c = pl.boreCh, L0 = pl.total;
+      for (const pts of [[[0, -1], [b + c + 1, -1], [b, c], [0, c]], [[0, L0 + 1], [b + c + 1, L0 + 1], [b, L0 - c], [0, L0 - c]]]) { let d = R.draw(pts[0]); for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]); try { tools.push(d.close().sketchOnPlane('XZ').revolve()); } catch (e) { LAB._chErr = String(e && e.message || e); } } }
+    const endT = Math.max(pl.tol * 4, pl.total * 0.03);
+    for (const q of pl.steps || []) { const z0 = q.z0 <= endT ? -1 : q.z0, z1 = q.z1 >= pl.total - endT ? pl.total + 1 : q.z1; tools.push(R.makeCylinder(q.r, z1 - z0, [0, 0, z0], [0, 0, 1])); }
     if (pl.balls) {
       const b = pl.balls;
       try {
-        let ring = R.makeCylinder(b.rout, len, [0, 0, -1], [0, 0, 1]).cut(R.makeCylinder(b.rin, len, [0, 0, -1], [0, 0, 1]));
+        const L0 = pl.total, dO = b.routC - b.rout, dI = b.rin - b.rinC;
+        const gp = [[b.rinC, -0.001], [b.routC, -0.001], [b.rout, dO], [b.rout, L0 - dO], [b.routC, L0 + 0.001], [b.rinC, L0 + 0.001], [b.rin, L0 - dI], [b.rin, dI]];
+        let gd = R.draw(gp[0]); for (let i = 1; i < gp.length; i++) gd = gd.lineTo(gp[i]);
+        let ring = gd.close().sketchOnPlane('XZ').revolve();
         const groove = R.drawCircle(b.rb * 1.02).translate(b.Rp, b.zb).sketchOnPlane('XZ').revolve();
         let out = cutAll(R, s, tools).cut(ring).cut(groove);
         const sph = b.centers.map(c => R.makeSphere(b.rb).translate([c.x, c.y, b.zb]));
