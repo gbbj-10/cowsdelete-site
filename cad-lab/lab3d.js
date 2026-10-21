@@ -432,7 +432,7 @@
 
   // 모따기 찾기 (육각·사각 너트, 볼트 머리): 정면도 바깥 윤곽 안쪽에 같은 중심의 원·호(모서리보다 작은 반지름)가 있고,
   //  측면도 끝면 가까이에 선 끝점이 모여 있으면(모따기 깊이) → 원뿔로 모서리를 깎음
-  function findChamfer(front, side, t, tol) {
+  function findChamfer(front, side, t, tol, seg) {
     if (front.circle) return null;
     const c = { x: (front.bb.x0 + front.bb.x1) / 2, y: (front.bb.y0 + front.bb.y1) / 2 };
     const Rc = Math.max(...front.pts.map(q => Math.hypot(q.x - c.x, q.y - c.y))), Rin = Math.min(...front.pts.map(q => Math.hypot(q.x - c.x, q.y - c.y)));
@@ -440,7 +440,7 @@
     const arcs = ents.filter(e => (e.type === 'arc' || e.type === 'circle') && !IGN_LAYERS.has(e.layer) && e.c && Math.hypot(e.c.x - c.x, e.c.y - c.y) <= tol * 4 && e.r >= Rin * 0.85 && e.r < Rc - tol * 2);
     if (!arcs.length) return null;
     const rc = Math.min(...arcs.map(e => e.r));
-    const sx0 = side.bb.x0, sx1 = side.bb.x1, lim = Math.min(t * 0.35, Rc);
+    const sx0 = seg ? side.bb.x0 + seg[0] : side.bb.x0, sx1 = seg ? side.bb.x0 + seg[1] : side.bb.x1, lim = Math.min((sx1 - sx0) * 0.35, Rc);
     let dL = null, dR = null;
     for (const e of ents) {
       if (e.layer === '중심선' || e.layer === '치수' || e.layer === '문자') continue;
@@ -449,7 +449,7 @@
         const a = q.x - sx0, b = sx1 - q.x; if (a > tol * 2 && a < lim) dL = dL == null ? a : Math.min(dL, a); if (b > tol * 2 && b < lim) dR = dR == null ? b : Math.min(dR, b); }
     }
     if (dL == null && dR == null) return null;
-    return { c, rc, Rc, dL, dR };
+    return { c, rc, Rc, dL, dR, z0: seg ? seg[0] : 0, z1: seg ? seg[1] : t };
   }
   /* ---------------- 단면도(해치) → 회전체: 실기 부품도처럼 한 장에 여러 부품 ---------------- */
   function sectionPlan() {
@@ -578,7 +578,8 @@
     if (best.assumed) info.push(`맞는 단면 윤곽이 없는 구간 ${best.assumed}개는 둥근 단면으로 가정했습니다`);
     if (best.blind) info.push(`숨은선으로 깊이를 읽은 막힌 구멍·자리파기 ${best.blind}개`);
     const kinds = new Set(best.segs.map(g => g.cone ? '원뿔' : g.loop.circle ? '원' : g.loop === best.S ? '단면 윤곽' : '다각형'));
-    if (best.segs.some(g => g.loop === best.S)) { const ch = findChamfer(best.S, best.P, best.total, tol); if (ch) { best.chamfer = ch; info.push(`모따기: 정면도 원 Ø${fmt3(ch.rc * 2)}에서 시작 (육각 머리 모서리를 원뿔로 깎음)`); } }
+    const polySeg = best.segs.filter(g => g.loop && !g.loop.circle);
+    if (polySeg.length) { const Lp = polySeg[0].loop, zz0 = Math.min(...polySeg.filter(g => g.loop === Lp).map(g => g.z)), zz1 = Math.max(...polySeg.filter(g => g.loop === Lp).map(g => g.z + g.L)); const ch = findChamfer(Lp, best.P, best.total, tol, [zz0, zz1]); if (ch) ch.Rbig = Math.max(best.S.bb.w, best.S.bb.h, best.P.bb.h) * 0.75; if (ch) { best.chamfer = ch; info.push(`모따기: 정면도 원 Ø${fmt3(ch.rc * 2)}에서 시작 (육각 머리 모서리를 원뿔로 깎음)`); } }
     return Object.assign(best, { kind: 'stack', front, side, warn: warn0, info, tol, t: best.total, desc: [...kinds].join('·') + (best.mode === 'B' ? ' · 측면도 기준' : '') });
   }
   function stackTry(front, side, tol, mode) {
@@ -768,9 +769,10 @@
         }
       }
     }
-    if ((kindSel.value === 'stack' || (kindSel.value === 'auto' && !front.circle)) && sideV && dir === 'h' && !sideV.circle) {   /* 정면이 원이면 회전체(막힌 구멍 깊이 포함)가 더 정확 */
+    if ((kindSel.value === 'stack' || kindSel.value === 'auto') && sideV && dir === 'h' && !sideV.circle) {
       const st0 = stackPlan(front, sideV, tol, info, warn);
-      if (st0) return st0;
+      // 정면이 원이면 회전체(막힌 구멍 깊이 포함)가 더 정확 → 원이 아닌 단면(플랜지 너트의 육각 등)이 실제로 쓰일 때만 단면 쌓기
+      if (st0 && (!front.circle || kindSel.value === 'stack' || st0.segs.some(g => g.loop && !g.loop.circle && g.L >= st0.total * 0.1))) return st0;
       if (kindSel.value === 'stack') warn.push('구간마다 맞는 정면 윤곽을 다 찾지 못해 다른 방식으로 만들었습니다');
     }
     let kind = kindSel.value === 'stack' ? 'auto' : kindSel.value;
@@ -1085,12 +1087,16 @@
   LAB.smooth = true;
   // 모따기 원뿔로 깎기: 끝면에서 반지름 rc, 깊이 d 에서 모서리 반지름 Rc 에 닿음 (축 = Z, 길이 0~t)
   function chamferCut(R, s, ch, t, o, alongX) {
-    const Rb = ch.Rc * 1.3, kL = ch.dL ? (ch.Rc - ch.rc) / ch.dL : 0, kR = ch.dR ? (ch.Rc - ch.rc) / ch.dR : 0;
-    const pts = [[0, 0]]; if (ch.dL) pts.push([ch.rc, 0], [Rb, (Rb - ch.rc) / kL]); else pts.push([Rb, 0]);
-    if (ch.dR) pts.push([Rb, t - (Rb - ch.rc) / kR], [ch.rc, t]); else pts.push([Rb, t]);
-    pts.push([0, t]);
-    let d = R.draw(pts[0]); for (let i = 1; i < pts.length; i++) d = d.lineTo(pts[i]);
-    try { let cone = d.close().sketchOnPlane('XZ').revolve(); cone = alongX ? cone.rotate(90, [0, 0, 0], [0, 1, 0]).translate(alongX) : cone.translate([ch.c.x - o.x, ch.c.y - o.y, 0]); return s.intersect(cone); } catch (_) { return s; }
+    const z0 = ch.z0 || 0, z1 = ch.z1 == null ? t : ch.z1, Rb = Math.max(ch.Rc * 1.3, ch.Rbig || 0), kL = ch.dL ? (ch.Rc - ch.rc) / ch.dL : 0, kR = ch.dR ? (ch.Rc - ch.rc) / ch.dR : 0;
+    let eL = ch.dL ? z0 + (Rb - ch.rc) / kL : z0, eR = ch.dR ? z1 - (Rb - ch.rc) / kR : z1;
+    if (eL > eR) { const m = (eL + eR) / 2; eL = eR = m; }
+    const pts = [[0, -1], [Rb, -1]];
+    if (ch.dL) pts.push([Rb, z0], [ch.rc, z0], [Rb, eL]); 
+    if (ch.dR) pts.push([Rb, eR], [ch.rc, z1], [Rb, z1]);
+    pts.push([Rb, t + 1], [0, t + 1]);
+    const P2 = []; for (const q of pts) { const l = P2[P2.length - 1]; if (!l || Math.hypot(l[0] - q[0], l[1] - q[1]) > 1e-7) P2.push(q); }
+    let d = R.draw(P2[0]); for (let i = 1; i < P2.length; i++) d = d.lineTo(P2[i]);
+    try { let cone = d.close().sketchOnPlane('XZ').revolve(); cone = alongX ? cone.rotate(90, [0, 0, 0], [0, 1, 0]).translate(alongX) : cone.translate([ch.c.x - o.x, ch.c.y - o.y, 0]); return s.intersect(cone); } catch (e) { LAB._chErr = String(e && e.message || e); return s; }
   }
   function rDraw(R, loop, o) {
     if (loop.circle) return R.drawCircle(loop.circle.r).translate(loop.circle.c.x - o.x, loop.circle.c.y - o.y);
@@ -1154,7 +1160,29 @@
       const F = stackFrame(pl), M = pl.mode === 'B', PL = M ? 'YZ' : 'XY', off = z => (M ? F.axis0 : 0) + z;
       const dm = loop => { if (loop.circle) { const c = F.map(loop.circle.c); return R.drawCircle(loop.circle.r).translate(c.x, c.y); } return polyDraw(R, loop.pts.map(q => { const m = F.map(q); return [m.x, m.y, q.key]; })); };
       let s = null;
-      for (const g of pl.segs) {
+      // 다각형 단면(육각 등)이 원뿔 구간과 붙어 있으면 그 원뿔 구간까지 늘려 겹침 (원뿔 면과 만나는 곡선 모서리)
+      const segs2 = pl.segs.map(g => Object.assign({}, g));
+      for (let i = 0; i < segs2.length; i++) { const g = segs2[i]; if (!g.loop || g.loop.circle) continue;
+        const cr = Math.max(...g.loop.pts.map(q => Math.hypot(q.x - (g.loop.bb.x0 + g.loop.bb.x1) / 2, q.y - (g.loop.bb.y0 + g.loop.bb.y1) / 2)));
+        let j = i + 1; while (j < segs2.length && segs2[j].cone && Math.max(segs2[j].cone.rA, segs2[j].cone.rB) >= cr * 0.98) { g.L = segs2[j].z + segs2[j].L - g.z; j++; if (Math.max(segs2[j - 1].cone.rA, segs2[j - 1].cone.rB) >= cr) break; }
+        j = i - 1; while (j >= 0 && segs2[j].cone && Math.max(segs2[j].cone.rA, segs2[j].cone.rB) >= cr * 0.98) { const e = g.z + g.L; g.z = segs2[j].z; g.L = e - g.z; j--; if (Math.max(segs2[j + 1].cone.rA, segs2[j + 1].cone.rB) >= cr) break; } }
+      // 같은 중심의 둥근 구간(원·원뿔)이 이어지면 측면 윤곽 하나로 매끈하게 돌림 (둥근 테두리에 구간 경계선이 안 생기게)
+      const roundC = g => g.cone ? g.cone.c : (g.loop && g.loop.circle ? g.loop.circle.c : null), rr = g => g.cone ? [g.cone.rA, g.cone.rB] : [g.loop.circle.r, g.loop.circle.r];
+      const runs = []; for (const g of segs2) { const c = roundC(g), last = runs[runs.length - 1]; if (c && last && last.c && Math.hypot(last.c.x - c.x, last.c.y - c.y) <= pl.tol * 4 && Math.abs(last.z1 - g.z) <= pl.tol) { last.segs.push(g); last.z1 = g.z + g.L; } else runs.push({ c, segs: [g], z0: g.z, z1: g.z + g.L }); }
+      for (const run of runs) {
+        if (!run.c || run.segs.length < 2 || !LAB.smooth) continue;
+        try {
+          const pr = [[0, run.z0, true]]; for (const g of run.segs) { const [a, b] = rr(g); pr.push([a, g.z], [b, g.z + g.L]); } pr.push([0, run.z1, true]);
+          const P2 = []; for (const q of pr) { const l = P2[P2.length - 1]; if (!l || Math.hypot(l[0] - q[0], l[1] - q[1]) > pl.tol * 0.05) P2.push(q); }
+          P2[1][2] = true; P2[P2.length - 2][2] = true;
+          let part = polyDraw(R, P2, { keyTurn: 3 }).sketchOnPlane('XZ').revolve(); const c = F.map(run.c);
+          part = M ? part.rotate(90, [0, 0, 0], [0, 1, 0]).translate([F.axis0, c.x, c.y]) : part.translate([c.x, c.y, 0]);
+          s = s ? s.fuse(part) : part; run.done = true;
+        } catch (_) { }
+      }
+      const doneSegs = new Set(runs.filter(r => r.done).flatMap(r => r.segs));
+      for (const g of segs2) {
+        if (doneSegs.has(g)) continue;
         let part;
         if (g.cone) { const c = F.map(g.cone.c); part = R.drawCircle(Math.max(g.cone.rA, 1e-3)).translate(c.x, c.y).sketchOnPlane(PL, off(g.z)).loftWith(R.drawCircle(Math.max(g.cone.rB, 1e-3)).translate(c.x, c.y).sketchOnPlane(PL, off(g.z + g.L))); }
         else part = dm(g.loop).sketchOnPlane(PL, off(g.z)).extrude(g.L);
