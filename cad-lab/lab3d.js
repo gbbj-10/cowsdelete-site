@@ -800,8 +800,15 @@
       (function walk(L) { for (const k of L.kids) { if (k.kids.length) { steps++; walk(k); } else holes.push(k); } })(front);
       if (steps) info.push(`안쪽 윤곽 ${steps}개는 턱·보스(카운터보어 등) 선으로 보고 안쪽 구멍만 뚫었습니다`);
       const chamfer = sideV && dir === 'h' ? findChamfer(front, sideV, t, tol) : null;
+      // 헬리컬 기어: 측면도에 두께 전체를 가로지르는 비스듬한 곡선이 많으면 비틀림 각도를 읽음
+      let twist = 0;
+      if (sideV && dir === 'h' && !front.circle) {
+        const c = { x: (front.bb.x0 + front.bb.x1) / 2, y: (front.bb.y0 + front.bb.y1) / 2 }, Rf = Math.max(...front.pts.map(q => Math.hypot(q.x - c.x, q.y - c.y))), sx0 = sideV.bb.x0, sx1 = sideV.bb.x1, ds = [];
+        for (const e of srcEnts()) { if (e.layer !== '외형선' || e.type !== 'polyline' || !e.pts || e.pts.length < 3) continue; const P = e.pts.slice().sort((a, b) => a.x - b.x), L = P[0], Rr = P[P.length - 1]; if (L.x > sx0 + tol * 2 || Rr.x < sx1 - tol * 2) continue; const yl = (L.y - c.y) / Rf, yr = (Rr.y - c.y) / Rf; if (Math.abs(yl) > 0.4 || Math.abs(yr) > 0.4) continue; ds.push((Math.asin(yr) - Math.asin(yl)) * 180 / Math.PI); }
+        if (ds.length >= 6) { ds.sort((a, b) => a - b); const m = ds[ds.length >> 1]; if (Math.abs(m) > 1) { twist = m; info.push(`헬리컬: 측면도 비스듬한 선에서 비틀림 ${fmt3(m)}° 읽음`); } }
+      }
       if (chamfer) info.push(`모따기: 정면도 원 Ø${fmt3(chamfer.rc * 2)}에서 시작, 깊이 ${[chamfer.dL, chamfer.dR].filter(Boolean).map(fmt3).join(' · ')} (육각 너트처럼 모서리를 원뿔로 깎음)`);
-      return { kind, front, holes, t, tSrc, chamfer, warn, info, tol };
+      return { kind, front, holes, t, tSrc, chamfer, twist, warn, info, tol };
     }
     if (kind === 'intersect') {
       // 2면 교차: 정면도를 깊이만큼, 측면도를 너비만큼 각각 돌출해 겹치는 부분만 남김 (정밀 엔진)
@@ -859,6 +866,31 @@
       }
       if (nb) info.push(`막힌 구멍 ${nb}개는 측면도 선으로 깊이를 읽었습니다`);
     }
+    // 볼 베어링: 정면에 피치원 위에 같은 크기 원·호가 여러 개, 측면도에 같은 크기 원이 한 줄로 → 링 사이 틈 + 볼
+    let balls = null;
+    try {
+      const sm = srcEnts().filter(e => (e.type === 'arc' || e.type === 'circle') && e.c && !['중심선', '치수', '문자'].includes(e.layer));
+      const fr = sm.filter(e => Math.hypot(e.c.x - fc.x, e.c.y - fc.y) > tol * 4 && Math.hypot(e.c.x - fc.x, e.c.y - fc.y) + e.r < R0 + tol && Math.abs(e.c.x - fc.x) <= R0 + tol && Math.abs(e.c.y - fc.y) <= R0 + tol);
+      const byR = new Map(); for (const e of fr) { const k = Math.round(e.r / (tol * 2)); if (!byR.has(k)) byR.set(k, []); byR.get(k).push(e); }
+      for (const [, L] of byR) {
+        const rb = L[0].r, cs = []; for (const e of L) if (!cs.some(c => Math.hypot(c.x - e.c.x, c.y - e.c.y) <= tol * 2)) cs.push({ x: e.c.x, y: e.c.y });
+        if (cs.length < 4) continue;
+        const ds = cs.map(c => Math.hypot(c.x - fc.x, c.y - fc.y)), Rp = ds.reduce((a, b) => a + b) / ds.length;
+        if (ds.some(d => Math.abs(d - Rp) > tol * 4)) continue;
+        // 측면도의 같은 크기 원 → 축 방향 위치
+        const sc2 = sm.filter(e => Math.abs(e.r - rb) <= tol * 2 && sideV.bb && e.c.x >= sideV.bb.x0 - tol && e.c.x <= sideV.bb.x1 + tol && e.c.y >= sideV.bb.y0 - tol && e.c.y <= sideV.bb.y1 + tol);
+        if (!sc2.length) continue;
+        const zb = sc2.map(e => tr(e.c).u).sort((a, b) => a - b)[sc2.length >> 1] - st[0];
+        const rr = conc.concat(radii).filter(r => r > tol);
+        const rin = Math.max(...rr.filter(r => r < Rp - rb * 0.3)), rout = Math.min(...rr.filter(r => r > Rp + rb * 0.3));
+        if (!isFinite(rin) || !isFinite(rout)) continue;
+        balls = { rb, Rp, zb, centers: cs.map(c => ({ x: c.x - fc.x, y: c.y - fc.y })), rin, rout };
+        unknown = unknown.filter(r => Math.abs(r - rin) > tol * 2 && Math.abs(r - rout) > tol * 2);
+        info.push(`볼 베어링: 볼 ${cs.length}개 (Ø${fmt3(rb * 2)}, 피치원 Ø${fmt3(Rp * 2)}), 링 사이 틈 Ø${fmt3(rin * 2)}~Ø${fmt3(rout * 2)}`);
+        break;
+      }
+    } catch (_) { balls = null; }
+    if (balls) for (let i = steps.length - 1; i >= 0; i--) if (Math.abs(steps[i].r - balls.rin) <= tol * 2 || Math.abs(steps[i].r - balls.rout) <= tol * 2) steps.splice(i, 1);
     // 회전체 윤곽(반쪽): 측면도 윤곽에서 축 위쪽 부분만 순서대로 (매끈하게 한 번에 돌리기용)
     let prof = null;
     try {
@@ -874,7 +906,7 @@
         prof[1][2] = true; prof[prof.length - 2][2] = true;
       }
     } catch (_) { prof = null; }
-    return { kind, front, fc, segs, prof, bore, steps, holes, warn, info, tol, total: st[st.length - 1] - st[0] };
+    return { kind, front, fc, segs, prof, bore, steps, balls, holes, warn, info, tol, total: st[st.length - 1] - st[0] };
   }
 
   /* ---------------- 3D 만들기 (three.js) ---------------- */
@@ -1136,7 +1168,7 @@
     }
     if (pl.kind === 'extrude' || pl.kind === 'intersect') {
       const o = { x: (pl.front.bb.x0 + pl.front.bb.x1) / 2, y: (pl.front.bb.y0 + pl.front.bb.y1) / 2 };
-      let s = rDraw(R, pl.front, o).sketchOnPlane().extrude(pl.t);
+      let s = pl.twist ? rDraw(R, pl.front, o).sketchOnPlane().extrude(pl.t, { twistAngle: pl.twist * (LAB.twistSign || 1) }) : rDraw(R, pl.front, o).sketchOnPlane().extrude(pl.t);
       if (pl.chamfer) s = chamferCut(R, s, pl.chamfer, pl.t, o);
       s = cutAll(R, s, holeTools(R, pl.holes, o, -1, pl.t + 2));
       if (pl.kind === 'intersect') {
@@ -1168,6 +1200,17 @@
     for (const h of pl.holes.filter(h => h.z0 != null)) { const z0 = h.z0 <= pl.tol ? -1 : h.z0, z1 = h.z1 >= pl.total - pl.tol ? pl.total + 1 : h.z1; tools.push(...holeTools(R, [h], o, z0, z1 - z0)); }
     if (pl.bore > 0) tools.push(R.makeCylinder(pl.bore, len, [0, 0, -1], [0, 0, 1]));
     for (const q of pl.steps || []) { const z0 = q.z0 <= pl.tol ? -1 : q.z0, z1 = q.z1 >= pl.total - pl.tol ? pl.total + 1 : q.z1; tools.push(R.makeCylinder(q.r, z1 - z0, [0, 0, z0], [0, 0, 1])); }
+    if (pl.balls) {
+      const b = pl.balls;
+      try {
+        let ring = R.makeCylinder(b.rout, len, [0, 0, -1], [0, 0, 1]).cut(R.makeCylinder(b.rin, len, [0, 0, -1], [0, 0, 1]));
+        const groove = R.drawCircle(b.rb * 1.02).translate(b.Rp, b.zb).sketchOnPlane('XZ').revolve();
+        let out = cutAll(R, s, tools).cut(ring).cut(groove);
+        const sph = b.centers.map(c => R.makeSphere(b.rb).translate([c.x, c.y, b.zb]));
+        out = out.fuse(sph.length === 1 ? sph[0] : R.makeCompound(sph));
+        return out;
+      } catch (e) { LAB._ballErr = String(e && e.message || e); }
+    }
     return cutAll(R, s, tools);
   }
   // 같은 평면·같은 원통으로 나뉜 면을 하나로 합침 (구간을 나눠 만든 3D에 생기는 쓸데없는 경계선 정리 → 2D로 다시 뽑았을 때 없는 선이 안 생김)
