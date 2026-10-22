@@ -433,6 +433,8 @@
     return { ok: out.every(x => x.ok !== false), results: out };
   };
   PH.isCmd = c => /^(photo_|model3d)/.test(String(c && c.cmd || ''));
+  PH.addCmd = (k, f) => { CMD[k] = f; };   // 다른 lab 모듈(lab2dcheck.js)이 명령을 보탬
+  PH._svgPolys = svgPolys;
   function reset3d() { const L = lab(); if (L) { L.ext = null; try { L.rebuild(true); } catch (_) { } } }
   // 명령창: 3DRESET
   try { if (typeof ALIAS === 'object' && typeof TOOLS === 'object') { ALIAS['3DRESET'] = 'photo3dreset'; TOOLS.photo3dreset = () => { reset3d(); log('2D 도면 기준 3D로 돌아갔습니다', 'ok'); return null; }; } } catch (_) { }

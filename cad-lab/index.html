@@ -5157,7 +5157,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     catch(e){out.push({cmd:k,ok:false,error:e&&e.message||String(e)})}}
     return {ok:out.every(x=>x.ok!==false),results:out,...summary()}}
   const TOOLS_JS={
-    mucca_guide:()=>{const s=summary();return `${API_DOC}\n\n${RULES}${window.LABPHOTO?'\n\n'+LABPHOTO.guide:''}\n\n현재 도면: ${JSON.stringify(s)}${s.bbox?`\n새 도형 추천 기준점: x=${Math.ceil((s.bbox.maxX+60)/10)*10}, y=0`:''}`},
+    mucca_guide:()=>{const s=summary();return `${API_DOC}\n\n${RULES}${window.LABPHOTO?'\n\n'+LABPHOTO.guide:''}${window.LAB2D?'\n\n'+LAB2D.guide:''}\n\n현재 도면: ${JSON.stringify(s)}${s.bbox?`\n새 도형 추천 기준점: x=${Math.ceil((s.bbox.maxX+60)/10)*10}, y=0`:''}`},
     mucca_draw:async a=>{let cmds=a.commands;if(typeof cmds==='string')cmds=JSON.parse(cmds);if(!Array.isArray(cmds)||!cmds.length)throw new Error('commands 배열이 비어 있습니다');if(window.LABPHOTO&&cmds.some(c=>LABPHOTO.isCmd(c)))return LABPHOTO.cmds(cmds);
       if(cmds.some(c=>/^library_/.test(String(c&&c.cmd||''))))return libraryCmds(cmds);
       if(cmds.length>2000)throw new Error('명령이 너무 많습니다(최대 2000)');
@@ -5876,8 +5876,9 @@ window.cad=Object.freeze({
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
 <script src="../cad/cloud.js?v=20261021a"></script>
-<script src="lab3d.js?v=12"></script>
-<script src="labphoto.js?v=2"></script>
+<script src="lab3d.js?v=13"></script>
+<script src="labphoto.js?v=3"></script>
+<script src="lab2dcheck.js?v=1"></script>
 <script src="labcases.js?v=1"></script>
 <script src="../cad/airef.js?v=2"></script>
 <script src="../cad/dwg.js?v=5"></script>

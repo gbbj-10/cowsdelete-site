@@ -1336,6 +1336,8 @@
     finally { stepBtn.disabled = false; stepBtn.textContent = old; }
   };
 
+  // 2D 대조용: 지금 도면으로 규칙 엔진 3D 형상(replicad)을 만들어 돌려줌 (부르는 쪽이 delete)
+  LAB.ruleSolid = async () => { const R = await ensureOCC(); const pl = plan(); if (!pl || pl.empty) throw new Error('규칙 엔진이 3D로 만들 윤곽이 없습니다'); return makeSolid(R, pl); };
   LAB._v = () => ({ T, root, scene, cam, renderer, draw3, fit3, setView: v => { if (pivot) setView(v); }, setMode, mode: () => mode, ensure3D, ensureOCC, stEl, emptyEl, pane, download, baseName });
   /* ---------------- 시작 ---------------- */
   checkAdmin().then(ok => { if (ok && mode !== '2d') setMode(mode); });
