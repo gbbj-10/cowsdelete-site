@@ -55,7 +55,7 @@
   <p>무카 CAD 사용자가 직접 올린 블록과 도면입니다. 마음에 들면 [내 캐드로 가져오기]로 바로 씁니다. 내가 만든 블록은 무카 CAD 상단 [공유]로 올릴 수 있어요. 찾는 게 없으면 <a href="/requests/">요청 게시판</a>에 올려 주세요.</p>
   <div class="wallet" id="wallet" hidden></div>
   <form class="tools" id="q">
-    <div class="cmdline"><span class="pfx">찾기:</span><input name="q" id="qIn" type="search" placeholder="M10 볼트, 플랜지, 표제란 양식" aria-label="찾을 이름이나 태그"></div>
+    <div class="cmdline"><span class="pfx">찾기:</span><input name="q" id="qIn" type="search" placeholder="M10 볼트, 플랜지, 표제란" aria-label="찾을 이름이나 태그"></div>
     <div class="seg" role="group" aria-label="종류">
       <button type="button" data-kind="" aria-pressed="true">전체</button>
       <button type="button" data-kind="block" aria-pressed="false">블록</button>
@@ -107,7 +107,8 @@
     [/^(레듀샤|레듀서|레듀셔|리듀샤|리듀셔|reducer)$/i,'리듀서'],[/^(앵글|앵글강|angle|ㄱ형강|L형강)$/i,'ㄱ형강'],[/^(찬넬|채널|챤넬|channel|C형강|ㄷ형강)$/i,'ㄷ형강'],
     [/^(H빔|에이치빔|H-빔|h-beam|hbeam|H형강|I빔)$/i,'H형강'],[/^(와샤|와셔|워셔|washer)$/i,'와셔'],[/^(볼토|볼트|bolt)$/i,'볼트'],[/^(낫트|넛트|너트|넡트|nut)$/i,'너트'],[/^(노즐|nozzle)$/i,'노즐'],[/^(티이|tee)$/i,'티'],[/^(sus|스뎅|스텐|스테인레스)$/i,'스테인리스'],
     [/^(렌치볼트|캡볼트|캡스크류|소켓볼트|육각렌치볼트|볼트렌치)$/i,'렌치볼트'],[/^(모타|모우터|motor|모터|전동기)$/i,'전동기'],[/^(베아링|bearing|볘어링|베어링)$/i,'베어링'],
-    [/^(gear|평기어|기아|스퍼기어)$/i,'기어'],[/^(스프라켓|스프로켓|스프로킷|스프라킷|sprocket)$/i,'스프로킷'],[/^(페럴|페룰|훼룰|ferrule)$/i,'페룰'],[/^(발브|valve|밸브)$/i,'밸브'],[/^(pid|p&id|피앤아이디)$/i,'P&ID'],[/^(평행키|key)$/i,'키']];
+    [/^(gear|평기어|기아|스퍼기어)$/i,'기어'],[/^(스프라켓|스프로켓|스프로킷|스프라킷|sprocket)$/i,'스프로킷'],[/^(페럴|페룰|훼룰|ferrule)$/i,'페룰'],[/^(발브|valve|밸브)$/i,'밸브'],[/^(pid|p&id|피앤아이디)$/i,'P&ID'],[/^(평행키|key)$/i,'키'],
+    [/^(표제란양식|양식|표제란|표제|도곽|도곽틀|도곽양식|도면양식|도면틀|도면테두리|테두리|타이틀블록|타이틀블럭|titleblock|title)$/i,'표제란']];
   const PARTS=['플랜지','노즐','엘보','리듀서','형강','렌치볼트','볼트','너트','와셔','베어링','기어','스프로킷','밸브','펌프','전동기','티'];
   function normTok(t){for(const [re,to] of SYN)if(re.test(t))return to;return null}
   function searchGroups(str){const toks=str.replace(/([A-Za-z]+\d[\dA-Za-z.x×]*)(?=[가-힣])/g,'$1 ').replace(/([가-힣])(?=[A-Za-z]?\d)/g,'$1 ').split(/\s+/).filter(Boolean).slice(0,4);
