@@ -1061,6 +1061,7 @@
   }
   function rebuild(force) {
     if (!T || mode === '2d') return;
+    if (LAB.ext) { draw3(); return; }
     let pl;
     try { pl = plan(); } catch (err) { stEl.innerHTML = `<span class="e">3D로 바꾸지 못했습니다: ${err.message}</span>`; return; }
     if (pl.empty) { while (root.children.length) root.children.pop(); emptyEl.style.display = ''; stEl.textContent = ''; lastPlan = null; draw3(); return; }
@@ -1083,7 +1084,7 @@
   function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
   function baseName() { const t = (document.title || 'mucca').replace(/\s*[-|·].*$/, '').trim(); return (window.__docName || t || 'mucca').replace(/[\\/:*?"<>|]/g, '_'); }
   pane.querySelector('#l3stl').onclick = async () => {
-    await ensure3D(); if (!lastPlan) { log('3D로 만들 윤곽이 없습니다', 'err'); return; }
+    await ensure3D(); if (!lastPlan && !LAB.ext) { log('3D로 만들 윤곽이 없습니다', 'err'); return; }
     const tris = [];
     root.traverse(o => { if (!o.isMesh) return; const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry; const p = g.attributes.position; for (let i = 0; i < p.count; i++) tris.push(p.getX(i), p.getY(i), p.getZ(i)); });
     const n = tris.length / 9, buf = new ArrayBuffer(84 + n * 50), dv = new DataView(buf); dv.setUint32(80, n, true);
@@ -1319,6 +1320,10 @@
     return LAB.tidy ? tidy(s) : s;
   }
   stepBtn.onclick = async () => {
+    if (LAB.ext && LAB.ext.step) { const old = stepBtn.textContent; stepBtn.disabled = true; stepBtn.textContent = 'STEP 만드는 중…';
+      try { const t0 = performance.now(); const blob = await LAB.ext.step(); LAB.stepMs = Math.round(performance.now() - t0); LAB.stepBytes = blob.size; LAB.lastStep = blob; if (!LAB.noDownload) download(blob, baseName() + '.step'); log(`STEP 저장 (${(blob.size / 1024).toFixed(0)}KB)`, 'ok'); }
+      catch (err) { log('STEP을 만들지 못했습니다: ' + (err && err.message || err), 'err'); LAB.stepErr = String(err && err.message || err); }
+      finally { stepBtn.disabled = false; stepBtn.textContent = old; } return; }
     if (!lastPlan) { log('3D로 만들 윤곽이 없습니다', 'err'); return; }
     const old = stepBtn.textContent; stepBtn.disabled = true; stepBtn.textContent = occP ? 'STEP 만드는 중…' : '엔진 받는 중…';
     try {
@@ -1331,6 +1336,7 @@
     finally { stepBtn.disabled = false; stepBtn.textContent = old; }
   };
 
+  LAB._v = () => ({ T, root, scene, cam, renderer, draw3, fit3, setView: v => { if (pivot) setView(v); }, setMode, mode: () => mode, ensure3D, ensureOCC, stEl, emptyEl, pane, download, baseName });
   /* ---------------- 시작 ---------------- */
   checkAdmin().then(ok => { if (ok && mode !== '2d') setMode(mode); });
   if (mode !== '2d') setMode(mode);
