@@ -2,7 +2,7 @@
 window.COWS_CONFIG = {
   supabaseUrl: 'https://bsvefchazvkcqjslzwqy.supabase.co',
   supabaseKey: 'sb_publishable_F_d9GtNWuHni48Kiivcdmg_E74B-Mpp',
-  appVer: 'web-1.9.5',
+  appVer: 'web-1.9.6',
   homeUrl: '/',
   youtube: 'https://www.youtube.com/@cowsdelete',
   ep1: 'https://youtu.be/sbg-gBG2x40',
