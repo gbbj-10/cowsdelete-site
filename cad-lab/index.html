@@ -5412,7 +5412,7 @@ function preCommand(orig){const t=orig.trim();if(!t||t[0]==='['||t[0]==='{')retu
   if(quickCircle(t))return true;
   if(/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(t)){const key=t.replace(/\s+/g,'');
     if(KO_CMD[key]){const n=KO_CMD[key];if(n==='layer_mgr'){openLM();return true}startTool(n);return true}
-    const en=ko2en(t).toUpperCase().replace(/\s+/g,'');
+    if(window.LABPARTS&&LABPARTS.handle(key))return true;const en=ko2en(t).toUpperCase().replace(/\s+/g,'');
     if(ALIAS[en]||['U','UNDO','REDO','ZE','HELP'].includes(en))return false;/* 한/영 전환 실수 → 기존 처리 */
     log('입력: '+t,'me');
     logLink(`'${t}' 은(는) 명령어가 아닙니다. 부품을 찾는다면`,'/community/?q='+encodeURIComponent(t),`커뮤니티에서 '${t}' 블록 찾기`);
@@ -5882,6 +5882,7 @@ window.cad=Object.freeze({
 <script src="labphoto.js?v=3"></script>
 <script src="lab2dcheck.js?v=1"></script>
 <script src="labcases.js?v=1"></script>
+<script src="labparts.js?v=1"></script>
 <script src="../cad/airef.js?v=2"></script>
 <script src="../cad/dwg.js?v=5"></script>
 </body>

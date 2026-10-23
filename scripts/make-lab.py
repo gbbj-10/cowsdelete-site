@@ -3,7 +3,7 @@ import re, pathlib
 src = pathlib.Path('cad/index.html').read_text(encoding='utf-8')
 s = src
 s = s.replace('<title>무카 CAD</title>', '<title>무카 CAD 테스트</title>\n<meta name="robots" content="noindex,nofollow">', 1)
-s = re.sub(r'<script src="cloud\.js\?v=([^"]+)"></script>', r'<script src="../cad/cloud.js?v=\1"></script>\n<script src="lab3d.js?v=13"></script>\n<script src="labphoto.js?v=3"></script>\n<script src="lab2dcheck.js?v=1"></script>\n<script src="labcases.js?v=1"></script>', s, count=1)
+s = re.sub(r'<script src="cloud\.js\?v=([^"]+)"></script>', r'<script src="../cad/cloud.js?v=\1"></script>\n<script src="lab3d.js?v=13"></script>\n<script src="labphoto.js?v=3"></script>\n<script src="lab2dcheck.js?v=1"></script>\n<script src="labcases.js?v=1"></script>\n<script src="labparts.js?v=1"></script>', s, count=1)
 s = re.sub(r'(<script src="\.\./assets/config\.js[^"]*"></script>)', r'\1\n<script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>', s, count=1)
 hook = "ALIAS['3D']='view3d';ALIAS['3DVIEW']='view3d';ALIAS['2D3D']='view3d';TOOLS.view3d=()=>{if(window.LAB3D)LAB3D.toggle();else log('3D 기능을 불러오는 중입니다','err');return null};\n"
 s = s.replace('const ALIAS_DEF=Object.assign({},ALIAS)', hook + 'const ALIAS_DEF=Object.assign({},ALIAS)', 1)
@@ -22,6 +22,9 @@ a="new Error('commands 배열이 비어 있습니다');"
 a2=r"mucca_guide:()=>{const s=summary();return `${API_DOC}\n\n${RULES}\n\n현재 도면: ${JSON.stringify(s)}"
 assert s.count(a2)==1, 'guide hook'
 s=s.replace(a2,r"mucca_guide:()=>{const s=summary();return `${API_DOC}\n\n${RULES}${window.LABPHOTO?'\n\n'+LABPHOTO.guide:''}${window.LAB2D?'\n\n'+LAB2D.guide:''}\n\n현재 도면: ${JSON.stringify(s)}",1)
+a="startTool(n);return true}\n    const en=ko2en(t)"
+assert s.count(a)==1, 'parts hook'
+s=s.replace(a,"startTool(n);return true}\n    if(window.LABPARTS&&LABPARTS.handle(key))return true;const en=ko2en(t)",1)
 assert s.count('lab3d.js') == 1 and 'view3d' in s and 'noindex' in s and 'lab-' in s, 'patch failed'
 pathlib.Path('cad-lab').mkdir(exist_ok=True)
 pathlib.Path('cad-lab/index.html').write_text(s, encoding='utf-8')
