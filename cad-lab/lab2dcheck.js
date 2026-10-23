@@ -296,7 +296,7 @@
     aiIn.value = C2.prompt(res);
     const A = window.__aic;
     if (A && A.state === 'on' && A.claude && !A.busy && bAi) setTimeout(() => bAi.click(), 30);
-    else { try { log('[AI로 3D] 요청을 오른쪽 AI 창에 옮겼습니다 → 상단 [Claude 연결] 후 [그리기]를 누르세요', 'ok'); } catch (_) { } if (window.__aiChat) window.__aiChat.nudge(); aiIn.focus(); }
+    else { try { log('[AI로 3D] 요청을 오른쪽 AI 창에 옮겼습니다 → 상단 [AI 연결] 후 [그리기]를 누르세요', 'ok'); } catch (_) { } if (window.__aiChat) window.__aiChat.nudge(); aiIn.focus(); }
   }
   C2.askAI = askAI;
 
