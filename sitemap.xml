@@ -1,26 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://cowsdelete.com/</loc><lastmod>2026-10-22</lastmod><priority>1.0</priority></url>
-  <url><loc>https://cowsdelete.com/mucca/</loc><lastmod>2026-10-22</lastmod><priority>0.9</priority></url>
-  <url><loc>https://cowsdelete.com/board/</loc><lastmod>2026-10-22</lastmod><priority>0.9</priority></url>
-  <url><loc>https://cowsdelete.com/board/?g=mech</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/board/?g=arch</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/board/?g=civil</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/board/?g=elec</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/board/?g=plant</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/board/?g=cad</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/board/?g=license</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/board/?g=office</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/board/?g=humor</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/board/?g=worry</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/community/</loc><lastmod>2026-10-22</lastmod><priority>0.8</priority></url>
-  <url><loc>https://cowsdelete.com/requests/</loc><lastmod>2026-10-22</lastmod><priority>0.7</priority></url>
-  <url><loc>https://cowsdelete.com/qna/</loc><lastmod>2026-10-22</lastmod><priority>0.5</priority></url>
+  <url><loc>https://cowsdelete.com/</loc><lastmod>2026-10-23</lastmod><priority>1.0</priority></url>
+  <url><loc>https://cowsdelete.com/mucca/</loc><lastmod>2026-10-23</lastmod><priority>0.9</priority></url>
+  <url><loc>https://cowsdelete.com/board/</loc><lastmod>2026-10-23</lastmod><priority>0.9</priority></url>
+  <url><loc>https://cowsdelete.com/board/?g=mech</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/board/?g=arch</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/board/?g=civil</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/board/?g=elec</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/board/?g=plant</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/board/?g=cad</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/board/?g=license</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/board/?g=office</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/board/?g=humor</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/board/?g=worry</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/community/</loc><lastmod>2026-10-23</lastmod><priority>0.8</priority></url>
+  <url><loc>https://cowsdelete.com/requests/</loc><lastmod>2026-10-23</lastmod><priority>0.7</priority></url>
+  <url><loc>https://cowsdelete.com/qna/</loc><lastmod>2026-10-23</lastmod><priority>0.5</priority></url>
   <url><loc>https://cowsdelete.com/beta/</loc><lastmod>2026-10-18</lastmod><priority>0.4</priority></url>
   <url><loc>https://cowsdelete.com/privacy/</loc><lastmod>2026-10-18</lastmod><priority>0.3</priority></url>
   <url><loc>https://cowsdelete.com/oss/</loc><lastmod>2026-10-20</lastmod><priority>0.2</priority></url>
   <url><loc>https://cowsdelete.com/p/b864d6ad-ef66-42ee-9895-d6d029351c64/</loc><lastmod>2026-10-22</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/p/e866054e-5ad1-4eb0-b83f-2072838c0dc9/</loc><lastmod>2026-10-20</lastmod><priority>0.6</priority></url>
+  <url><loc>https://cowsdelete.com/s/ad7e0e0b-a03e-46e3-b9c2-127ac52b2d81/</loc><lastmod>2026-10-23</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/b00cf97a-d64b-4037-b17a-86c4d3938d8d/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/df84b8d0-fba6-48e8-9521-a9f22dd35cd9/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/35cd20fe-34ac-40d9-bd9e-e5e0cbb7ca13/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
@@ -64,7 +65,7 @@
   <url><loc>https://cowsdelete.com/s/fd27f456-5a2f-4ff6-af50-191752f1f609/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/40c689b1-d142-4737-9de0-02b2e8da4c3e/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/adf528ea-75a5-49c3-a119-9b22b155e4e5/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
-  <url><loc>https://cowsdelete.com/s/a95fa2b7-bbe9-4cae-b218-e5037a46728b/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
+  <url><loc>https://cowsdelete.com/s/a95fa2b7-bbe9-4cae-b218-e5037a46728b/</loc><lastmod>2026-10-22</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/6e3f17b8-86bd-48d5-ada8-a299de6d9ce7/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/b3635667-c780-4dfb-9a23-89699d7609a9/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/1b57ce85-e541-4374-a11d-7db98d91298f/</loc><lastmod>2026-10-21</lastmod><priority>0.6</priority></url>
@@ -86,7 +87,7 @@
   <url><loc>https://cowsdelete.com/s/5bf3541d-7313-4e42-9676-79f7f387c06a/</loc><lastmod>2026-10-18</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/d7ac76f2-f78d-4731-a16e-08e0ff969e32/</loc><lastmod>2026-10-19</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/bcb77f05-411d-4def-b90d-50ae648c2e11/</loc><lastmod>2026-10-18</lastmod><priority>0.6</priority></url>
-  <url><loc>https://cowsdelete.com/s/e24f823b-b74b-4c91-bca4-ebe5596199a5/</loc><lastmod>2026-10-22</lastmod><priority>0.6</priority></url>
+  <url><loc>https://cowsdelete.com/s/e24f823b-b74b-4c91-bca4-ebe5596199a5/</loc><lastmod>2026-10-23</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/5e7eed3d-1387-4330-8b8a-4eac873581bb/</loc><lastmod>2026-10-18</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/1a3d1a19-5163-4ab0-bae8-7f88454a19ab/</loc><lastmod>2026-10-18</lastmod><priority>0.6</priority></url>
   <url><loc>https://cowsdelete.com/s/cef472c8-a049-4242-8582-2172fa973f67/</loc><lastmod>2026-10-18</lastmod><priority>0.6</priority></url>
