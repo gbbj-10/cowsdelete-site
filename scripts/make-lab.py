@@ -22,9 +22,12 @@ a="new Error('commands 배열이 비어 있습니다');"
 a2=r"mucca_guide:()=>{const s=summary();return `${API_DOC}\n\n${RULES}\n\n현재 도면: ${JSON.stringify(s)}"
 assert s.count(a2)==1, 'guide hook'
 s=s.replace(a2,r"mucca_guide:()=>{const s=summary();return `${API_DOC}\n\n${RULES}${window.LABPHOTO?'\n\n'+LABPHOTO.guide:''}${window.LAB2D?'\n\n'+LAB2D.guide:''}\n\n현재 도면: ${JSON.stringify(s)}",1)
-a="startTool(n);return true}\n    const en=ko2en(t)"
+# 파이프는 본체(cad/parts.js)로 옮김(v1.9.9). 테스트판은 labparts.js(파이프+탱크)가 먼저 처리
+a="if(window.MUCCAPARTS&&MUCCAPARTS.handle(key))return true;"
 assert s.count(a)==1, 'parts hook'
-s=s.replace(a,"startTool(n);return true}\n    if(window.LABPARTS&&LABPARTS.handle(key))return true;const en=ko2en(t)",1)
+s=s.replace(a,"if(window.LABPARTS&&LABPARTS.handle(key))return true;"+a,1)
+s=s.replace('<script src="parts.js', '<script src="../cad/parts.js', 1)
+assert '../cad/parts.js' in s, 'parts path'
 # [테스트 서버] AI별 연결 안내 (Claude · GPT · Gemini) — scripts/lab_aiguide.js 의 두 부분으로 교체
 A,B=pathlib.Path('scripts/lab_aiguide.js').read_text(encoding='utf-8').split('//@@SPLIT@@\n')
 def region(s,start,end,new):
