@@ -260,7 +260,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.7</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.8</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -1698,7 +1698,7 @@ async function openSpecial(f){
       await openFile(new File([r.dxf],f.name.replace(/\.dwg$/i,'.dxf')));
       if(first)log('DWG 변환: 오픈소스 acad-ts(MIT) 사용. 다중 지시선·표·3D 객체 등 일부는 빠질 수 있습니다. (오픈소스 고지: cowsdelete.com/oss/)','');
       window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_OK'})}
-    catch(e){log(`${f.name}: DWG 변환 실패 (${String(e&&e.message||e).slice(0,120)}). ${FALLBACK}`,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_FAIL'})}
+    catch(e){log(`${f.name}: DWG 변환 실패 (${String(e&&e.message||e).slice(0,120)}). ${FALLBACK}`,'err');let hv='X';try{const h=new TextDecoder().decode(new Uint8Array(await f.slice(0,6).arrayBuffer()));hv=/^AC\d{4}$/.test(h)?h:'NOTDWG'}catch(_){}window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_FAIL_'+hv})}
     return true}
   if(window.AIREF&&AIREF.accepts(f)&&!/\.(json|dxf|txt)$/i.test(f.name)){
     const side=document.getElementById('side');if(side&&matchMedia('(max-width:820px)').matches)side.classList.add('open');
@@ -4837,7 +4837,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.9.7';
+const APP_VER='v1.9.8';
 const OFL_TEXT=`Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
@@ -5938,7 +5938,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261024a"></script>
+<script src="../assets/config.js?v=20261024b"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
