@@ -43,8 +43,10 @@
   }
 
   /* ---------------- 2) 장면 ---------------- */
-  function material(col) {
+  function material(col, name) {
     const c = col.toLowerCase();
+    if (/물|water/i.test(name || '')) return new TA.MeshPhysicalMaterial({ color: '#36b3ff', metalness: 0, roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.05, emissive: '#0b5fa8', emissiveIntensity: 0.3 });   // 물 (투명 배관 안에서 보이도록 불투명)
+    if (c === '#bcd4e6') return new TA.MeshPhysicalMaterial({ color: '#f2f7fb', metalness: 0, roughness: 0.22, transmission: 0.88, thickness: 3, ior: 1.45, clearcoat: 1, clearcoatRoughness: 0.03 });   // glass = 투명 배관
     if (METAL[c] != null) return new TA.MeshPhysicalMaterial({ color: c, metalness: 0.85, roughness: METAL[c] });
     if (DARK.has(c)) return new TA.MeshPhysicalMaterial({ color: c, metalness: 0.05, roughness: 0.72 });
     return new TA.MeshPhysicalMaterial({ color: c, metalness: 0.12, roughness: 0.42, clearcoat: 0.15, clearcoatRoughness: 0.35 });   // 도장면
@@ -57,7 +59,7 @@
       let n = by.get(p.no); if (!n) { n = new TA.Group(); n.name = p.no + ' ' + p.name; n.userData.no = p.no; by.set(p.no, n); root.add(n); }
       const g = new TA.BufferGeometry(); g.setAttribute('position', new TA.BufferAttribute(new Float32Array(p.pos), 3));
       if (p.nor) g.setAttribute('normal', new TA.BufferAttribute(new Float32Array(p.nor), 3)); if (p.idx) g.setIndex(new TA.BufferAttribute(Uint32Array.from(p.idx), 1)); if (!p.nor) g.computeVertexNormals();
-      g.computeBoundingBox(); const m = new TA.Mesh(g, material(p.color)); m.name = p.name; m.castShadow = true; m.receiveShadow = true; n.add(m);
+      g.computeBoundingBox(); const m = new TA.Mesh(g, material(p.color, p.name)); m.name = p.name; m.castShadow = true; m.receiveShadow = true; n.add(m);
     }
     return withExplode(root);
   }
