@@ -7,7 +7,7 @@
 (function () {
   'use strict';
   const VER = '3.6.0';
-  const WORKER = new URL('dwg-worker.js?v=5', (document.currentScript && document.currentScript.src) || location.href).href;
+  const WORKER = new URL('dwg-worker.js?v=6', (document.currentScript && document.currentScript.src) || location.href).href;
   let used = false, cur = null;
   /* onProgress({st,k,n}): 작업 공간의 진행 알림 (open → read → build → dxf → send) */
   function run(msg, transfer, timeoutMs = 180000, onProgress) {
@@ -34,6 +34,7 @@
     /* 지금 하는 변환 취소 (도면 열기 게이지의 [취소]) */
     cancel() { if (cur) cur.stop(); },
     /* 무카 CAD DXF 문자열 → DWG Uint8Array (기본 AutoCAD 2013 형식) */
-    async fromDxf(dxfText, version = 'AC1027') { const r = await run({ op: 'write', data: dxfText, version }); return r.dwg; }
+    async fromDxf(dxfText, version = 'AC1027') { const r = await run({ op: 'write', data: dxfText, version }); this.lastSave = { n: r.n, blocks: r.blocks || 0, inserts: r.inserts || 0, attribs: r.attribs || 0, skipped: r.skipped || {} }; return r.dwg; },
+    lastSave: null,
   };
 })();

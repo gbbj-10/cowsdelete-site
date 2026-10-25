@@ -18,7 +18,23 @@ function fixStr(s) {
   return s;
 }
 
-function rebuild(src, version) {
+/* acad-ts 는 R12 DXF 의 BLOCK 기준점(10·20·30)을 읽지 않고 0,0 으로 둠 → DXF 글자에서 직접 찾음 { 블록 이름: [x,y,z] } */
+function blockBases(text) {
+  const out = new Map(); if (typeof text !== 'string') return out;
+  const i0 = text.search(/\n\s*BLOCKS\s*\r?\n/); if (i0 < 0) return out;
+  const L = text.slice(i0 + 1).split(/\r?\n/);   /* L[0] = 'BLOCKS', 그다음부터 [번호, 값] 짝 */
+  for (let i = 1; i + 1 < L.length; i += 2) {
+    const c = L[i].trim(), v = L[i + 1].trim();
+    if (c === '0' && v === 'ENDSEC') break;
+    if (c === '0' && v === 'BLOCK') {
+      let nm = null, x = 0, y = 0, z = 0;
+      for (let j = i + 2; j + 1 < L.length; j += 2) { const cc = L[j].trim(), vv = L[j + 1].trim(); if (cc === '0') break; if (cc === '2') nm = L[j + 1].replace(/\s+$/, ''); else if (cc === '10') x = +vv; else if (cc === '20') y = +vv; else if (cc === '30') z = +vv; }
+      if (nm != null && (x || y || z)) out.set(nm, [x, y, z]);
+    }
+  }
+  return out;
+}
+function rebuild(src, version, bases) {
   const doc = new A.CadDocument(A.ACadVersion[version] ?? A.ACadVersion.AC1027, true);
   try { doc.header.tileModeEnabled = true; doc.header.showModelSpace = true; } catch (_) {}
   /* AutoCAD AUDIT: SPLINETYPE 은 5(2차) 또는 6(3차) 이어야 함 (acad-ts 기본값 0) */
@@ -43,26 +59,89 @@ function rebuild(src, version) {
     doc.layers.add(L); return L;
   };
   const SIMPLE = ['Line', 'Circle', 'Arc', 'TextEntity', 'Solid', 'Point', 'Ellipse', 'MText', 'LwPolyline', 'Spline'];
-  const skipped = {}; let n = 0;
-  for (const e of src.modelSpace.entities) {
-    const t = e.constructor.name; let x = null;
+  const skipped = {}; let n = 0, nb = 0, ni = 0, na = 0;
+  const skip = t => { skipped[t] = (skipped[t] || 0) + 1; };
+  const common = (e, x) => {
+    x.layer = layer(e.layer && e.layer.name);
+    try { x.color = e.color; } catch (_) {}
+    try { if (e.lineType && e.lineType.name && !/^by/i.test(e.lineType.name)) { const lt = doc.lineTypes.tryGetValue(e.lineType.name); if (lt) x.lineType = lt; } } catch (_) {}
+    return x;
+  };
+  const txt = x => { try { x.style = std; } catch (_) {} return x; };
+  /* 블록 (2026-10-25): 예전에는 블록 삽입(INSERT)을 건너뛰어 DWG 에서 블록이 통째로 빠졌음.
+     쓰이는 블록만 새 도면에 정의(이름·기준점·속 도형·속성 정의)하고 삽입·속성을 옮긴다. 중첩 블록도 됨 */
+  const BAD = /[<>\/\\":;?*|,=`]/g;
+  const blocks = new Map(), used = new Set();
+  const blockFor = br => {
+    if (!br) return null;
+    if (blocks.has(br)) return blocks.get(br);
+    let name = (fixStr(br.name) || 'BLOCK').replace(BAD, '_').slice(0, 255), k = 2;
+    if (/^\*(model|paper)_space/i.test(name)) return null;
+    if (name.startsWith('*')) name = 'MUCCA' + name.slice(1);   /* 이름 없는(익명) 블록은 일반 블록으로 */
+    while (used.has(name.toUpperCase()) || doc.blockRecords.contains(name)) name = name.replace(/_\d+$/, '') + '_' + (k++);
+    used.add(name.toUpperCase());
+    const R = new A.BlockRecord(name);
+    try { let bp = br.blockEntity && br.blockEntity.basePoint; const q = bases && bases.get(br.name);
+      if (q && (!bp || (!bp.x && !bp.y && !bp.z))) bp = { x: q[0], y: q[1], z: q[2] };
+      if (bp) R.blockEntity.basePoint = new A.XYZ(bp.x, bp.y, bp.z || 0); } catch (_) {}
+    doc.blockRecords.add(R); blocks.set(br, R); nb++;
+    for (const e of br.entities) { const x = copy(e); if (x) try { put(R.entities, x); } catch (_) { skip(e.constructor.name); } }
+    return R;
+  };
+  /* 넣기: acad-ts 는 삽입을 도면에 넣어도 그 속성(ATTRIB)·끝 표시(SEQEND)를 등록하지 않아 DWG 에 빈 참조로 써짐 → 직접 등록 */
+  function put(list, x) {
+    list.add(x);
+    if (x instanceof A.Insert && x.attributes && x.attributes.length) {
+      for (const a of x.attributes) if (!a.document) { try { a.owner = x; } catch (_) {} doc._addCadObject(a); }
+      if (!x.attributes.seqend) { const q = new A.Seqend(); try { q.owner = x; } catch (_) {} x.attributes.seqend = q; }
+      if (!x.attributes.seqend.document) doc._addCadObject(x.attributes.seqend);
+    }
+  }
+  function copy(e) {
+    const t = e.constructor.name;
     try {
       if (t === 'Polyline2D') {
         /* 2D 폴리선(POLYLINE+VERTEX) → LWPOLYLINE: 정점 연결·레이어 오류를 피함 */
         const vs = [...e.vertices].map(v => { const w = new A.LwPolylineVertex(); w.location = new A.XY(v.location.x, v.location.y); w.bulge = v.bulge || 0; return w; });
-        if (vs.length < 2) { skipped[t] = (skipped[t] || 0) + 1; continue; }
-        x = new A.LwPolyline(vs); x.isClosed = e.isClosed; try { x.elevation = e.elevation || 0; } catch (_) {}
-      } else if (SIMPLE.includes(t)) {
-        x = e.clone();
-        if (t === 'TextEntity' || t === 'MText') { x.value = fixStr(x.value); try { x.style = std; } catch (_) {} }
-      } else { skipped[t] = (skipped[t] || 0) + 1; continue; }
-      x.layer = layer(e.layer && e.layer.name);
-      try { x.color = e.color; } catch (_) {}
-      try { if (e.lineType && e.lineType.name && !/^by/i.test(e.lineType.name)) { const lt = doc.lineTypes.tryGetValue(e.lineType.name); if (lt) x.lineType = lt; } } catch (_) {}
-      doc.modelSpace.entities.add(x); n++;
-    } catch (_) { skipped[t] = (skipped[t] || 0) + 1; }
+        if (vs.length < 2) { skip(t); return null; }
+        const x = new A.LwPolyline(vs); x.isClosed = e.isClosed; try { x.elevation = e.elevation || 0; } catch (_) {}
+        return common(e, x);
+      }
+      if (SIMPLE.includes(t)) {
+        const x = e.clone();
+        if (t === 'TextEntity' || t === 'MText') { x.value = fixStr(x.value); txt(x); }
+        return common(e, x);
+      }
+      if (t === 'AttributeDefinition') {
+        const x = e.clone(); x.value = fixStr(x.value); x.tag = fixStr(x.tag); try { x.prompt = fixStr(x.prompt); } catch (_) {}
+        return common(e, txt(x));
+      }
+      if (t === 'Insert') {
+        const R = blockFor(e.block); if (!R) { skip(t); return null; }
+        const x = new A.Insert(R);
+        const p = e.insertPoint || { x: 0, y: 0, z: 0 }; x.insertPoint = new A.XYZ(p.x, p.y, p.z || 0);
+        x.xScale = e.xScale || 1; x.yScale = e.yScale || 1; x.zScale = e.zScale || 1; x.rotation = e.rotation || 0;
+        try { if (e.normal) x.normal = new A.XYZ(e.normal.x, e.normal.y, e.normal.z); } catch (_) {}
+        /* 속성: 새 삽입이 블록의 속성 정의로 이미 만든 속성이 있으면 같은 이름(태그)에 값만 넣고, 없으면 옮겨 붙임 */
+        const have = new Map(); try { for (const a of x.attributes) have.set(String(a.tag).toUpperCase(), a); } catch (_) {}
+        for (const a of (e.attributes || [])) {
+          const tag = fixStr(a.tag), val = fixStr(a.value), h = have.get(String(tag).toUpperCase());
+          try {
+            if (h) { h.value = val; try { h.insertPoint = new A.XYZ(a.insertPoint.x, a.insertPoint.y, a.insertPoint.z || 0); h.height = a.height; h.rotation = a.rotation; } catch (_) {} }
+            else { const c = a.clone(); c.tag = tag; c.value = val; common(a, txt(c)); x.attributes.push(c); }
+            na++;
+          } catch (_) { skip('Attribute'); }
+        }
+        ni++; return common(e, x);
+      }
+    } catch (_) {}
+    skip(t); return null;
   }
-  return { doc, n, skipped };
+  for (const e of src.modelSpace.entities) {
+    const x = copy(e); if (!x) continue;
+    try { put(doc.modelSpace.entities, x); n++; } catch (_) { skip(e.constructor.name); }
+  }
+  return { doc, n, skipped, blocks: nb, inserts: ni, attribs: na };
 }
 
 /* 진행 알림 (2026-10-25): acad-ts 가 부르는 globalThis.__acadProgress 를 화면으로 전달 (0.12초에 한 번까지) */
@@ -86,9 +165,9 @@ self.onmessage = e => {
       self.postMessage({ ok: true, dxf: blob, ver });
     } else if (op === 'write') {
       const src = A.DxfReader.readFromStream(new TextEncoder().encode(data), () => {});
-      const { doc, n, skipped } = rebuild(src, version || 'AC1027');
+      const { doc, n, skipped, blocks, inserts, attribs } = rebuild(src, version || 'AC1027', blockBases(data));
       const out = A.DwgWriter.writeToBuffer(doc);
-      self.postMessage({ ok: true, dwg: out, n, skipped }, [out.buffer]);
+      self.postMessage({ ok: true, dwg: out, n, skipped, blocks, inserts, attribs }, [out.buffer]);
     }
   } catch (x) { self.postMessage({ ok: false, error: String(x && x.message || x) }); }
 };

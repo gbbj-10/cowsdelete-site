@@ -1683,7 +1683,7 @@ async function saveDwg(){if(!window.MuccaDWG){log('DWG 변환 도구를 불러�
   const t0=performance.now(),first=MuccaDWG.firstTime;log(`DWG로 저장하는 중…${first?' (처음 한 번은 변환 도구 약 250KB를 받습니다)':''}`,'me');
   try{const bytes=await MuccaDWG.fromDxf(exportDXF(),'AC1027');
     await offer('mucca-drawing.dwg',new Blob([bytes],{type:'application/acad'}));
-    log(`DWG 저장 (AutoCAD 2013 형식 · ${(bytes.length/1024).toFixed(0)}KB · ${((performance.now()-t0)/1000).toFixed(1)}초). 해치·여러 줄 문자·치수는 DXF 내보내기와 같이 선·문자로 풀어서 저장됩니다. AutoCAD 2013 이상에서 열립니다. 안 열리면 [출력 ▾] › DXF 내보내기를 쓰세요(DXF가 더 안정적입니다).`,'ok');
+    const LS=MuccaDWG.lastSave;log(`DWG 저장 (AutoCAD 2013 형식 · ${(bytes.length/1024).toFixed(0)}KB · ${((performance.now()-t0)/1000).toFixed(1)}초${LS&&LS.inserts?` · 블록 ${LS.blocks}종 · 블록 삽입 ${LS.inserts.toLocaleString('ko-KR')}개${LS.attribs?` · 속성 ${LS.attribs.toLocaleString('ko-KR')}개`:''} 포함`:''}). 해치·여러 줄 문자·치수는 DXF 내보내기와 같이 선·문자로 풀어서 저장됩니다. AutoCAD 2013 이상에서 열립니다. 안 열리면 [출력 ▾] › DXF 내보내기를 쓰세요(DXF가 더 안정적입니다).`,'ok');
     window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE'})}
   catch(e){log(`DWG 저장 실패 (${String(e&&e.message||e).slice(0,120)}). [출력 ▾] › DXF 내보내기로 저장해 주세요.`,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE_FAIL'})}}
 document.getElementById('bPng').onclick=()=>{const prev=new Set(sel);sel.clear();render();cv.toBlob(b=>{sel=prev;dirty=true;if(b)offer('mucca-drawing.png',b)},'image/png')};
@@ -4887,7 +4887,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.9.12';
+const APP_VER='v1.9.13';
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
 const OFL_TEXT=`Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
 
@@ -5992,7 +5992,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261025c"></script>
+<script src="../assets/config.js?v=20261025d"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
@@ -6005,7 +6005,7 @@ window.cad=Object.freeze({
 <script src="labsave.js?v=1"></script>
 <script src="labcmdai.js?v=1"></script>
 <script src="../cad/airef.js?v=2"></script>
-<script src="../cad/dwg.js?v=7"></script>
+<script src="../cad/dwg.js?v=8"></script>
 <script src="../cad/parts.js?v=1"></script>
 </body>
 </html>
