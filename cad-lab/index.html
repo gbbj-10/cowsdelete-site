@@ -260,7 +260,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.10</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.11</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -4837,7 +4837,8 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.9.10';
+const APP_VER='v1.9.11';
+/* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
 const OFL_TEXT=`Copyright © 2017 IBM Corp. with Reserved Font Name "Plex"
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
@@ -5081,7 +5082,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
 
   const verLt=(a,b)=>{a=String(a||'0').split('.').map(Number);b=String(b||'0').split('.').map(Number);for(let i=0;i<3;i++){if((a[i]||0)!==(b[i]||0))return (a[i]||0)<(b[i]||0)}return false};
   const outdated=()=>!!AIC.ver&&verLt(AIC.ver,MUCCA_MCP_VER);
-  function setState(s,msg){AIC.state=s;if(top)top.dataset.st=s;if(msg!=null)AIC.err=msg;renderDlg();
+  function setState(s,msg){if(s==='on'&&AIC.state!=='on'){window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_ON'});if(AIC.claude)window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_ON_CC'});if(AIC.engines&&AIC.engines.codex)window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_ON_GPT'});if(AIC.engines&&AIC.engines.gemini)window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_ON_GEMINI'})}AIC.state=s;if(top)top.dataset.st=s;if(msg!=null)AIC.err=msg;renderDlg();
     if(!AIC.busy&&!sampleFn)aiSt.textContent=s==='on'?(outdated()?'연결 프로그램 업데이트가 필요합니다 (설치됨 v'+AIC.ver+' → 최신 v'+MUCCA_MCP_VER+'). 아래 [새 연결 파일 받기]를 누르세요.':engList()?'연결됨 · 쓸 수 있는 AI: '+engList()+' · 요청을 쓰고 [그리기]를 누르세요.':'연결됨 · 이 PC에 Claude Code·Codex·Gemini CLI가 없어 입력칸은 쓸 수 없습니다. Claude 앱 대화로 그려 보세요.'):'상단 [AI 연결]을 하면 내 Claude·GPT·Gemini로 그릴 수 있습니다.'}
   /* v1.9.0: 입력칸 AI 고르기 (Claude · GPT(Codex CLI) · Gemini(Gemini CLI)) — 연결 프로그램 v1.0.6 이상 */
   const ENG={claude:'Claude',codex:'GPT',gemini:'Gemini'};
@@ -5173,7 +5174,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     return {ok:out.every(x=>x.ok!==false),results:out,...summary()}}
   const TOOLS_JS={
     mucca_guide:()=>{const s=summary();return `${API_DOC}\n\n${RULES}${window.LABPHOTO?'\n\n'+LABPHOTO.guide:''}${window.LAB2D?'\n\n'+LAB2D.guide:''}\n\n현재 도면: ${JSON.stringify(s)}${s.bbox?`\n새 도형 추천 기준점: x=${Math.ceil((s.bbox.maxX+60)/10)*10}, y=0`:''}`},
-    mucca_draw:async a=>{let cmds=a.commands;if(typeof cmds==='string')cmds=JSON.parse(cmds);if(!Array.isArray(cmds)||!cmds.length)throw new Error('commands 배열이 비어 있습니다');if(window.LABPHOTO&&cmds.some(c=>LABPHOTO.isCmd(c)))return LABPHOTO.cmds(cmds);
+    mucca_draw:async a=>{window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_DRAW'});let cmds=a.commands;if(typeof cmds==='string')cmds=JSON.parse(cmds);if(!Array.isArray(cmds)||!cmds.length)throw new Error('commands 배열이 비어 있습니다');if(window.LABPHOTO&&cmds.some(c=>LABPHOTO.isCmd(c)))return LABPHOTO.cmds(cmds);
       if(cmds.some(c=>/^library_/.test(String(c&&c.cmd||''))))return libraryCmds(cmds);
       if(cmds.length>2000)throw new Error('명령이 너무 많습니다(최대 2000)');
       await waitReplay();if(a.note){aiSt.textContent=String(a.note).slice(0,200);log('Claude: '+String(a.note).slice(0,200),'me')}
@@ -5257,7 +5258,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
       if(eng!=='claude'&&!engOk(eng)){aiSt.textContent=L+' CLI가 이 PC에 없습니다. '+ENG_INSTALL[eng]+' — 설치 후 새로고침하세요.';engHelp(eng);openAic(eng);return}
       const req=aiIn.value.trim();if(!req){aiIn.focus();return}
       log('AI 요청(내 '+L+'): '+req,'me');aiSt.textContent=(eng==='claude'?'Claude Code':L+' CLI')+' 실행 중…';
-      const r=await post('/prompt',{text:window.AIREF?AIREF.wrap(req):req,newChat:AIC.newChat,engine:eng});AIC.newChat=false;
+      window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_ASK'});const r=await post('/prompt',{text:window.AIREF?AIREF.wrap(req):req,newChat:AIC.newChat,engine:eng});AIC.newChat=false;
       if(!r.ok){aiSt.textContent=r.error||'실패';log('AI 실패: '+(r.error||''),'err')}
       return}
     if(sampleFn&&prevAi)return prevAi.call(bAi,ev);
@@ -5476,6 +5477,7 @@ function preCommand(orig){const t=orig.trim();if(!t||t[0]==='['||t[0]==='{')retu
     if(KO_CMD[key]){const n=KO_CMD[key];if(n==='layer_mgr'){openLM();return true}startTool(n);return true}
     if(window.LABPARTS&&LABPARTS.handle(key))return true;if(window.MUCCAPARTS&&MUCCAPARTS.handle(key))return true;const en=ko2en(t).toUpperCase().replace(/\s+/g,'');
     if(ALIAS[en]||['U','UNDO','REDO','ZE','HELP'].includes(en))return false;/* 한/영 전환 실수 → 기존 처리 */
+    if(window.LABCMDAI)return LABCMDAI.route(t,'KO_'+en.replace(/[^A-Z0-9_.-]/g,'').slice(0,21));
     log('입력: '+t,'me');
     logLink(`'${t}' 은(는) 명령어가 아닙니다. 부품을 찾는다면`,'/community/?q='+encodeURIComponent(t),`커뮤니티에서 '${t}' 블록 찾기`);
     log('그림으로 만들고 싶다면 Claude 연결(AICONNECT) 후 "'+t+' 그려줘"라고 말해 보세요. 명령은 영어 약자로 (선 L · 원 C · 지우기 E)','ok');
@@ -5507,7 +5509,7 @@ function quickRect(s){const t=s.replace(/\s+/g,'').replace(/×|\*/g,'x');let m,w
   log(`가로 ${fmt(w)} × 세로 ${fmt(h)} 사각형${th?` (두께 ${fmt(th)}T는 2D 도면이라 생략)`:''} — 구석점을 클릭하거나 좌표를 입력하세요.`,'ok');return true}
 /* 말로 쓴 그리기 요청 → 오른쪽 AI 창 */
 const AI_WORDS=/그려|그리기|그리고|그릴|만들어|만들|도면|설계|해줘|해 줘|줘$|주세요|가능|어떻게|뭐|무엇|테스트|연결/;
-function routeToAI(t){const side=document.getElementById('side');if(side&&matchMedia('(max-width:820px)').matches)side.classList.add('open');
+function routeToAI(t){if(window.LABCMDAI)return LABCMDAI.route(t,'AI_ROUTE');const side=document.getElementById('side');if(side&&matchMedia('(max-width:820px)').matches)side.classList.add('open');
   aiIn.value=t;const A=window.__aic;
   log('명령: '+t,'me');
   if(A&&A.state==='on'&&A.claude&&!A.busy){log('말로 쓴 요청은 오른쪽 AI 창에서 내 Claude가 그립니다 →','ok');setTimeout(()=>bAi.click(),30)}
@@ -5940,7 +5942,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261025a"></script>
+<script src="../assets/config.js?v=20261025b"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
@@ -5951,6 +5953,7 @@ window.cad=Object.freeze({
 <script src="labcases.js?v=1"></script>
 <script src="labparts.js?v=1"></script>
 <script src="labsave.js?v=1"></script>
+<script src="labcmdai.js?v=1"></script>
 <script src="../cad/airef.js?v=2"></script>
 <script src="../cad/dwg.js?v=5"></script>
 <script src="../cad/parts.js?v=1"></script>

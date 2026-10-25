@@ -3,7 +3,7 @@ import re, pathlib
 src = pathlib.Path('cad/index.html').read_text(encoding='utf-8')
 s = src
 s = s.replace('<title>무카 CAD</title>', '<title>무카 CAD 테스트</title>\n<meta name="robots" content="noindex,nofollow">', 1)
-s = re.sub(r'<script src="cloud\.js\?v=([^"]+)"></script>', r'<script src="../cad/cloud.js?v=\1"></script>\n<script src="lab3d.js?v=13"></script>\n<script src="labphoto.js?v=3"></script>\n<script src="lab2dcheck.js?v=1"></script>\n<script src="labcases.js?v=1"></script>\n<script src="labparts.js?v=1"></script>\n<script src="labsave.js?v=1"></script>', s, count=1)
+s = re.sub(r'<script src="cloud\.js\?v=([^"]+)"></script>', r'<script src="../cad/cloud.js?v=\1"></script>\n<script src="lab3d.js?v=13"></script>\n<script src="labphoto.js?v=3"></script>\n<script src="lab2dcheck.js?v=1"></script>\n<script src="labcases.js?v=1"></script>\n<script src="labparts.js?v=1"></script>\n<script src="labsave.js?v=1"></script>\n<script src="labcmdai.js?v=1"></script>', s, count=1)
 s = re.sub(r'(<script src="\.\./assets/config\.js[^"]*"></script>)', r'\1\n<script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>', s, count=1)
 hook = "ALIAS['3D']='view3d';ALIAS['3DVIEW']='view3d';ALIAS['2D3D']='view3d';TOOLS.view3d=()=>{if(window.LAB3D)LAB3D.toggle();else log('3D 기능을 불러오는 중입니다','err');return null};\n"
 s = s.replace('const ALIAS_DEF=Object.assign({},ALIAS)', hook + 'const ALIAS_DEF=Object.assign({},ALIAS)', 1)
@@ -51,6 +51,9 @@ s=rep(s,'<button class="tbtn primary cn" type="button">Claude 연결하기</butt
 s=rep(s,"'내 Claude가 연결되어 있습니다. 아래 칸에","'내 AI가 연결되어 있습니다. 아래 칸에")
 assert 'function curTab()' in s and "modal('AI 연결 — 내 AI로 그리기'" in s, 'aiguide patch'
 assert s.count('lab3d.js') == 1 and 'view3d' in s and 'noindex' in s and 'lab-' in s, 'patch failed'
+# [테스트 서버] 명령줄 = AI 입력창 (cad-lab/labcmdai.js): 명령이 아닌 한글은 전부 LABCMDAI.route 로
+s=rep(s,"    log('입력: '+t,'me');\n    logLink(","    if(window.LABCMDAI)return LABCMDAI.route(t,'KO_'+en.replace(/[^A-Z0-9_.-]/g,'').slice(0,21));\n    log('입력: '+t,'me');\n    logLink(")
+s=rep(s,"function routeToAI(t){","function routeToAI(t){if(window.LABCMDAI)return LABCMDAI.route(t,'AI_ROUTE');")
 pathlib.Path('cad-lab').mkdir(exist_ok=True)
 pathlib.Path('cad-lab/index.html').write_text(s, encoding='utf-8')
 print('ok', len(s))
