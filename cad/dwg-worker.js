@@ -39,6 +39,10 @@ function rebuild(src, version, bases) {
   try { doc.header.tileModeEnabled = true; doc.header.showModelSpace = true; } catch (_) {}
   /* AutoCAD AUDIT: SPLINETYPE 은 5(2차) 또는 6(3차) 이어야 함 (acad-ts 기본값 0) */
   try { if (!(doc.header.splineType >= 5 && doc.header.splineType <= 6)) doc.header.splineType = 6; } catch (_) {}
+  /* 2026-10-25 AutoCAD 2024 확인: acad-ts 기본값이 ANGDIR=1(각도를 시계 방향으로 잼)·INSUNITS=0(단위 없음)이라
+     AutoCAD 에서 이 도면에 각도를 치면 반대로 돌고, 다른 도면에 블록으로 넣을 때 mm 로 맞춰지지 않았음 → AutoCAD 미터법 기본값으로 */
+  try { doc.header.angularDirection = 0; } catch (_) {}
+  try { doc.header.insUnits = 4; } catch (_) {}   /* 4 = 밀리미터 (무카 CAD 단위) */
   /* 한글이 ??? 로 안 보이게 기본 문자 스타일을 맑은 고딕(Windows 기본 TrueType)으로 */
   const std = doc.textStyles.get('Standard');
   try { std.filename = 'malgun.ttf'; std.bigFontFilename = null; } catch (_) {}
@@ -81,6 +85,11 @@ function rebuild(src, version, bases) {
     while (used.has(name.toUpperCase()) || doc.blockRecords.contains(name)) name = name.replace(/_\d+$/, '') + '_' + (k++);
     used.add(name.toUpperCase());
     const R = new A.BlockRecord(name);
+    /* 2026-10-25 AutoCAD 2024 AUDIT: acad-ts 기본값 canScale=true 가 BLOCK_RECORD 281=1(균일 축척만)로 써져서
+       좌우 반전·X/Y 다른 배율 삽입이 "scale invalid → uniform" 으로 잡힘. AutoCAD 보통 블록처럼 0(비균일 허용)으로 */
+    try { R.canScale = false; } catch (_) {}
+    /* acad-ts 기본값 isExplodable=false → AutoCAD 에서 "분해 허용: 아니오"라 EXPLODE 가 안 됨. 보통 블록처럼 분해 허용 */
+    try { R.isExplodable = true; } catch (_) {}
     try { let bp = br.blockEntity && br.blockEntity.basePoint; const q = bases && bases.get(br.name);
       if (q && (!bp || (!bp.x && !bp.y && !bp.z))) bp = { x: q[0], y: q[1], z: q[2] };
       if (bp) R.blockEntity.basePoint = new A.XYZ(bp.x, bp.y, bp.z || 0); } catch (_) {}

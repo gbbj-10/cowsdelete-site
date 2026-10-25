@@ -7,7 +7,7 @@
 (function () {
   'use strict';
   const VER = '3.6.0';
-  const WORKER = new URL('dwg-worker.js?v=6', (document.currentScript && document.currentScript.src) || location.href).href;
+  const WORKER = new URL('dwg-worker.js?v=8', (document.currentScript && document.currentScript.src) || location.href).href;
   let used = false, cur = null;
   /* onProgress({st,k,n}): 작업 공간의 진행 알림 (open → read → build → dxf → send) */
   function run(msg, transfer, timeoutMs = 180000, onProgress) {
