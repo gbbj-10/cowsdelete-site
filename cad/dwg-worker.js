@@ -2,7 +2,7 @@
    열기: DWG → acad-ts → DXF 글자
    저장: 무카 CAD DXF(R12) → acad-ts 로 읽기 → 기본값을 다 갖춘 새 도면에 옮겨 담기 → DWG
    (R12 를 그대로 DWG 로 쓰면 AutoCAD 가 "복구 필요"를 띄움: 핸들 표·레이아웃·2D 폴리선 정점 오류 — 2026-10-21 AutoCAD 2024 로 확인) */
-import * as A from './vendor/acad-ts-3.6.0.min.js';
+import * as A from './vendor/acad-ts-3.6.0-m1.min.js';
 
 const unesc = s => typeof s === 'string' ? s.replace(/\\U\+([0-9A-Fa-f]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16))) : s;
 /* \U+ 풀기 + UTF-8 바이트가 1252 로 잘못 읽힌 글자 되돌리기 */
@@ -69,9 +69,15 @@ self.onmessage = e => {
   const { op, data, version } = e.data;
   try {
     if (op === 'read') {
-      const doc = A.DwgReader.readFromStream(data, () => {});
-      const parts = []; new A.DxfWriter({ write(s) { parts.push(s); } }, doc).write();
-      self.postMessage({ ok: true, dxf: parts.join(''), ver: String(A.ACadVersion[doc.header.version] || doc.header.version) });
+      let doc = A.DwgReader.readFromStream(data, () => {});
+      const ver = String(A.ACadVersion[doc.header.version] || doc.header.version);
+      /* 큰 DWG 메모리 절약 (2026-10-25): DXF 글자를 작은 조각 수천만 개로 모아 한 번에 합치지 않고,
+         1MB 마다 바이트로 바꿔 Blob 으로 넘김 (30MB DWG 기준 최대 메모리 4.9GB → 2.2GB) */
+      const chunks = [], enc = new TextEncoder(); let buf = '';
+      new A.DxfWriter({ write(s) { buf += s; if (buf.length > 1048576) { chunks.push(enc.encode(buf)); buf = ''; } } }, doc).write();
+      if (buf) chunks.push(enc.encode(buf)); doc = null;
+      const blob = new Blob(chunks, { type: 'text/plain' }); chunks.length = 0;
+      self.postMessage({ ok: true, dxf: blob, ver });
     } else if (op === 'write') {
       const src = A.DxfReader.readFromStream(new TextEncoder().encode(data), () => {});
       const { doc, n, skipped } = rebuild(src, version || 'AC1027');

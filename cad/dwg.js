@@ -1,5 +1,5 @@
 /* 무카 CAD — DWG 열기·저장 (브라우저 안에서 변환)
-   - acad-ts (MIT, ACadSharp 의 TypeScript 이식) 를 DWG 를 열거나 저장할 때만 받음 (약 250KB, cad/vendor/)
+   - acad-ts (MIT, ACadSharp 의 TypeScript 이식) 를 DWG 를 열거나 저장할 때만 받음 (약 250KB, cad/vendor/, 큰 파일 속도 수정판 m1)
    - 파일은 서버로 올라가지 않고 이 브라우저 안에서만 변환됨
    - 변환은 별도 작업 공간(dwg-worker.js)에서 돌려서, 실패해도 캐드 화면은 멈추지 않음
    열기: DWG → (acad-ts) → DXF 글자 → 무카 CAD DXF 가져오기
@@ -7,7 +7,7 @@
 (function () {
   'use strict';
   const VER = '3.6.0';
-  const WORKER = new URL('dwg-worker.js?v=3', (document.currentScript && document.currentScript.src) || location.href).href;
+  const WORKER = new URL('dwg-worker.js?v=4', (document.currentScript && document.currentScript.src) || location.href).href;
   let used = false;
   function run(msg, transfer, timeoutMs = 180000) {
     used = true;
@@ -27,8 +27,8 @@
     VER, WORKER, NAMES,
     license: 'acad-ts (MIT) · https://github.com/node-projects/acad-ts — ACadSharp (MIT) 이식',
     get firstTime() { return !used; },
-    /* DWG File → { dxf: 문자열, ver: 'AC1032' 등 } */
-    async toDxf(file) { const buf = await file.arrayBuffer(); return run({ op: 'read', data: buf }, [buf]); },
+    /* DWG File → { dxf: Blob(DXF 글자), ver: 'AC1032' 등 } · 시간 제한은 파일 크기에 맞춤 (3분 + 1MB 당 15초, 최대 15분) */
+    async toDxf(file) { const buf = await file.arrayBuffer(); return run({ op: 'read', data: buf }, [buf], Math.min(900000, 180000 + file.size / 1048576 * 15000)); },
     /* 무카 CAD DXF 문자열 → DWG Uint8Array (기본 AutoCAD 2013 형식) */
     async fromDxf(dxfText, version = 'AC1027') { const r = await run({ op: 'write', data: dxfText, version }); return r.dwg; }
   };
