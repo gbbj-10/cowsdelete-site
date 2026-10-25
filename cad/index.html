@@ -729,7 +729,9 @@ function gripDefs(e){
   } return [];
 }
 function gripPts(e){return gripDefs(e).map(g=>g.p)}
-(function loop(){if(dirty)render();requestAnimationFrame(loop)})();
+/* holdRender: 큰 도면을 나눠 넣는 동안(게이지 갱신용 양보 때) 반쯤 들어온 도면을 매번 다시 그리지 않게 */
+let holdRender=false;
+(function loop(){if(dirty&&!holdRender)render();requestAnimationFrame(loop)})();
 function changed(){dirty=true;renderLayers();renderProps();updateInfo()}
 
 /* ================= 객체스냅 (AutoCAD OSMODE 4535 기준) =================
@@ -1686,6 +1688,30 @@ async function saveDwg(){if(!window.MuccaDWG){log('DWG 변환 도구를 불러�
 document.getElementById('bPng').onclick=()=>{const prev=new Set(sel);sel.clear();render();cv.toBlob(b=>{sel=prev;dirty=true;if(b)offer('mucca-drawing.png',b)},'image/png')};
 document.getElementById('bNew').onclick=()=>{pushUndo();const d=freshDoc();doc=d;sel.clear();changed();zoomExtents();log('새 도면 (취소로 되돌릴 수 있음)','ok')};
 /* PDF·사진은 AI 입력칸 첨부로, DWG는 DXF 변환 안내 */
+/* 도면 열기 진행 게이지 (2026-10-25): DWG·큰 DXF 를 열 때 단계·퍼센트·경과 시간을 보여 줌.
+   set(퍼센트, 단계 글, 다음 소식까지 천천히 다가갈 한계) — 소식 사이에도 막대가 조금씩 차서 멈춘 것처럼 보이지 않게 */
+const paintYield=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
+function openGauge(name,mb,onCancel){
+  if(!document.getElementById('ogStyle')){const st=document.createElement('style');st.id='ogStyle';st.textContent=`#openGauge{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:6;width:min(460px,calc(100% - 32px));background:var(--chrome);color:var(--ink);border:1px solid var(--rule);border-radius:10px;padding:10px 12px 9px;box-shadow:0 8px 28px rgba(0,0,0,.4);font:12.5px/1.45 var(--sans)}
+#openGauge .og-h{display:flex;align-items:center;gap:8px;margin-bottom:8px}#openGauge .og-h b{font-size:13px}#openGauge .og-f{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-dim)}
+#openGauge .og-bar{position:relative;height:10px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden}
+#openGauge .og-bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--tag);border-radius:5px;transition:width .25s linear;overflow:hidden}
+#openGauge .og-bar i::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);transform:translateX(-100%);animation:ogShine 1.3s linear infinite}
+@keyframes ogShine{to{transform:translateX(100%)}}@media (prefers-reduced-motion:reduce){#openGauge .og-bar i::after{animation:none}#openGauge .og-bar i{transition:none}}
+#openGauge .og-s{display:flex;justify-content:space-between;gap:10px;margin-top:6px;color:var(--ink-dim)}#openGauge .og-p{font-family:var(--mono);white-space:nowrap}
+#openGauge.ok .og-bar i{background:var(--ok)}#openGauge.ok .og-bar i::after,#openGauge.bad .og-bar i::after{animation:none;display:none}#openGauge.bad .og-bar i{background:var(--danger)}`;document.head.appendChild(st)}
+  const old=document.getElementById('openGauge');if(old)old.remove();
+  const g=document.createElement('div');g.id='openGauge';g.setAttribute('role','progressbar');g.setAttribute('aria-valuemin','0');g.setAttribute('aria-valuemax','100');g.setAttribute('aria-label','도면 여는 중');
+  g.innerHTML='<div class="og-h"><b>도면 여는 중</b><span class="og-f"></span><button class="tbtn og-x" type="button">취소</button></div><div class="og-bar"><i></i></div><div class="og-s"><span class="og-st"></span><span class="og-p"></span></div>';
+  g.querySelector('.og-f').textContent=name+' · '+(mb<1?Math.max(1,Math.round(mb*1024))+'KB':mb.toFixed(1)+'MB');
+  const x=g.querySelector('.og-x');if(onCancel)x.onclick=()=>{x.disabled=true;onCancel()};else x.hidden=true;
+  (document.getElementById('view')||document.body).appendChild(g);
+  const bar=g.querySelector('.og-bar i'),stEl=g.querySelector('.og-st'),pEl=g.querySelector('.og-p'),t0=performance.now();let cur=0,target=0,cmax=0,label='',over=false;
+  const paint=()=>{bar.style.width=cur.toFixed(1)+'%';g.setAttribute('aria-valuenow',String(Math.floor(cur)));pEl.textContent=Math.floor(cur)+'% · '+Math.round((performance.now()-t0)/1000)+'초'};
+  const tick=setInterval(()=>{if(over)return;if(cur<target)cur=Math.min(target,cur+Math.max(.4,(target-cur)*.3));else if(cur<cmax)cur=Math.min(cmax,cur+.12);paint()},200);
+  return {set(p,text,lim){if(over)return;target=Math.max(target,Math.min(99,p));cmax=Math.max(cmax,target,Math.min(99,lim==null?p:lim));if(text&&text!==label){label=text;stEl.textContent=text}},
+    async show(){cur=Math.max(cur,target);paint();await paintYield()},secs:()=>Math.round((performance.now()-t0)/1000),
+    done(ok,msg,title){if(over)return;over=true;clearInterval(tick);if(ok)cur=100;paint();stEl.textContent=msg||'';g.classList.add(ok?'ok':'bad');x.hidden=true;g.querySelector('.og-h b').textContent=title||(ok?'도면 열기 완료':'도면을 열지 못했습니다');setTimeout(()=>g.remove(),ok?1800:7000)}}}
 async function openSpecial(f){
   if(/\.dwg$/i.test(f.name)){
     const FALLBACK='AutoCAD에서 [다른 이름으로 저장 › DXF]로 저장하거나, 무료 ODA File Converter로 DXF로 바꾼 뒤 [열기]로 여세요.';
@@ -1695,12 +1721,20 @@ async function openSpecial(f){
     const MB=mb<1?'M1':mb<3?'M3':mb<5?'M5':mb<10?'M10':mb<15?'M15':mb<20?'M20':mb<30?'M30':mb<50?'M50':'M99';
     window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_TRY_'+MB});
     log(`${f.name}: DWG 읽는 중…${mb>=10?` (${mb.toFixed(0)}MB 큰 파일 — ${mb>=30?'2~4분':'1~2분'}쯤 걸립니다${mb>=35?'. 35MB가 넘으면 브라우저 메모리 한계로 탭이 멈출 수 있습니다. 안 열리면 AutoCAD에서 PURGE(소거)로 줄이거나, 필요한 부분만 WBLOCK으로 따로 저장해서 여세요':mb>=30?'. 컴퓨터 메모리가 부족하면 탭이 멈출 수 있습니다':''})`:''}${first?' (처음 한 번은 변환 도구 약 250KB를 받습니다. 파일은 서버로 올라가지 않고 이 브라우저 안에서만 바뀝니다)':''}`,'me');
-    try{const r=await MuccaDWG.toDxf(f);
+    const G=openGauge(f.name,mb,MuccaDWG.cancel?()=>MuccaDWG.cancel():null);G.set(1,'DWG 파일 여는 중',4);
+    const fmtN=n=>Number(n).toLocaleString('ko-KR');
+    try{const r=await MuccaDWG.toDxf(f,p=>{const q=p.n?Math.min(1,p.k/p.n):0;
+        if(p.st==='open')G.set(2,'DWG 파일 여는 중',4);
+        else if(p.st==='read')G.set(5+40*q,`도형 읽는 중 · ${fmtN(p.k)} / ${fmtN(p.n)}`,5+47*Math.min(1,q+.06));
+        else if(p.st==='build')G.set(52+10*q,'도면 짜 맞추는 중',52+10*Math.min(1,q+.1));
+        else if(p.st==='dxf')G.set(62+13*q,'무카 CAD 형식으로 바꾸는 중',62+13*Math.min(1,q+.1));
+        else if(p.st==='send')G.set(75,'넘겨받는 중',79)});
       log(`DWG(AutoCAD ${MuccaDWG.NAMES[r.ver]||r.ver} 형식) 변환 완료 (${((performance.now()-t0)/1000).toFixed(1)}초) — 가져오는 중…`,'ok');
-      await openFile(new File([r.dxf],f.name.replace(/\.dwg$/i,'.dxf')));
+      await openFile(new File([r.dxf],f.name.replace(/\.dwg$/i,'.dxf')),G);
       if(first)log('DWG 변환: 오픈소스 acad-ts(MIT) 사용. 다중 지시선·표·3D 객체 등 일부는 빠질 수 있습니다. (오픈소스 고지: cowsdelete.com/oss/)','');
       window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_OK_'+MB})}
-    catch(e){log(`${f.name}: DWG 변환 실패 (${String(e&&e.message||e).slice(0,120)}). ${FALLBACK}`,'err');let hv='X';try{const h=new TextDecoder().decode(new Uint8Array(await f.slice(0,6).arrayBuffer()));hv=/^AC\d{4}$/.test(h)?h:'NOTDWG'}catch(_){}window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_FAIL_'+hv+'_'+MB})}
+    catch(e){if(e&&e.cancel){G.done(false,'다른 파일을 열거나 다시 [열기]를 누르세요','열기를 취소했습니다');log(`${f.name}: DWG 열기를 취소했습니다`,'');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_CANCEL_'+MB});return true}
+      G.done(false,String(e&&e.message||e).slice(0,80));log(`${f.name}: DWG 변환 실패 (${String(e&&e.message||e).slice(0,120)}). ${FALLBACK}`,'err');let hv='X';try{const h=new TextDecoder().decode(new Uint8Array(await f.slice(0,6).arrayBuffer()));hv=/^AC\d{4}$/.test(h)?h:'NOTDWG'}catch(_){}window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_FAIL_'+hv+'_'+MB})}
     return true}
   if(window.AIREF&&AIREF.accepts(f)&&!/\.(json|dxf|txt)$/i.test(f.name)){
     const side=document.getElementById('side');if(side&&matchMedia('(max-width:820px)').matches)side.classList.add('open');
@@ -1711,15 +1745,25 @@ async function openSpecial(f){
     log(ready?`첨부 ${n}장 — 오른쪽 입력칸에 원하는 내용을 쓰고 [그리기]를 누르면 Claude가 보고 그립니다.`:`첨부 ${n}장 — 그리려면 상단 [Claude 연결]이 필요합니다. 입력칸은 내 PC의 Claude Code(Pro 이상)로 그리고, 무료 요금제라면 이 파일을 Claude 앱 대화창에 첨부해 "무카 CAD에 그대로 그려줘"라고 쓰면 됩니다.`,'ok');
     if(!aiIn.value.trim())aiIn.value='첨부한 도면을 그대로 2D 도면으로 그려줘';aiIn.focus();return true}
   return false}
-async function openFile(f){if(await openSpecial(f))return;const buf=await f.arrayBuffer();let txt=new TextDecoder('utf-8').decode(buf);
+async function openFile(f,G){if(!G&&await openSpecial(f))return;
+  /* 게이지 구간: DWG 에서 넘어오면 80~99%, DXF 만 열 때는 0~99% (해석 → 넣기) */
+  const T0=performance.now(),fromDwg=!!G;if(!G&&/\.dxf$/i.test(f.name)&&f.size>4*1048576)G=openGauge(f.name,f.size/1048576,null);
+  const P1=fromDwg?80:8,P2=fromDwg?86:45,PS=fromDwg?12:53;
+  if(G){G.set(P1,'도면 해석 중',P2-2);await G.show()}
+  const buf=await f.arrayBuffer();let txt=new TextDecoder('utf-8').decode(buf);
   if(txt.includes('\uFFFD')){try{txt=new TextDecoder('euc-kr').decode(buf)}catch(_){}}
   try{if(/\.json$/i.test(f.name)){const d=JSON.parse(txt);const sc=Array.isArray(d)?d:(d&&Array.isArray(d.cmds)?d.cmds:null);
     if(sc){/* 그리기 명령 파일 → 그리는 과정 재생 */if(!sc.length)throw new Error("명령이 없습니다");for(let i=0;i<600&&replaying;i++)await sleep(100);log(`${f.name}: 명령 ${sc.length}개 그리기 시작`,'me');aiSt.textContent=`${f.name} · 명령 ${sc.length}개`;
       const r=LIVE.on?await replay(sc,Math.max(40,Math.min(160,6000/sc.length))):runBatch(sc);if(!LIVE.on)zoomExtents();else setTimeout(()=>{zoomExtents();dirty=true},300);
       const bad=(r.errors&&r.errors.length)?r.errors:(r.results||[]).filter(x=>x&&x.ok===false);log(bad.length?`그리기 끝 · 오류 ${bad.length}개`:`그리기 끝 · 도형 ${doc.entities.length}개`,bad.length?'err':'ok');return}
     if(!d.entities||!d.layers)throw new Error('무카 CAD 도면 파일이 아닙니다');pushUndo();doc=normDoc(d);sel.clear();changed();zoomExtents();log(f.name+' 열기','ok')}
-    else{const r=importDXF(txt);pushUndo();for(const l of r.layers){const x=ensureLayer(l.name);Object.assign(x,{aci:l.aci>=1&&l.aci<=255?l.aci:7,lt:l.lt,visible:l.visible,frozen:l.frozen,locked:l.locked},l.lw!=null?{lw:l.lw}:{})}if(r.blocks)Object.assign(BL(),r.blocks);if(r.dimStyles)for(const [n,v] of Object.entries(r.dimStyles))if(!DSS()[n])DSS()[n]=v;for(const e of r.ents){const L=e.layer;delete e.layer;newEnt(e,{layer:L})}changed();zoomExtents();
-      const sk=Object.entries(r.skipped).map(([k,v])=>`${k} ${v}`).join(', ');log(`${f.name}: 도형 ${r.ents.length}개 가져옴${sk?' · 건너뜀: '+sk:''}`,sk?'':'ok')}}catch(err){log('열기 실패: '+err.message,'err')}}
+    else{const r=importDXF(txt);txt='';pushUndo();for(const l of r.layers){const x=ensureLayer(l.name);Object.assign(x,{aci:l.aci>=1&&l.aci<=255?l.aci:7,lt:l.lt,visible:l.visible,frozen:l.frozen,locked:l.locked},l.lw!=null?{lw:l.lw}:{})}if(r.blocks)Object.assign(BL(),r.blocks);if(r.dimStyles)for(const [n,v] of Object.entries(r.dimStyles))if(!DSS()[n])DSS()[n]=v;
+      /* 도형 넣기: 게이지가 있으면 2만 개마다 화면을 한 번 그려 막대가 계속 차게 함 */
+      const E=r.ents,NE=E.length,fmtN=n=>Number(n).toLocaleString('ko-KR');if(G){G.set(P2,`도면에 넣는 중 · 0 / ${fmtN(NE)}`,P2+2);await G.show()}
+      holdRender=!!G;try{for(let k=0;k<NE;k++){const e=E[k],L=e.layer;delete e.layer;newEnt(e,{layer:L});if(G&&k%20000===19999){G.set(P2+PS*(k+1)/NE,`도면에 넣는 중 · ${fmtN(k+1)} / ${fmtN(NE)}`,P2+PS*Math.min(1,(k+20000)/NE));await paintYield()}}}finally{holdRender=false}
+      if(G){G.set(99,NE>100000?'화면에 그리는 중 · 도형이 많으면 몇 초 걸립니다':'화면에 그리는 중',99);await G.show()}changed();zoomExtents();
+      const sk=Object.entries(r.skipped).map(([k,v])=>`${k} ${v}`).join(', ');log(`${f.name}: 도형 ${NE}개 가져옴${sk?' · 건너뜀: '+sk:''}`,sk?'':'ok');
+      if(G){await paintYield();G.done(true,`도형 ${fmtN(NE)}개 · 모두 ${G.secs()}초`)}}}catch(err){if(G)G.done(false,'열기 실패: '+String(err.message).slice(0,60));log('열기 실패: '+err.message,'err')}}
 document.getElementById('fileIn').onchange=ev=>{const f=ev.target.files[0];ev.target.value='';if(f)openFile(f)};
 /* 도면 영역에 파일을 끌어다 놓아도 열기 (AI 입력칸에 놓으면 첨부) */
 addEventListener('dragover',e=>{if(!e.defaultPrevented&&[...(e.dataTransfer&&e.dataTransfer.types||[])].includes('Files'))e.preventDefault()});
@@ -5888,7 +5932,7 @@ window.cad=Object.freeze({
 <script src="../assets/vendor/supabase.js"></script>
 <script src="cloud.js?v=20261021a"></script>
 <script src="airef.js?v=2"></script>
-<script src="dwg.js?v=6"></script>
+<script src="dwg.js?v=7"></script>
 <script src="parts.js?v=1"></script>
 </body>
 </html>

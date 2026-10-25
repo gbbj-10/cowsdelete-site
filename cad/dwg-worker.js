@@ -65,17 +65,23 @@ function rebuild(src, version) {
   return { doc, n, skipped };
 }
 
+/* 진행 알림 (2026-10-25): acad-ts 가 부르는 globalThis.__acadProgress 를 화면으로 전달 (0.12초에 한 번까지) */
+let lastP = 0;
+const prog = (st, k, n) => { const t = Date.now(); if (t - lastP < 120 && k < n) return; lastP = t; self.postMessage({ progress: 1, st, k, n }); };
+globalThis.__acadProgress = prog;
+
 self.onmessage = e => {
   const { op, data, version } = e.data;
   try {
     if (op === 'read') {
+      prog('open', 0, 1);
       let doc = A.DwgReader.readFromStream(data, () => {});
       const ver = String(A.ACadVersion[doc.header.version] || doc.header.version);
       /* 큰 DWG 메모리 절약 (2026-10-25): DXF 글자를 작은 조각 수천만 개로 모아 한 번에 합치지 않고,
          1MB 마다 바이트로 바꿔 Blob 으로 넘김 (30MB DWG 기준 최대 메모리 4.9GB → 2.2GB) */
       const chunks = [], enc = new TextEncoder(); let buf = '';
       new A.DxfWriter({ write(s) { buf += s; if (buf.length > 1048576) { chunks.push(enc.encode(buf)); buf = ''; } } }, doc).write();
-      if (buf) chunks.push(enc.encode(buf)); doc = null;
+      if (buf) chunks.push(enc.encode(buf)); doc = null; lastP = 0; prog('send', 1, 1);
       const blob = new Blob(chunks, { type: 'text/plain' }); chunks.length = 0;
       self.postMessage({ ok: true, dxf: blob, ver });
     } else if (op === 'write') {

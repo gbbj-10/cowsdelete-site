@@ -7,17 +7,19 @@
 (function () {
   'use strict';
   const VER = '3.6.0';
-  const WORKER = new URL('dwg-worker.js?v=4', (document.currentScript && document.currentScript.src) || location.href).href;
-  let used = false;
-  function run(msg, transfer, timeoutMs = 180000) {
+  const WORKER = new URL('dwg-worker.js?v=5', (document.currentScript && document.currentScript.src) || location.href).href;
+  let used = false, cur = null;
+  /* onProgress({st,k,n}): 작업 공간의 진행 알림 (open → read → build → dxf → send) */
+  function run(msg, transfer, timeoutMs = 180000, onProgress) {
     used = true;
     return new Promise((ok, no) => {
       let w;
       try { w = new Worker(WORKER, { type: 'module' }); }
       catch (e) { return no(new Error('이 브라우저에서는 DWG 변환을 쓸 수 없습니다')); }
-      const end = () => { try { w.terminate(); } catch (_) {} };
+      const end = () => { try { w.terminate(); } catch (_) {} if (cur && cur.w === w) cur = null; };
       const t = setTimeout(() => { end(); no(new Error('시간이 너무 오래 걸립니다')); }, timeoutMs);
-      w.onmessage = e => { clearTimeout(t); end(); e.data.ok ? ok(e.data) : no(new Error(e.data.error)); };
+      cur = { w, stop: () => { clearTimeout(t); end(); no(Object.assign(new Error('취소했습니다'), { cancel: true })); } };
+      w.onmessage = e => { if (e.data && e.data.progress) { try { onProgress && onProgress(e.data); } catch (_) {} return; } clearTimeout(t); end(); e.data.ok ? ok(e.data) : no(new Error(e.data.error)); };
       w.onerror = e => { clearTimeout(t); end(); no(new Error(e.message || '변환 도구를 불러오지 못했습니다 (인터넷 연결 확인)')); };
       w.postMessage(msg, transfer || []);
     });
@@ -28,7 +30,9 @@
     license: 'acad-ts (MIT) · https://github.com/node-projects/acad-ts — ACadSharp (MIT) 이식',
     get firstTime() { return !used; },
     /* DWG File → { dxf: Blob(DXF 글자), ver: 'AC1032' 등 } · 시간 제한은 파일 크기에 맞춤 (3분 + 1MB 당 15초, 최대 15분) */
-    async toDxf(file) { const buf = await file.arrayBuffer(); return run({ op: 'read', data: buf }, [buf], Math.min(900000, 180000 + file.size / 1048576 * 15000)); },
+    async toDxf(file, onProgress) { const buf = await file.arrayBuffer(); return run({ op: 'read', data: buf }, [buf], Math.min(900000, 180000 + file.size / 1048576 * 15000), onProgress); },
+    /* 지금 하는 변환 취소 (도면 열기 게이지의 [취소]) */
+    cancel() { if (cur) cur.stop(); },
     /* 무카 CAD DXF 문자열 → DWG Uint8Array (기본 AutoCAD 2013 형식) */
     async fromDxf(dxfText, version = 'AC1027') { const r = await run({ op: 'write', data: dxfText, version }); return r.dwg; }
   };
