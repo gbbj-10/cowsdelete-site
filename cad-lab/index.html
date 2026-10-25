@@ -260,7 +260,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.13</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.14</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -335,7 +335,9 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 'use strict';
 /* ================= 상수 ================= */
 const ACI_NAME={1:'빨강',2:'노랑',3:'초록',4:'하늘',5:'파랑',6:'자홍',7:'흰색',8:'회색',9:'밝은 회색'};
-function aciColor(n){n=Math.round(+n)||7;
+const _aciMemo=new Map();
+function aciColor(n){const k=n;const h=_aciMemo.get(k);if(h!==undefined)return h;const v=_aciColor(n);if(_aciMemo.size<4096)_aciMemo.set(k,v);return v}
+function _aciColor(n){n=Math.round(+n)||7;
   const fixed={1:[255,0,0],2:[255,255,0],3:[0,255,0],4:[0,255,255],5:[0,0,255],6:[255,0,255],7:[255,255,255],8:[128,128,128],9:[192,192,192]};
   let rgb=fixed[n];
   if(!rgb&&n>=250&&n<=255){const g=[51,80,105,130,190,255][n-250];rgb=[g,g,g]}
@@ -456,7 +458,10 @@ function circleCircle(c1,r1,c2,r2){const d=dist(c1,c2);if(d>r1+r2||d<Math.abs(r1
   const pm=add(c1,mul(sub(c2,c1),a/d)),off=mul(perp(unit(sub(c2,c1))),h);return [add(pm,off),sub(pm,off)]}
 
 /* ================= 엔티티 헬퍼 ================= */
-const layerOf=name=>doc.layers.find(l=>l.name===name);
+/* 그리는 동안만 도면층 이름 → 도면층 지도 사용 (2026-10-25): 도형마다 도면층 목록을 처음부터 찾던 것(도형 41만 × 3번) */
+let _LM=null,_LMa=null,_LMn=-1;
+const layerOf=name=>(_LM&&_LMa===doc.layers&&_LMn===doc.layers.length)?_LM.get(name):doc.layers.find(l=>l.name===name);
+function layerMapOn(){const m=new Map();for(const l of doc.layers)if(!m.has(l.name))m.set(l.name,l);_LM=m;_LMa=doc.layers;_LMn=doc.layers.length}
 function ensureLayer(name,aci=7,lt='continuous'){let l=layerOf(name);if(!l){l=mkLayer(name,aci,lt);doc.layers.push(l)}return l}
 function prims(e){ // 기하 원소로 분해 (스냅·교점·히트)
   switch(e.type){
@@ -507,7 +512,10 @@ function entPts(e){ // 경계 계산용
   } return [];
 }
 function textW(e){return e.h*0.62*[...String(e.s)].reduce((w,ch)=>w+(ch.charCodeAt(0)>255?1.55:1),0)}
-function bbox(list=doc.entities){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(const e of list)for(const p of entPts(e)){x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y)}
+var geomVer=0,flatVer=0;   /* 아래(블록 펼치기 절)에서 씀. var 라서 시작 직후 그리기에서도 안전 */
+let _fullBB=null;
+function bbox(list=doc.entities){if(list===doc.entities){const r=_bbox0(list);_fullBB={v:geomVer,b:r,d:doc};return r}return _bbox0(list)}
+function _bbox0(list){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;for(const e of list)for(const p of entPts(e)){x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y)}
   return x0===Infinity?null:{minX:x0,minY:y0,maxX:x1,maxY:y1}}
 function hitDist(e,p){
   if(e.type==='text'){const w=textW(e),q=rotPt(p,e.p,-(e.rot||0)),x0=e.align==='center'?e.p.x-w/2:e.p.x;return (q.x>=x0&&q.x<=x0+w&&q.y>=e.p.y&&q.y<=e.p.y+e.h)?0:Infinity}
@@ -519,7 +527,7 @@ function hitDist(e,p){
 }
 function visibleEnts(){const vis=new Set(doc.layers.filter(l=>l.visible&&!l.frozen).map(l=>l.name));return doc.entities.filter(e=>vis.has(e.layer))}
 function pickableEnts(){const ok=new Set(doc.layers.filter(l=>l.visible&&!l.frozen&&!l.locked).map(l=>l.name));return doc.entities.filter(e=>ok.has(e.layer))}
-function pick(p,tolPx=(window.__pickbox||7)){const tol=tolPx/view.s;let best=null,bd=tol;for(const e of pickableEnts()){const d=hitDist(e,p);if(d<=bd){bd=d;best=e}}return best}
+function pick(p,tolPx=(window.__pickbox||7)){const tol=tolPx/view.s,big=bigDoc();let best=null,bd=tol;for(const e of pickableEnts()){if(big&&!nearBox(e,p,tol))continue;const d=hitDist(e,p);if(d<=bd){bd=d;best=e}}return best}
 
 /* ================= 명령 엔진 (UI·AI 공통) ================= */
 function P(v,nm='점'){if(Array.isArray(v)&&v.length>=2)return {x:+v[0],y:+v[1]};if(v&&typeof v==='object'&&'x' in v)return {x:+v.x,y:+v.y};throw new Error(nm+' 형식은 [x, y] 입니다')}
@@ -649,14 +657,20 @@ function offsetEnt(e,d,side){
   throw new Error('간격띄우기는 선·원·호·폴리선만 됩니다');
 }
 function execOne(c,ctx){const name=String(c.cmd||c.command||(COMMANDS[c.type]?c.type:'')).toLowerCase();const f=COMMANDS[name];if(!f)throw new Error('알 수 없는 명령: '+name);return f(c,ctx)}
-function pushUndo(){undoStack.push(JSON.stringify(doc));if(undoStack.length>200)undoStack.shift();redoStack=[]}
+/* 되돌리기 메모리 한도 (2026-10-25): 도면 통째 사본을 200개까지 쌓아서, 큰 도면(41만 도형 = 사본 하나 56MB)은 편집 수십 번이면 탭이 죽을 수 있었음.
+   사본 글자 합이 UNDO_CAP 을 넘으면 오래된 것부터 버림(최소 1개는 남김) */
+const UNDO_CAP=200e6;let _undoWarned=false;
+function pushUndo(){undoStack.push(JSON.stringify(doc));if(undoStack.length>200)undoStack.shift();redoStack=[];
+  let tot=0;for(const x of undoStack)tot+=x.length;let cut=0;while(tot>UNDO_CAP&&undoStack.length>1){tot-=undoStack.shift().length;cut++}
+  if(cut&&!_undoWarned){_undoWarned=true;try{log(`큰 도면이라 되돌리기(Ctrl+Z)는 최근 ${undoStack.length}번까지만 기억합니다 (브라우저 메모리 보호)`,'')}catch(_){}}}
 function runBatch(cmds,{record=true,label=null}={}){
   if(!Array.isArray(cmds))cmds=[cmds];
   if(record)pushUndo();
   const ctx={results:[],lastIds:[]},errors=[];
   cmds.forEach((c,i)=>{try{const r=execOne(c,ctx)||{};r.ok=true;ctx.results[i]=r;ctx.lastIds=r.ids||(r.id?[r.id]:ctx.lastIds)}catch(err){ctx.results[i]={ok:false,error:err.message};errors.push(`#${i} ${c.cmd}: ${err.message}`)}});
   changed();
-  return {ok:errors.length===0,results:ctx.results,errors,entities:doc.entities.length,bbox:bbox()};
+  const R={ok:errors.length===0,results:ctx.results,errors,entities:doc.entities.length};let _bb;Object.defineProperty(R,'bbox',{enumerable:true,configurable:true,get(){return _bb===undefined?(_bb=bbox()):_bb},set(v){_bb=v}});
+  return R;
 }
 
 /* ================= 화면 ================= */
@@ -684,6 +698,18 @@ function strokeEnt(c,e){
 }
 function drawText(c,p,s,h,rot,align){const q=S(p),px=h*view.s;if(px<2.5){return}c.save();c.translate(q.x,q.y);c.rotate(-rot*D2R);const ts=typeof curTS!=='undefined'?curTS:null;if(ts&&(ts.wf!==1||ts.ob))c.transform(ts.wf||1,0,-Math.tan((ts.ob||0)*D2R),1,0,0);c.font=`${ts?ts.w8:500} ${px}px ${ts?ts.fam:SANS}`;c.textAlign=align==='center'?'center':'left';c.textBaseline='alphabetic';c.fillText(s,0,0);c.restore()}
 function niceStep(px){const raw=px/view.s,p=Math.pow(10,Math.floor(Math.log10(raw)));for(const m of [1,2,5,10])if(m*p>=raw)return m*p;return 10*p}
+/* 한 번에 긋기: 기본 그리기(strokeEnt)와 똑같은 경로를 이어 붙임. 굵기 있는·볼록(bulge) 폴리선 등은 false → 따로 그림 */
+const RSAFE=new Set(['line','circle','arc','polyline','ellipse','xline','ray','spline','hatch','text']);   /* 그린 뒤 그리기 설정을 바꿔 두지 않는 종류 */
+function batchPath(c,e,open){
+  switch(e.type){
+    case 'line':{const a=S(e.a),b=S(e.b);if(!open)c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);return true}
+    case 'polyline':{if(e.width>0||!e.pts.length)return false;if(Array.isArray(e.b)&&e.b.some(v=>v)){/* 볼록 폴리선: _se20 과 같은 경로 */if(!open)c.beginPath();const p0=S(e.pts[0]);c.moveTo(p0.x,p0.y);
+        for(const s of plSegs(e)){if(s.arc){const a=s.arc,q=S(a.c),aA=angOf(sub(s.A,a.c)),aB=angOf(sub(s.B,a.c));c.arc(q.x,q.y,a.r*view.s,-aA*D2R,-aB*D2R,a.ccw)}else{const q=S(s.B);c.lineTo(q.x,q.y)}}if(e.closed)c.closePath();return true}
+      if(!open)c.beginPath();const P0=e.pts;for(let i=0;i<P0.length;i++){const q=S(P0[i]);i?c.lineTo(q.x,q.y):c.moveTo(q.x,q.y)}if(e.closed)c.closePath();return true}
+    case 'circle':{const q=S(e.c),rr=Math.abs(e.r*view.s);if(!(rr>0)||!isFinite(rr))return open;if(!open)c.beginPath();c.moveTo(q.x+rr,q.y);c.arc(q.x,q.y,rr,0,Math.PI*2);return true}
+    case 'arc':{const q=S(e.c),rr=Math.abs(e.r*view.s);if(!(rr>0)||!isFinite(rr))return open;if(!open)c.beginPath();const t0=-e.a0*D2R;c.moveTo(q.x+rr*Math.cos(t0),q.y+rr*Math.sin(t0));c.arc(q.x,q.y,rr,t0,-e.a1*D2R,true);return true}
+  }
+  return false}
 function render(){
   const c=ctx2;c.setTransform(DPR,0,0,DPR,0,0);c.clearRect(0,0,W,H);c.fillStyle='#111418';c.fillRect(0,0,W,H);
   if(flags.grid){const st=niceStep(14),tl=Wp(0,0),br=Wp(W,H);c.lineWidth=1;
@@ -693,7 +719,19 @@ function render(){
     const o=S({x:0,y:0});c.strokeStyle='rgba(241,194,50,.35)';c.beginPath();c.moveTo(o.x,o.y);c.lineTo(o.x+28,o.y);c.moveTo(o.x,o.y);c.lineTo(o.x,o.y-28);c.stroke()}
   try{beditUnder(c)}catch(_){}
   c.lineCap='round';c.lineJoin='round';const lockedL=new Set(doc.layers.filter(l=>l.locked).map(l=>l.name));
-  for(const e0 of visibleEnts()){const parts=e0.type==='insert'?flatInsert(e0):[e0],al=lockedL.has(e0.layer)?.45:1;for(const e of parts){const col=colorOf(e);c.strokeStyle=col;c.fillStyle=col;c.lineWidth=flags.lwt?Math.max(1,lwOf(e)*4):1.25;c.globalAlpha=al;c.setLineDash(dashOf(e));entDraw=true;try{strokeEnt(c,e)}finally{entDraw=false}}}
+  /* 큰 도면 (2026-10-25): 화면 밖 도형 건너뛰기 · 같은 모양(색·굵기·선 종류)이 이어지는 선·원·호·폴리선은 한 번에 긋기 ·
+     바뀌지 않은 그리기 설정은 다시 넣지 않기. 작은 도면은 예전과 같은 방식(도형마다 설정·긋기) */
+  const BIG=bigDoc();let CV=BIG?viewBox(40):null;
+  /* 도면 전체가 화면 안이면(방금 전체 보기 등) 범위 검사 생략 */
+  if(CV&&_fullBB&&_fullBB.v===geomVer&&_fullBB.d===doc&&_fullBB.b){const b=_fullBB.b;if(b.minX>=CV[0]&&b.maxX<=CV[2]&&b.minY>=CV[1]&&b.maxY<=CV[3])CV=null}
+  layerMapOn();
+  try{let lc=null,lw=-1,la=-1,ld=null,open=false;const flush=()=>{if(open){c.stroke();open=false}};
+  for(const e0 of visibleEnts()){if(CV&&!inView(e0,CV))continue;const parts=e0.type==='insert'?flatInsert(e0):[e0],al=lockedL.has(e0.layer)?.45:1;for(const e of parts){if(CV&&parts.length>1&&!inView(e,CV))continue;const col=colorOf(e),w=flags.lwt?Math.max(1,lwOf(e)*4):1.25,d=dashOf(e),dk=d.length?d.join(','):'';
+    if(!BIG||window.__noBatch){c.strokeStyle=col;c.fillStyle=col;c.lineWidth=w;c.globalAlpha=al;c.setLineDash(d);entDraw=true;try{strokeEnt(c,e)}finally{entDraw=false}continue}
+    if(col!==lc||w!==lw||al!==la||dk!==ld){flush();if(col!==lc){c.strokeStyle=col;c.fillStyle=col;lc=col}if(w!==lw){c.lineWidth=w;lw=w}if(al!==la){c.globalAlpha=al;la=al}if(dk!==ld){c.setLineDash(d);ld=dk}}
+    if(batchPath(c,e,open)){open=true;continue}
+    flush();entDraw=true;try{strokeEnt(c,e)}finally{entDraw=false}if(!RSAFE.has(e.type)){lc=null;lw=-1;la=-1;ld=null}}}
+  flush()}finally{_LM=null}
   c.globalAlpha=1;c.lineWidth=1.3;
   // 커서 아래 객체 강조
   if(hoverEnt&&!sel.has(hoverEnt.id)&&byId(hoverEnt.id)){c.lineWidth=3;const col=colorOf(hoverEnt);c.strokeStyle=col;c.fillStyle=col;c.setLineDash(hoverEnt.type==='dim'?[]:dashOf(hoverEnt));strokeEnt(c,hoverEnt)}
@@ -751,7 +789,7 @@ function findSnap(p){
   const tol=(osnapOnce?20:12)/view.s;let best=null,bd=Infinity;
   const cand=(q,t,extra)=>{if(!on(t))return;const d=dist(q,p);if(d<bd){bd=d;best=Object.assign({p:q,t},extra||{})}};
   const geo=(q,t,extra)=>{if(dist(q,p)<=tol)cand(q,t,extra)};
-  const ents=flatEnts(visibleEnts()).filter(e=>e.type!=='dim'&&e.type!=='hatch');
+  const ents=flatEnts(bigDoc()?visibleEnts().filter(e=>nearBox(e,p,tol*2.5)):visibleEnts()).filter(e=>e.type!=='dim'&&e.type!=='hatch');
   const under=ents.filter(e=>hitDist(e,p)<=tol);           // 조준창 아래 객체
   const near=ents.filter(e=>hitDist(e,p)<=tol*2.5);
   for(const e of near){
@@ -1917,24 +1955,60 @@ function DS(){return doc.dimStyle||(doc.dimStyle=Object.assign({},DIMSTY_DEF))}
 function BL(){return doc.blocks||(doc.blocks={})}
 const _normDoc0=normDoc;normDoc=function(d){_normDoc0(d);d.blocks=d.blocks||{};d.dimStyle=Object.assign({},DIMSTY_DEF,d.dimStyle||{});return d};
 function fmtD(v){const dec=DS().dec??2;return String(Number((+v).toFixed(dec)))}
-let geomVer=0;const _changed0=changed;changed=function(){geomVer++;_changed0()};
+geomVer=0;const _changed0=changed;changed=function(){geomVer++;bumpFlat();_changed0()};
+/* 큰 도면 속도 (2026-10-25): 블록 펼치기 캐시는 블록 정의가 바뀔 때만 새로 만든다(flatVer).
+   예전에는 선 하나만 그려도 모든 블록 삽입을 다시 펼쳐서(41만 도형 도면에서 매번 1초) 편집이 굼떴음 */
+let _blkSig=null,_blkRef=null;
+function bumpFlat(){const B=doc.blocks||null;let s;try{s=B?JSON.stringify(B):''}catch(_){s=null}
+  if(s===null||B!==_blkRef||s!==_blkSig){if(_blkSig!==null||_blkRef!==null)flatVer++;_blkSig=s;_blkRef=B}}
 
 /* ----- 블록 참조 펼치기 ----- */
 function insXform(ins){const b=BL()[ins.name]||{base:{x:0,y:0}},r=(ins.rot||0)*D2R,co=Math.cos(r),si=Math.sin(r),sx=ins.sx??1,sy=ins.sy??1,bs=b.base;
   return p=>{const x=(p.x-bs.x)*sx,y=(p.y-bs.y)*sy;return {x:ins.p.x+x*co-y*si,y:ins.p.y+x*si+y*co}}}
 const flatCache=new WeakMap();
 function flatInsert(ins,depth=0){
-  const key=geomVer+'|'+ins.name+'|'+ins.p.x+','+ins.p.y+'|'+(ins.sx??1)+','+(ins.sy??1)+'|'+(ins.rot||0)+'|'+ins.layer+'|'+ins.color;
+  const key=flatVer+'|'+ins.name+'|'+ins.p.x+','+ins.p.y+'|'+(ins.sx??1)+','+(ins.sy??1)+'|'+(ins.rot||0)+'|'+ins.layer+'|'+ins.color;
   const hit=flatCache.get(ins);if(hit&&hit.key===key)return hit.v;
   const b=BL()[ins.name];if(!b||depth>6)return [];
   const F=insXform(ins),sx=ins.sx??1,sy=ins.sy??1,mir=sx*sy<0,k=Math.sqrt(Math.abs(sx*sy)),rot=ins.rot||0,out=[];
-  for(const src of b.ents){const list=src.type==='insert'?flatInsert(src,depth+1).map(x=>structuredClone(x)):[structuredClone(src)];
+  for(const src of b.ents){const list=src.type==='insert'?flatInsert(src,depth+1).map(x=>fclone(x)):[fclone(src)];
     for(const e of list){transformEnt(e,F,t=>(mir?-t:t)+rot,mir);if(e.r!=null)e.r*=k;if(e.rx!=null){e.rx*=k;e.ry*=k}if(e.type==='text')e.h*=k;if(e.type==='hatch')e.scale=(e.scale||1)*k;
       if(e.layer==='0'||!e.layer){e.layer=ins.layer;if(e.color==null)e.color=ins.color??null}
       e._ins=ins.id;out.push(e)}}
   flatCache.set(ins,{key,v:out});return out}
+/* 도형 복사 (structuredClone 보다 몇 배 빠름 — 도형은 JSON 같은 순수 객체·배열뿐) */
+function fclone(o){if(Array.isArray(o)){const n=o.length,a=new Array(n);for(let i=0;i<n;i++){const v=o[i];a[i]=(v!==null&&typeof v==='object')?fclone(v):v}return a}
+  if(Object.getPrototypeOf(o)!==Object.prototype)return structuredClone(o);const r={};for(const k in o){const v=o[k];r[k]=(v!==null&&typeof v==='object')?fclone(v):v}return r}
 function pushAll(o,a){for(let i=0;i<a.length;i++)o.push(a[i]);return o}
 function flatEnts(list){const o=[];for(const e of list){if(e.type==='insert')pushAll(o,flatInsert(e));else o.push(e)}return o}
+/* ----- 큰 도면 속도 (2026-10-25): 도형마다 넉넉한 범위 상자 → 화면 밖 도형은 그리지 않고, 커서 근처 도형만 고르기·스냅 검사 -----
+   상자는 실제보다 크거나 같게만 잡는다(문자는 회전·글꼴 폭까지 넉넉히). 모르는 종류(치수·표·점·스플라인 등)는 null = 항상 검사.
+   도형 수가 5000개 이상일 때만 쓴다 — 작은 도면은 예전과 똑같이 동작 */
+function bigDoc(){return !!window.__cullAll||doc.entities.length>=5000}   /* 함수 선언: 시작 직후 첫 render 에서도 안전(TDZ 없음) */
+const BOXC=new WeakMap(),FLATBOX=new WeakMap(),PARTS=new WeakSet();
+const _SB=[0,0,0,0];   /* 선·원·호는 계산이 싸서 저장하지 않고 이 배열에 바로 담아 돌려줌(받은 쪽이 곧바로 읽고 버림) */
+function boxOf(e){const t=e.type;
+  if(t==='line'){const a=e.a,b=e.b;if(!a||!b)return null;_SB[0]=a.x<b.x?a.x:b.x;_SB[2]=a.x<b.x?b.x:a.x;_SB[1]=a.y<b.y?a.y:b.y;_SB[3]=a.y<b.y?b.y:a.y;return isFinite(_SB[0]+_SB[1]+_SB[2]+_SB[3])?_SB:null}
+  if(t==='circle'||t==='arc'){const c=e.c,r=Math.abs(e.r);if(!c)return null;_SB[0]=c.x-r;_SB[1]=c.y-r;_SB[2]=c.x+r;_SB[3]=c.y+r;return isFinite(_SB[0]+_SB[1]+_SB[2]+_SB[3])?_SB:null}
+  const h=BOXC.get(e);if(h&&(h.v===geomVer||PARTS.has(e)))return h.b;const b=calcBox(e);BOXC.set(e,{v:geomVer,b});return b}
+function calcBox(e){let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;const P=(x,y)=>{if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y};
+  try{switch(e.type){
+    case 'line':P(e.a.x,e.a.y);P(e.b.x,e.b.y);break;
+    case 'circle':case 'arc':P(e.c.x-e.r,e.c.y-e.r);P(e.c.x+e.r,e.c.y+e.r);break;
+    case 'ellipse':{const r=Math.max(Math.abs(e.rx),Math.abs(e.ry));P(e.c.x-r,e.c.y-r);P(e.c.x+r,e.c.y+r);break}
+    case 'polyline':{const n=e.pts.length;for(let i=0;i<n;i++)P(e.pts[i].x,e.pts[i].y);
+      if(Array.isArray(e.b))for(let i=0;i<n;i++){const bg=e.b[i];if(!bg)continue;const A=e.pts[i],B=e.pts[(i+1)%n],c=Math.hypot(B.x-A.x,B.y-A.y),ab=Math.abs(bg);
+        const g=ab<=1?ab*c/2:c*(1+bg*bg)/(4*ab)*2+c;P(Math.min(A.x,B.x)-g,Math.min(A.y,B.y)-g);P(Math.max(A.x,B.x)+g,Math.max(A.y,B.y)+g)}
+      const w=Math.abs(+e.width||0)/2;if(w){x0-=w;y0-=w;x1+=w;y1+=w}break}
+    case 'hatch':for(const lp of e.loops)for(const q of lp)P(q.x,q.y);break;
+    case 'text':case 'attdef':{const t=e.type==='attdef'?asText(e):e,nl=String(t.s).split('\n').length,R=2*textW(t)+t.h*(nl*1.7*(t.ls||1)+2);P(t.p.x-R,t.p.y-R);P(t.p.x+R,t.p.y+R);break}
+    case 'insert':{const fl=flatInsert(e),fb=FLATBOX.get(fl);if(fb!==undefined)return fb;for(const f of fl){PARTS.add(f);const b=boxOf(f);if(!b){FLATBOX.set(fl,null);return null}P(b[0],b[1]);P(b[2],b[3])}
+      const r=x0===Infinity?[e.p.x,e.p.y,e.p.x,e.p.y]:[x0,y0,x1,y1];FLATBOX.set(fl,r);return r}
+    default:return null}}catch(_){return null}
+  return x0===Infinity||!isFinite(x0+y0+x1+y1)?null:[x0,y0,x1,y1]}
+function nearBox(e,p,t){const b=boxOf(e);return !b||(p.x>=b[0]-t&&p.x<=b[2]+t&&p.y>=b[1]-t&&p.y<=b[3]+t)}
+function viewBox(px){const hx=(W/2+px)/view.s,hy=(H/2+px)/view.s;return [view.x-hx,view.y-hy,view.x+hx,view.y+hy]}
+function inView(e,V){const b=boxOf(e);return !b||!(b[2]<V[0]||b[0]>V[2]||b[3]<V[1]||b[1]>V[3])}
 
 /* ----- 타원 ----- */
 function ellPt(e,t){const r=(e.rot||0)*D2R,x=e.rx*Math.cos(t*D2R),y=e.ry*Math.sin(t*D2R);return {x:e.c.x+x*Math.cos(r)-y*Math.sin(r),y:e.c.y+x*Math.sin(r)+y*Math.cos(r)}}
@@ -3614,8 +3688,8 @@ function plTess(e){const o=[e.pts[0]];for(const s of plSegs(e)){if(s.arc){const 
 const _ep20=entPts;entPts=function(e){if(!hasBulge(e))return _ep20(e);return plTess(e)};
 const _lp20=livePaths;livePaths=function(e){if(hasBulge(e))return [plTess(e)];return _lp20(e)};
 plLen=function(e){return prims(e).reduce((s,q)=>s+(q.k==='a'?q.r*(n360(q.a1-q.a0)||360)*D2R:dist(q.a,q.b)),0)};
-const _se20=strokeEnt;strokeEnt=function(c,e){if(!hasBulge(e))return _se20(c,e);c.save();if(e.width>0){c.lineWidth=Math.max(1,e.width*view.s);c.lineCap='butt';c.lineJoin='miter'}c.beginPath();const p0=S(e.pts[0]);c.moveTo(p0.x,p0.y);
-  for(const s of plSegs(e)){if(s.arc){const a=s.arc,q=S(a.c),aA=angOf(sub(s.A,a.c)),aB=angOf(sub(s.B,a.c));c.arc(q.x,q.y,a.r*view.s,-aA*D2R,-aB*D2R,a.ccw)}else{const q=S(s.B);c.lineTo(q.x,q.y)}}if(e.closed)c.closePath();c.stroke();c.restore()};
+const _se20=strokeEnt;strokeEnt=function(c,e){if(!hasBulge(e))return _se20(c,e);const wd=e.width>0;if(wd){c.save();c.lineWidth=Math.max(1,e.width*view.s);c.lineCap='butt';c.lineJoin='miter'}c.beginPath();const p0=S(e.pts[0]);c.moveTo(p0.x,p0.y);
+  for(const s of plSegs(e)){if(s.arc){const a=s.arc,q=S(a.c),aA=angOf(sub(s.A,a.c)),aB=angOf(sub(s.B,a.c));c.arc(q.x,q.y,a.r*view.s,-aA*D2R,-aB*D2R,a.ccw)}else{const q=S(s.B);c.lineTo(q.x,q.y)}}if(e.closed)c.closePath();c.stroke();if(wd)c.restore()};
 const _tx20=transformEnt;transformEnt=function(e,fp,fa,mir){_tx20(e,fp,fa,mir);if(mir&&hasBulge(e))e.b=e.b.map(v=>-v)};
 const _area20=areaOf;areaOf=function(e){if(!hasBulge(e))return _area20(e);const t=plTess(e);return {a:Math.abs(polyArea(t)),p:plLen(e)}};
 const _off20=offsetEnt;offsetEnt=function(e,d,side){if(hasBulge(e)){const t=plTess(e);if(e.closed)t.pop();return _off20({type:'polyline',pts:t,closed:e.closed},d,side)}return _off20(e,d,side)};
@@ -4887,7 +4961,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.9.13';
+const APP_VER='v1.9.14';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5994,7 +6068,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261025d"></script>
+<script src="../assets/config.js?v=20261025e"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
