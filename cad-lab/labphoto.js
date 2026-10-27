@@ -219,7 +219,7 @@
     if (v.mode() === '2d') v.setMode('split');
     v.emptyEl.style.display = 'none';
     const bb = modelBox();
-    v.stEl.innerHTML = `<span class="ok">사진 → 3D 모델</span> <span class="i">· 부품 ${PH.model.parts.length}개 · 크기 ${bb.size.map(x => Math.round(x)).join(' × ')} mm</span><br><span class="i">· 2D 도면으로 3D를 다시 만들려면 명령창에 3DRESET</span>`;
+    v.stEl.innerHTML = `<span class="ok">${PH.photos && PH.photos.length ? '사진' : '도면'} → 3D 모델</span> <span class="i">· 부품 ${PH.model.parts.length}개 · 크기 ${bb.size.map(x => Math.round(x)).join(' × ')} mm</span><br><span class="i">· 2D 도면으로 3D를 다시 만들려면 명령창에 3DRESET</span>`;
     v.setView('iso'); v.fit3(); v.draw3();
   }
 

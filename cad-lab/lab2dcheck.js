@@ -427,4 +427,14 @@
     뷰가 잘못 나뉘면 "views":[[x0,y0,x1,y1],...] 로 뷰 상자를 직접 주고, 도곽·표 레이어는 "skip_layers":["레이어"] 로 뺀다. 도면 배율이 1:1이 아니면 "scale":배율 또는 "auto_scale":true
  5. 먼저 key 에서 안 맞는 항목(holes 의 n_match < n_drawing, size 의 ok=false)을 고치고, 그다음 빨강·파랑을 보고 모양을 고친다. 3→4 반복 (최대 6회). 통과 기준: key.pass + recall·precision 0.97 이상(로고 글자·주물 곡면이 많은 실제 제품 도면은 97%가 어려울 수 있음 — 이때도 key.pass 는 꼭 맞춘다)
  6. 보고: 핵심 치수 표(전체 크기, 플랜지 외경·두께·PCD·구멍, 고정 구멍 — 도면 값 / 3D 값), 마지막 재현·정확, 몇 번 고쳤는지, 도면만으로 정할 수 없어 추정한 부분(두 뷰에 다 숨는 형상 등). STEP 은 3D 창의 [STEP 저장]`;
+  /* 열기(DXF·DWG·PDF): 처음 화면의 예제 도면(1화 샤프트)이 손대지 않은 그대로면 지우고 연다.
+     예제 선이 정면도와 측면도 사이에 끼어 2D 대조에서 두 뷰가 한 뷰로 묶이던 문제 (10-27, 그런포스 5면도 81.7% → 97.0%) */
+  try {
+    const isSample = () => { const E = doc.entities; return E.length > 0 && E.length <= 30 && E.some(e => e.type === 'text' && /무카 CAD 예제/.test(e.s || e.text || '')); };
+    const _open = openFile;
+    openFile = async function (f, G) {
+      if (f && /\.(dxf|dwg|pdf)$/i.test(f.name || '') && isSample()) { pushUndo(); doc.entities.length = 0; sel.clear(); changed(); log('예제 도면을 비우고 엽니다 (되돌리기 Ctrl+Z)', 'me'); }
+      return _open.apply(this, arguments);
+    };
+  } catch (e) { console.warn('lab open hook', e); }
 })();
