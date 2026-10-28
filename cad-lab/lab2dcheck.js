@@ -334,13 +334,20 @@
       g.strokeStyle = 'rgba(0,0,0,.18)'; g.setLineDash([4, 4]); g.strokeRect(X(v.c.bb.x0) - 4, Y(v.c.bb.y1) - 4, (v.c.bb.w) * k + 8, (v.c.bb.h) * k + 8); g.setLineDash([]);
       g.fillStyle = '#333'; g.font = '13px sans-serif'; g.fillText(`뷰${v.c.no} = ${v.view}${v.rot ? ' ' + v.rot + '°' : ''} · 재현 ${(v.s.rec * 100).toFixed(1)}% · 정확 ${(v.s.prec * 100).toFixed(1)}%`, X(v.c.bb.x0), Y(v.c.bb.y1) - 10);
     }
-    g.fillStyle = res.pass ? '#0f7a3d' : '#b3261e'; g.font = 'bold 18px sans-serif';
-    g.fillText(`2D 대조 (${res.source === 'rule' ? '규칙 엔진' : 'AI 모델'}) — 재현 ${(res.recall * 100).toFixed(1)}% · 정확 ${(res.precision * 100).toFixed(1)}% · ${res.pass ? '통과' : '미달 (기준 97%)'}`, 12, 24);
-    if (res.key && !res.key.error) { g.font = 'bold 14px sans-serif'; g.fillStyle = res.key.pass ? '#0f7a3d' : '#b3261e'; g.fillText(`핵심 치수 ${res.key.pass ? '모두 맞음' : '확인 필요'} · 전체 크기 ${res.key.size_ok ? '맞음' : '다름'} · 플랜지·고정 구멍 원 ${res.key.circles_ok}/${res.key.circles} 일치`, W - 520, 24); }
+    const vd = verdict(res); g.fillStyle = vd.col; g.font = 'bold 18px sans-serif';
+    g.fillText(`2D 대조 (${res.source === 'rule' ? '규칙 엔진' : 'AI 모델'}) — 재현 ${(res.recall * 100).toFixed(1)}% · 정확 ${(res.precision * 100).toFixed(1)}% · ${vd.t}`, 12, 24);
+    if (res.key && !res.key.error) { g.font = 'bold 14px sans-serif'; g.fillStyle = res.key.pass ? '#0f7a3d' : '#b3261e'; g.fillText(`핵심 치수 ${res.key.pass ? '모두 맞음' : '확인 필요'} · 전체 크기 ${res.key.size_ok ? '맞음' : '다름'} · 플랜지·고정 구멍 원 ${res.key.circles_ok}/${res.key.circles} 일치`, W - 520, vd.c === 'w' ? 46 : 24); }
     g.font = '13px sans-serif'; g.fillStyle = '#e0242b'; g.fillText('■ 빠진 선 (도면에 있는데 3D에 없음)', 12, 46); g.fillStyle = '#1e6fd9'; g.fillText('■ 남는 선 (3D에만 있음)', 260, 46); g.fillStyle = '#9aa1aa'; g.fillText('■ 맞은 선', 430, 46);
     return cv;
   }
   C2.diffCanvas = diffCanvas;
+  /* 판정 글자: pass(재현·정확 둘 다 97%↑)는 그대로 두고, 핵심 치수가 모두 맞고 선 대조가 90%↑이면 '핵심 치수 통과'로 따로 보여 준다 (10-28 유튜브팀 요청 — 로고 글자·주물 곡면 때문에 97%가 어려운 실제 제품 도면) */
+  function verdict(res) {
+    if (res.pass) return { t: '통과', c: 'p', col: '#0f7a3d' };
+    if (res.key && !res.key.error && res.key.pass && res.recall >= 0.9 && res.precision >= 0.9) return { t: '핵심 치수 통과 · 선 대조는 기준 97% 아래 (로고 글자·주물 곡면 차이)', c: 'w', col: '#b26a00' };
+    return { t: '미달 (기준 97%)', c: 'f', col: '#b3261e' };
+  }
+  C2.verdict = verdict;
 
   /* ---------- 6) mucca_draw 명령 ---------- */
   async function cmdCompare(c) {
@@ -358,7 +365,7 @@
 .v3d .l2r .x{position:absolute;right:4px;top:2px;background:none;border:0;color:#9aa0a6;font-size:16px;cursor:pointer;line-height:1}
 .v3d .l2r img{display:block;max-width:100%;max-height:180px;margin-top:6px;border:1px solid #3a3f47;border-radius:6px;cursor:zoom-in;background:#fff}
 .v3d .l2r .key{margin-top:6px;color:#e8eaed}.v3d .l2r .key ul{margin:4px 0 0 16px;padding:0;color:#f6b0ab}.v3d .l2r .key li{margin:1px 0}
-.v3d .l2r .ai{margin-top:6px;color:#bdc1c6}.v3d .l2r .ai button{background:#f1c232;color:#1b1b1b;border:0;border-radius:6px;padding:4px 10px;font-weight:600;cursor:pointer}.v3d .l2r .p{color:#5bd68a;font-weight:600}.v3d .l2r .f{color:#ff7b72;font-weight:600}`;
+.v3d .l2r .ai{margin-top:6px;color:#bdc1c6}.v3d .l2r .ai button{background:#f1c232;color:#1b1b1b;border:0;border-radius:6px;padding:4px 10px;font-weight:600;cursor:pointer}.v3d .l2r .p{color:#5bd68a;font-weight:600}.v3d .l2r .f{color:#ff7b72;font-weight:600}.v3d .l2r .w{color:#f6c344;font-weight:600}`;
   document.head.appendChild(st);
   function addButtons() {
     const L = lab(); if (!L || !L._v) return false; const v = L._v(); const hd = v.pane && v.pane.querySelector('.v3h'); if (!hd || hd.querySelector('#l2cmp')) return true;
@@ -380,7 +387,7 @@
     const x = document.createElement('button'); x.className = 'x'; x.textContent = '×'; x.title = '닫기'; x.setAttribute('aria-label', '닫기'); x.onclick = () => { box.style.display = 'none'; }; box.append(x);
     if (err) { const e = document.createElement('div'); e.innerHTML = `<span class="f">2D 대조를 하지 못했습니다:</span> `; e.append(document.createTextNode(err)); box.append(e); return; }
     const h = document.createElement('div');
-    h.innerHTML = `2D 대조 (${res.source === 'rule' ? '규칙 엔진' : 'AI 모델'}): 재현 <b>${(res.recall * 100).toFixed(1)}%</b> · 정확 <b>${(res.precision * 100).toFixed(1)}%</b> → <span class="${res.pass ? 'p' : 'f'}">${res.pass ? '통과' : '미달 (기준 97%)'}</span>`;
+    h.innerHTML = `2D 대조 (${res.source === 'rule' ? '규칙 엔진' : 'AI 모델'}): 재현 <b>${(res.recall * 100).toFixed(1)}%</b> · 정확 <b>${(res.precision * 100).toFixed(1)}%</b> → <span class="${verdict(res).c}">${verdict(res).t}</span>`;
     box.append(h);
     const K = res.key;
     if (K && !K.error) {
