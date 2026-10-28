@@ -7,7 +7,7 @@
     if(!sel){sel=document.createElement('select');sel.id='aiEngine';sel.title='그릴 AI 고르기 (내 PC에 설치·로그인된 AI를 씁니다)';sel.setAttribute('aria-label','그릴 AI');sel.style.cssText='margin-right:4px;padding:3px 2px;max-width:84px;border-radius:6px;border:1px solid var(--rule);background:var(--chrome-2);color:var(--ink);font:500 12px var(--sans)';
       sel.onchange=()=>{const v=sel.value;AIC.engine=v;AIC.tab=v;try{localStorage.setItem(LSE,v)}catch(_){}
         if(AIC.state!=='on'){aiSt.textContent=ENG[v]+'로 그리려면 먼저 연결하세요. 상단 [AI 연결] 창에서 '+ENG[v]+' 순서를 따르면 됩니다.';engHelp(v);return}
-        if(!engOk(v)){aiSt.textContent=(v==='claude'?'Claude Code':ENG_CLI[v])+'가 이 PC에 없습니다. 설치·로그인한 뒤 이 페이지를 새로고침하세요.';engHelp(v)}
+        if(!engOk(v)){engHelp(v);engRecheck(v)}
         else{engHelp(null);setState(AIC.state)}};
       bAi.before(sel)}
     let want=AIC.engine;try{want=localStorage.getItem(LSE)||want}catch(_){}
@@ -15,7 +15,8 @@
     if(!ENG[want])want='claude';
     if(known&&!engOk(want)){let saved='';try{saved=localStorage.getItem(LSE)||''}catch(_){}const f=Object.keys(ENG).find(engOk);if(f&&!saved)want=f}
     sel.value=want;AIC.engine=want;sel.hidden=false;
-    if(known&&engOk(want))engHelp(null)}
+    if(known&&engOk(want))engHelp(null);
+    if(known&&want!=='claude'&&!engOk(want)&&!AIC.autoRecheck){AIC.autoRecheck=1;setTimeout(()=>engRecheck(want),600)}}
   const ENG_CLI={claude:'Claude Code',codex:'Codex CLI',gemini:'Gemini CLI'};
   /* 고른 AI의 연결 방법 바로가기 (입력칸 아래) */
   function engHelp(k){let b=document.getElementById('aiEngHelp');if(!k){if(b)b.hidden=true;return}

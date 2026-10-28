@@ -260,7 +260,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.18</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.19</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -4980,7 +4980,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.9.18';
+const APP_VER='v1.9.19';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5234,6 +5234,18 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
   const ENG_INSTALL={claude:'Claude Code: [AI 연결] 창 ③ 참고',codex:'터미널에서 npm i -g @openai/codex 실행 후 codex login (ChatGPT 계정)',gemini:'터미널에서 npm i -g @google/gemini-cli 실행 후 gemini 를 한 번 실행해 구글 계정 로그인'};
   const engOk=k=>k==='claude'?!!AIC.claude:!!(AIC.engines&&AIC.engines[k]);
   const engList=()=>Object.keys(ENG).filter(engOk).map(k=>ENG[k]).join(', ');
+  /* v1.9.19: GPT·Gemini '설치 필요'일 때 연결 프로그램에 다시 찾게 함(/diag refresh — v1.0.6 에도 있음).
+     예전엔 연결 프로그램이 켜질 때 한 번만 찾아서, 그 뒤에 Codex 를 설치하면 새로고침해도 계속 '설치 필요'였음 (문의 15번) */
+  const ENG_RESTART='설치·로그인 뒤에도 안 보이면 Claude 앱을 완전히 종료(Windows: 작업 표시줄 오른쪽 아래 Claude 아이콘 → 종료)했다가 다시 켜 주세요.';
+  async function engRecheck(k){if(AIC.state!=='on'||AIC.rechecking||k==='claude'&&engOk(k))return engOk(k);AIC.rechecking=true;AIC.autoRecheck=1;
+    aiSt.textContent=ENG[k]+'('+(k==='codex'?'Codex CLI':k==='gemini'?'Gemini CLI':'Claude Code')+')를 이 PC에서 다시 찾는 중…';
+    let r=null;try{r=await post('/diag',{refresh:true})}catch(_){}AIC.rechecking=false;
+    if(r&&r.ok){if('claudeCode' in r)AIC.claude=r.claudeCode;if(r.engines)AIC.engines=r.engines;window.__aicEngineSel&&window.__aicEngineSel()}
+    const ok=engOk(k);try{window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_RECHECK_'+(k==='codex'?'GPT':k.toUpperCase())+(ok?'_OK':'_NO')})}catch(_){}
+    if(ok){setState(AIC.state);log(ENG[k]+'을(를) 찾았습니다 — 이제 '+ENG[k]+'로 그릴 수 있습니다','ok')}
+    else aiSt.textContent=ENG[k]+'를 이 PC에서 찾지 못했습니다. '+ENG_INSTALL[k]+' · '+ENG_RESTART;
+    return ok}
+  window.__aicRecheck=engRecheck;
   const LSE='muccacad.ai.engine';
   /* [테스트 서버] AI 고르기 칸: 연결 전에도 보여서 GPT·Gemini를 고를 수 있음
      (예전 연결 프로그램 v1.0.5 이하에 연결됐을 때만 숨김 — 그 버전은 Claude만 지원) */
@@ -5244,7 +5256,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     if(!sel){sel=document.createElement('select');sel.id='aiEngine';sel.title='그릴 AI 고르기 (내 PC에 설치·로그인된 AI를 씁니다)';sel.setAttribute('aria-label','그릴 AI');sel.style.cssText='margin-right:4px;padding:3px 2px;max-width:84px;border-radius:6px;border:1px solid var(--rule);background:var(--chrome-2);color:var(--ink);font:500 12px var(--sans)';
       sel.onchange=()=>{const v=sel.value;AIC.engine=v;AIC.tab=v;try{localStorage.setItem(LSE,v)}catch(_){}
         if(AIC.state!=='on'){aiSt.textContent=ENG[v]+'로 그리려면 먼저 연결하세요. 상단 [AI 연결] 창에서 '+ENG[v]+' 순서를 따르면 됩니다.';engHelp(v);return}
-        if(!engOk(v)){aiSt.textContent=(v==='claude'?'Claude Code':ENG_CLI[v])+'가 이 PC에 없습니다. 설치·로그인한 뒤 이 페이지를 새로고침하세요.';engHelp(v)}
+        if(!engOk(v)){engHelp(v);engRecheck(v)}
         else{engHelp(null);setState(AIC.state)}};
       bAi.before(sel)}
     let want=AIC.engine;try{want=localStorage.getItem(LSE)||want}catch(_){}
@@ -5252,7 +5264,8 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     if(!ENG[want])want='claude';
     if(known&&!engOk(want)){let saved='';try{saved=localStorage.getItem(LSE)||''}catch(_){}const f=Object.keys(ENG).find(engOk);if(f&&!saved)want=f}
     sel.value=want;AIC.engine=want;sel.hidden=false;
-    if(known&&engOk(want))engHelp(null)}
+    if(known&&engOk(want))engHelp(null);
+    if(known&&want!=='claude'&&!engOk(want)&&!AIC.autoRecheck){AIC.autoRecheck=1;setTimeout(()=>engRecheck(want),600)}}
   const ENG_CLI={claude:'Claude Code',codex:'Codex CLI',gemini:'Gemini CLI'};
   /* 고른 AI의 연결 방법 바로가기 (입력칸 아래) */
   function engHelp(k){let b=document.getElementById('aiEngHelp');if(!k){if(b)b.hidden=true;return}
@@ -5400,7 +5413,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
       if(AIC.busy){await post('/stop');return}
       const eng=AIC.engines?AIC.engine:'claude',L=ENG[eng];
       if(eng==='claude'&&!AIC.claude){aiSt.textContent='이 PC에 Claude Code가 없습니다. [AI 연결] 창의 ③을 따라 설치·로그인하세요'+(engList()?' (또는 왼쪽에서 '+engList()+' 선택)':'')+'.';openAic();return}
-      if(eng!=='claude'&&!engOk(eng)){aiSt.textContent=L+' CLI가 이 PC에 없습니다. '+ENG_INSTALL[eng]+' — 설치 후 새로고침하세요.';engHelp(eng);openAic(eng);return}
+      if(eng!=='claude'&&!engOk(eng)&&!(await engRecheck(eng))){engHelp(eng);openAic(eng);return}
       const req=aiIn.value.trim();if(!req){aiIn.focus();return}
       log('AI 요청(내 '+L+'): '+req,'me');aiSt.textContent=(eng==='claude'?'Claude Code':L+' CLI')+' 실행 중…';
       window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_ASK'});const r=await post('/prompt',{text:window.AIREF?AIREF.wrap(req):req,newChat:AIC.newChat,engine:eng});AIC.newChat=false;
@@ -6094,7 +6107,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261028c"></script>
+<script src="../assets/config.js?v=20261029a"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>

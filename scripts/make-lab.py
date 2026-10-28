@@ -39,7 +39,7 @@ s=region(s,'  function renderDlg(){const d=AIC.dlg;',"AIC.dlg=modal('Claude 연�
 def rep(s,a,b):
     assert s.count(a)==1, 'aiguide: '+a[:50]; return s.replace(a,b,1)
 s=rep(s,"setTimeout(()=>{const c=lsGet();if(c)connect(c,{silent:true})","setTimeout(()=>{engineSel();const c=lsGet();if(c)connect(c,{silent:true})")
-s=rep(s,"+ENG_INSTALL[eng]+' — 설치 후 새로고침하세요.';return}","+ENG_INSTALL[eng]+' — 설치 후 새로고침하세요.';engHelp(eng);openAic(eng);return}")
+s=rep(s,"if(eng!=='claude'&&!engOk(eng)&&!(await engRecheck(eng)))return;","if(eng!=='claude'&&!engOk(eng)&&!(await engRecheck(eng))){engHelp(eng);openAic(eng);return}")
 s=rep(s,"aiSt.textContent='먼저 상단 [Claude 연결]에서 내 Claude를 연결하세요.';openAic()","aiSt.textContent='먼저 상단 [AI 연결]에서 내 AI를 연결하세요.';openAic()")
 s=rep(s,"""top.innerHTML='<span class="aicDot" aria-hidden="true"></span>Claude 연결';top.title='Claude 연결 — 내 Claude로 그리기 (Claude 앱 · Claude Code)'""","""top.innerHTML='<span class="aicDot" aria-hidden="true"></span>AI 연결';top.title='AI 연결 — 내 Claude · GPT · Gemini로 그리기'""")
 s=rep(s,"Object.assign(ALIAS,{AICONNECT:'aiconnect',MCP:'aiconnect',CLAUDE:'aiconnect'});Object.assign(CMD_KO,{aiconnect:'Claude 연결'})","Object.assign(ALIAS,{AICONNECT:'aiconnect',MCP:'aiconnect',CLAUDE:'aiconnect',GPT:'aiconnect',CODEX:'aiconnect',GEMINI:'aiconnect'});Object.assign(CMD_KO,{aiconnect:'AI 연결'})")
