@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 연결 그림 안내 — 무카 CAD</title>
+<meta name="description" content="무카 CAD 에 내 Claude 를 연결하는 방법 — 연결 파일 받기, Claude 앱에 설치(더블클릭 또는 설정 › 확장 프로그램), 자동 연결까지 그림으로 안내합니다.">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&family=Nanum+Gothic+Coding&display=swap">
+<link rel="stylesheet" href="/assets/site.css?v=20261018c">
+<style>
+.doc img.shot{display:block;max-width:100%;height:auto;border:1px solid #2a3446;border-radius:10px;margin:12px 0 6px}
+.cap{font-size:13px;color:#8b97ab;margin:0 0 18px}
+.step{border:1px solid #2a3446;border-radius:14px;padding:18px 20px;margin:22px 0;background:rgba(255,255,255,.02)}
+.step h2{margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.num{display:inline-flex;width:30px;height:30px;border-radius:50%;background:#f1c232;color:#111;font-weight:700;align-items:center;justify-content:center;font-size:16px;flex:none}
+.way{border-left:4px solid #f1c232;padding:4px 0 4px 14px;margin:16px 0}
+.way h3{margin:0 0 6px}
+.tip{background:rgba(241,194,50,.08);border:1px solid rgba(241,194,50,.35);border-radius:10px;padding:10px 14px;font-size:14px}
+/* 그림(예시) — Claude 앱 화면을 단순하게 그린 것 */
+.ill{border:1px solid #39465c;border-radius:12px;background:#1b1f27;color:#d9dee8;font-size:13px;overflow:hidden;margin:12px 0 6px;max-width:640px}
+.ill .bar{background:#262b35;padding:8px 12px;font-size:12px;color:#9aa4b5;display:flex;gap:6px;align-items:center}
+.ill .bar i{width:9px;height:9px;border-radius:50%;background:#4b5466;display:inline-block}
+.ill .body{display:flex;min-height:190px}
+.ill .side{width:150px;border-right:1px solid #2f3644;padding:10px 0;flex:none}
+.ill .side div{padding:7px 14px;color:#aab3c2}
+.ill .side .on{background:#2d3442;color:#fff;font-weight:600;box-shadow:inset 3px 0 0 #f1c232}
+.ill .main{flex:1;padding:14px 16px}
+.ill .main b.t{display:block;font-size:15px;margin-bottom:10px;color:#fff}
+.ill .btn{display:inline-block;border:1px solid #556075;border-radius:8px;padding:5px 10px;margin:4px 6px 4px 0;color:#e8ecf3}
+.ill .btn.hl{border-color:#f1c232;box-shadow:0 0 0 3px rgba(241,194,50,.35);color:#fff;font-weight:600}
+.ill .drop{border:2px dashed #f1c232;border-radius:10px;padding:16px;text-align:center;color:#f1c232;margin-top:10px;font-weight:600}
+.ill .file{display:inline-flex;align-items:center;gap:8px;background:#232a36;border:1px solid #3a4558;border-radius:8px;padding:6px 10px;margin:4px 0}
+.ill .file svg{flex:none}
+.ill .idlg{margin:18px auto;max-width:330px;border:1px solid #4a5568;border-radius:12px;background:#232833;padding:16px;text-align:left}
+.ill .idlg .row{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.ill .arrow{color:#f1c232;font-weight:700}
+.note-ill{font-size:12px;color:#8b97ab;margin:0 0 16px}
+@media(max-width:560px){.ill .side{width:92px;font-size:12px}.ill .side div{padding:6px 8px}.ill .body{min-height:170px}.ill .main{padding:10px}}
+.ill .main{min-width:0}.ill .btn{white-space:normal}.ill .drop{word-break:keep-all}
+</style>
+</head>
+<body>
+<header class="site-top"><div class="wrap">
+  <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법<small>Development Storage</small></span></a>
+  <nav class="site-nav">
+    <a href="/cad/">무카 CAD</a>
+    <a href="/community/">커뮤니티</a>
+    <a href="/requests/">요청</a>
+    <a href="/qna/">문의</a>
+    <span class="who" data-who></span>
+  </nav>
+</div></header>
+<main class="doc">
+<h1>무카 CAD 에 내 Claude 연결하기 — 그림 안내</h1>
+<p class="when">2026-10-28 · 무카 CAD 상단 <b>[Claude 연결]</b> 창의 ①→②→③ 순서를 그림으로 풀었습니다.</p>
+<p>무카 CAD 는 AI 를 직접 부르지 않습니다. 내 PC 에 설치하는 <b>연결 프로그램</b>이 내 Claude(Claude 앱)와 무카 CAD 화면을 이어 주고, 사용량은 <b>내 Claude 구독</b>에서 나갑니다. 준비물: Windows·Mac 용 <b>Claude 데스크톱 앱</b>(claude.ai/download)과 로그인.</p>
+
+<section class="step" id="step1">
+<h2><span class="num">1</span>연결 파일 받기</h2>
+<p>무카 CAD 오른쪽 위 <b>[Claude 연결]</b>(테스트 서버는 [AI 연결]) 버튼을 누릅니다.</p>
+<img class="shot" src="top.webp" width="1050" height="65" alt="무카 CAD 오른쪽 위 Claude 연결 버튼" loading="lazy">
+<p>열린 창에서 노란 <b>[Claude 연결 파일 받기]</b>를 누르면 <code>mucca-cad.mcpb</code> 파일이 <b>다운로드 폴더</b>에 받아집니다.</p>
+<img class="shot" src="step1.webp" width="1018" height="408" alt="1 연결 파일 받기 — Claude 연결 파일 받기 버튼" loading="lazy">
+<p class="tip">⚠ 파일을 받은 <b>무카 CAD 창은 닫지 말고 그대로</b> 두세요. 이 창이 설치가 끝나기를 기다렸다가 자동으로 연결합니다.</p>
+</section>
+
+<section class="step" id="step2">
+<h2><span class="num">2</span>Claude 앱에 설치 — 둘 중 편한 방법 하나</h2>
+
+<div class="way">
+<h3>방법 A · 받은 파일을 더블클릭 (가장 쉬움)</h3>
+<p>다운로드 폴더에서 <code>mucca-cad.mcpb</code> 를 <b>더블클릭</b>하면 Claude 앱이 열리면서 설치 창이 뜹니다. <b>[설치]</b>를 누르면 끝입니다.</p>
+<div class="ill" role="img" aria-label="그림: mcpb 파일을 더블클릭하면 Claude 앱에 설치 창이 뜨고 설치 버튼을 누른다">
+  <div class="bar"><i></i><i></i><i></i> 다운로드</div>
+  <div class="main">
+    <span class="file"><svg width="22" height="26" viewBox="0 0 22 26"><path d="M2 1h12l6 6v18H2z" fill="#3b4a63" stroke="#8fa3c4"/><path d="M14 1v6h6" fill="none" stroke="#8fa3c4"/></svg> mucca-cad.mcpb</span>
+    <span class="arrow">← 더블클릭</span>
+    <div class="idlg">
+      <b>Claude 앱 · 확장 프로그램 설치</b><br>
+      <span style="color:#aab3c2">무카 CAD (mucca-cad) — 무카 CAD 화면에 도면을 그리는 도구</span>
+      <div class="row"><span class="btn">취소</span><span class="btn hl">설치</span></div>
+    </div>
+  </div>
+</div>
+<p class="note-ill">그림은 이해를 돕는 예시입니다. Claude 앱 버전에 따라 문구·위치가 조금 다를 수 있습니다.</p>
+</div>
+
+<div class="way">
+<h3>방법 B · Claude 앱 설정에서 설치 (더블클릭이 안 될 때)</h3>
+<ol>
+<li>Claude 앱 왼쪽 아래 <b>내 이름(프로필)</b>을 누르고 <b>설정</b>을 엽니다.</li>
+<li>왼쪽 목록에서 <b>확장 프로그램</b>을 고릅니다. 새 버전은 <b>데스크톱 앱</b> › 확장 프로그램 옆 <b>[관리]</b> 입니다.</li>
+<li><b>고급 설정</b>을 누릅니다.</li>
+<li><code>mucca-cad.mcpb</code> 파일을 이 화면에 <b>끌어다 놓거나</b>, <b>[확장 프로그램 설치…]</b>를 눌러 다운로드 폴더의 파일을 고릅니다.</li>
+<li>설치 창이 뜨면 <b>[설치]</b>.</li>
+</ol>
+<div class="ill" role="img" aria-label="그림: Claude 앱 설정의 확장 프로그램 화면에서 고급 설정을 누르고 파일을 끌어다 놓거나 확장 프로그램 설치 버튼을 누른다">
+  <div class="bar"><i></i><i></i><i></i> Claude 앱 › 설정</div>
+  <div class="body">
+    <div class="side"><div>일반</div><div>계정</div><div>개인정보</div><div class="on">확장 프로그램<br><small style="font-weight:400;color:#9aa4b5">(새 버전: 데스크톱 앱)</small></div><div>개발자</div></div>
+    <div class="main">
+      <b class="t">확장 프로그램</b>
+      <span class="btn">확장 프로그램 둘러보기</span><span class="btn hl">고급 설정</span>
+      <div style="margin-top:10px;color:#aab3c2">고급 설정 › 확장 프로그램 개발자</div>
+      <span class="btn hl">확장 프로그램 설치…</span>
+      <div class="drop">mucca-cad.mcpb 를 여기에 끌어다 놓기</div>
+    </div>
+  </div>
+</div>
+<p class="note-ill">그림은 이해를 돕는 예시입니다. 메뉴 이름은 Claude 공식 안내(설정 › 확장 프로그램 › 고급 설정 › 확장 프로그램 설치)를 따랐습니다.</p>
+</div>
+
+<p class="tip">설치하면 확장 프로그램 목록에 <b>무카 CAD</b>가 보입니다. 꺼져 있으면 켜 주세요. 메뉴가 안 보이면 Claude 앱을 최신으로 업데이트한 뒤 다시 해 보세요.</p>
+</section>
+
+<section class="step" id="step3">
+<h2><span class="num">3</span>자동 연결 확인</h2>
+<p>설치가 끝나면 (닫지 않고 둔) 무카 CAD 화면이 <b>저절로 연결</b>되고, 창 위쪽 불이 <b style="color:#27ae60">초록색</b>으로 바뀝니다.</p>
+<img class="shot" src="step3.webp" width="1018" height="187" alt="연결됨 — 초록 불" loading="lazy">
+<p>그다음 Claude 앱 대화에서 <b>"무카 CAD에 플랜지 그려줘"</b>처럼 말하면 무카 CAD 화면에 그려집니다.</p>
+</section>
+
+<h2>잘 안 될 때</h2>
+<ul>
+<li><b>몇 분이 지나도 회색 불</b> — Claude 앱을 완전히 껐다 켭니다(Windows 작업 표시줄 오른쪽 아래 아이콘에서도 종료). 그래도 안 되면 무카 CAD 연결 창의 「자동 연결이 안 될 때」를 펼쳐 Claude 앱에 <b>"무카 연결 코드 알려줘"</b>라고 물어 나온 6자리를 넣으세요.</li>
+<li><b>다른 PC·다른 브라우저</b>로 바꾸면 그 PC 에서 1~2번을 한 번 더 합니다.</li>
+<li><b>"예전 버전" 안내</b>가 나오면 [새 연결 파일 받기]로 받은 파일을 2번처럼 다시 설치합니다.</li>
+</ul>
+<p>그래도 막히면 <a href="/qna/">문의 게시판</a>에 화면 캡처와 함께 남겨 주세요.</p>
+<p class="cap">참고: Claude 공식 도움말 「Getting started with local MCP servers on Claude Desktop」(support.claude.com).</p>
+</main>
+<script src="/assets/site.js?v=20261018c" defer></script>
+</body>
+</html>
