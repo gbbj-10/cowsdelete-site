@@ -259,7 +259,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.17</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.18</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -985,9 +985,9 @@ const TOOLS={
   dimlin(){return dim2('dim_linear','선형 치수')},dimali(){return dim2('dim_aligned','정렬 치수')},
   dimdia(){return dimC('dim_diameter','지름 치수')},dimrad(){return dimC('dim_radius','반지름 치수')}
 };
-function trimTool(mode){const ko={trim:'자르기',extend:'연장'};const T={name:mode,wantsPoint:false,fence:null,
+function trimTool(mode,edges){edges=edges&&edges.size?edges:null;const ko={trim:'자르기',extend:'연장'};const T={name:mode,wantsPoint:false,fence:null,
   get prompt(){if(T.fence)return T.fence.length?'다음 울타리 점 지정 (Enter 실행):':'첫 번째 울타리 점 지정:';return mode==='trim'?'자를 객체 선택 또는 Shift 키를 누른 채 선택하여 연장 또는 [울타리(F)/명령 취소(U)]:':'연장할 객체 선택 또는 Shift 키를 누른 채 선택하여 자르기 또는 [울타리(F)/명령 취소(U)]:'},set prompt(v){},
-  act(e,pk,m){const ctx={results:[],lastIds:[]};try{const r=execOne({cmd:m,id:e.id,pick:[pk.x,pk.y]},ctx);return r.result}catch(err){log(err.message,'err');return null}},
+  act(e,pk,m){const ctx={results:[],lastIds:[]};try{const r=execOne({cmd:m,id:e.id,pick:[pk.x,pk.y],edges:edges?[...edges]:undefined},ctx);return r.result}catch(err){log(err.message,'err');return null}},
   onPoint(){const w=rawW;
     if(T.fence){T.fence.push(w);setPrompt(T.prompt);dirty=true;return}
     const e=pick(w,9);if(!e){toast(`${ko[mode]}할 객체를 클릭하세요`);return}
@@ -997,13 +997,30 @@ function trimTool(mode){const ko={trim:'자르기',extend:'연장'};const T={nam
     const hits=[];for(const e of fenceHits(pts)){for(let i=0;i<pts.length-1;i++){for(const pl of entPolys(e))for(let k=0;k<pl.length-1;k++){const q=lineLine(pl[k],pl[k+1],pts[i],pts[i+1]);if(q.length){hits.push([e.id,q[0]]);break}}}}
     pushUndo();let n=0;for(const [id,q] of hits){const e=byId(id);if(e&&T.act(e,q,mode))n++}
     if(n){changed();log(`울타리로 ${n}곳 ${ko[mode]}`,'ok')}else{undoStack.pop();log('걸린 객체가 없습니다')}setPrompt(T.prompt)},
-  onInput(s){const t=s.trim().toUpperCase();if(t==='F'){T.fence=[];return true}if(t==='U'){undo();return true}return false},
+  onInput(s){const t=s.trim().toUpperCase();if(t==='F'){T.fence=[];return true}if(t==='U'){undo();return true}
+    if(t==='T'||t==='기준선'||t==='경계'){tool=trimEdgeStage(mode);return true}
+    if(t==='O'||t==='모드'){setTrimMode(TRIMMODE?0:1);tool=TRIMMODE?trimTool(mode):trimEdgeStage(mode);return true}return false},
   onEnter(){if(T.fence){T.runFence();return}endTool()},
   preview(c,cur){if(T.fence&&T.fence.length){c.save();c.setLineDash([5,4]);c.strokeStyle='#e8edf3';c.beginPath();T.fence.concat([cur]).forEach((p,i)=>{const q=S(p);i?c.lineTo(q.x,q.y):c.moveTo(q.x,q.y)});c.stroke();c.restore()}
     else if(cursorScr){const w=Wp(cursorScr.x,cursorScr.y),e=pick(w,9);if(!e)return;const m=shiftHeld?(mode==='trim'?'extend':'trim'):mode;c.save();c.setLineDash([]);
       try{if(m==='trim'){const pc=trimPiece(e,w);if(pc){c.strokeStyle='rgba(255,107,94,.95)';c.lineWidth=3.5;c.beginPath();pc.forEach((p,i)=>{const q=S(p);i?c.lineTo(q.x,q.y):c.moveTo(q.x,q.y)});c.stroke();dyn('지울 부분',null)}}
         else{const n=structuredClone(e);extendAt(n,w);c.strokeStyle='#4fd16b';c.lineWidth=2;c.setLineDash([5,4]);strokeEnt(c,n);dyn('연장',null)}}catch(err){dyn(err.message,null)}c.restore()}}};
-  log(`현재 설정: 모드 = 빠른 작업 · 모든 객체를 경계로 사용`);return T}
+  const pv=T.preview;T.preview=(c,cur)=>{if(edges){c.save();c.globalAlpha=.9;for(const id of edges){const x=byId(id);if(!x)continue;try{c.save();c.setLineDash([7,5]);c.lineWidth=2.5;c.strokeStyle='#f1c232';strokeEnt(c,Object.assign(structuredClone(x),{color:'#f1c232'}))}catch(_){}c.restore()}c.restore()}
+    const pe=TRIM_EDGES;TRIM_EDGES=edges;try{pv(c,cur)}finally{TRIM_EDGES=pe}};
+  log(edges?`현재 설정: 모드 = 표준 · 고른 기준선 ${edges.size}개만 경계로 사용 [기준선 다시 고르기(T)/모드(O)]`:`현재 설정: 모드 = ${TRIMMODE?'빠른 작업':'표준(기준선 = 모든 객체)'} · 모든 객체를 경계로 사용 [기준선 고르기(T)/모드(O)]`);return T}
+/* v1.9.18: 자르기·연장 표준 모드 — 기준선(경계)을 먼저 고르고 Enter → 자를(연장할) 객체 클릭. 바로 Enter = 모든 객체가 경계.
+   AutoCAD TRIMEXTENDMODE 0(표준)·1(빠른 작업)과 같음. 기본 = 표준(유튜브 댓글 10-28: "선택한 기준선과 무관한 객체들이 잘라짐") */
+let TRIMMODE=(()=>{try{const v=localStorage.getItem('muccacad.trimmode');return v==null?0:(+v?1:0)}catch(_){return 0}})();
+function setTrimMode(v){TRIMMODE=v?1:0;try{localStorage.setItem('muccacad.trimmode',String(TRIMMODE))}catch(_){}log(`자르기·연장 모드 = ${TRIMMODE?'빠른 작업 (모든 객체가 경계, 바로 클릭)':'표준 (기준선 먼저 고르고 Enter)'} — 이 PC 에 기억합니다`,'ok')}
+function trimEdgeStage(mode){const ko={trim:'자르기',extend:'연장'};sel.clear();
+  const T={name:mode,selecting:true,allowEmptySel:true,
+    get prompt(){return mode==='trim'?`기준선(자르는 경계) 선택 — 다 고르면 Enter · 바로 Enter = 모든 객체 [모드(O)]:`:`경계선(연장해 닿을 선) 선택 — 다 고르면 Enter · 바로 Enter = 모든 객체 [모드(O)]:`},set prompt(v){},
+    onInput(s){const t=s.trim().toUpperCase();if(t==='O'||t==='모드'){setTrimMode(TRIMMODE?0:1);if(TRIMMODE){sel.clear();tool=trimTool(mode)}return true}return false},
+    afterSelect(){const ids=new Set(sel);sel.clear();renderProps();updateInfo();tool=trimTool(mode,ids);setPrompt(tool.prompt);dirty=true}};
+  return T}
+TOOLS.trim=()=>{if(sel.size){const ids=new Set(sel);sel.clear();renderProps();updateInfo();return trimTool('trim',ids)}return TRIMMODE?trimTool('trim'):trimEdgeStage('trim')};
+TOOLS.extend=()=>{if(sel.size){const ids=new Set(sel);sel.clear();renderProps();updateInfo();return trimTool('extend',ids)}return TRIMMODE?trimTool('extend'):trimEdgeStage('extend')};
+TOOLS.trimextendmode=()=>{setTrimMode(TRIMMODE?0:1);return null};
 function withSel(T){if(!sel.size){T.selecting=true;const d=Object.getOwnPropertyDescriptor(T,'prompt');if(d&&d.get)return T;T._prompt=T.prompt;T.prompt='객체 선택 후 Enter:'}return T}
 function xformTool(cmd,label){const T=withSel({name:cmd,prompt:'기준점 지정:',
   onPoint(p){if(!T.base){T.base=p;T.last=p;T.prompt='두 번째 점 지정 (@x,y 가능):'}else{const d=sub(p,T.base);commit({cmd,ids:[...sel],dx:d.x,dy:d.y},`${label} (${fmt(d.x)}, ${fmt(d.y)})`);if(cmd==='copy'){T.prompt='두 번째 점 (계속 복사, Enter 종료):'}else endTool()}},
@@ -1077,7 +1094,9 @@ function gripAt(sp){
 function gripTip(g){const e=g.ent;if(e.type==='circle'&&g.k>0)return fmt(e.r);if(e.type==='line'&&g.k<2)return fmt(dist(e.a,e.b));if(e.type==='arc')return 'R'+fmt(e.r);return null}
 
 /* ================= 자르기·연장 (AutoCAD 빠른 모드) ================= */
-function cuttersFor(e){return flatEnts(visibleEnts().filter(x=>x!==e)).filter(x=>x.type!=='dim'&&x.type!=='text'&&x.type!=='hatch')}
+/* v1.9.18: TRIM_EDGES = 고른 기준선(경계) id 모음. null 이면 보이는 모든 객체가 경계(빠른 모드) */
+let TRIM_EDGES=null;
+function cuttersFor(e){return flatEnts(visibleEnts().filter(x=>x!==e&&(!TRIM_EDGES||TRIM_EDGES.has(x.id)))).filter(x=>x.type!=='dim'&&x.type!=='text'&&x.type!=='hatch')}
 function interPts(e,others){const out=[];const A=prims(e);
   for(const o of others)for(const B of prims(o))for(const a of A){let r=[];
     if(a.k==='s'&&B.k==='s')r=lineLine(a.a,a.b,B.a,B.b);else if(a.k==='s')r=lineCircle(a.a,a.b,B.c,B.r);else if(B.k==='s')r=lineCircle(B.a,B.b,a.c,a.r);else r=circleCircle(a.c,a.r,B.c,B.r);
@@ -1154,8 +1173,8 @@ function extendAt(e,pk){
     if(best==null)throw new Error('연장할 경계가 없습니다');if(atEnd)e.a1=n360(e.a1+best);else e.a0=n360(e.a0-best);return '연장'}
   throw new Error('선·호·열린 폴리선만 연장할 수 있습니다');
 }
-COMMANDS.trim=(c,ctx)=>{const e=byId(resolveIds(c.id,ctx)[0]);return {result:trimAt(e,P(c.pick,'pick'))}};
-COMMANDS.extend=(c,ctx)=>{const e=byId(resolveIds(c.id,ctx)[0]);return {result:extendAt(e,P(c.pick,'pick'))}};
+COMMANDS.trim=(c,ctx)=>{const e=byId(resolveIds(c.id,ctx)[0]);const pe=TRIM_EDGES;if(c.edges)TRIM_EDGES=new Set(resolveIds(c.edges,ctx));try{return {result:trimAt(e,P(c.pick,'pick'))}}finally{TRIM_EDGES=pe}};
+COMMANDS.extend=(c,ctx)=>{const e=byId(resolveIds(c.id,ctx)[0]);const pe=TRIM_EDGES;if(c.edges)TRIM_EDGES=new Set(resolveIds(c.edges,ctx));try{return {result:extendAt(e,P(c.pick,'pick'))}}finally{TRIM_EDGES=pe}};
 
 /* ----- 챔퍼 ----- */
 function chamferGeom(l1,p1,l2,p2,d1,d2){const g=filletGeom(l1,p1,l2,p2,0),X=g.X;
@@ -1379,7 +1398,7 @@ function handleCommandText(raw){
   if(/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(s)&&!(tool&&tool.wantsText&&tool.wantsText())&&s[0]!=='['&&s[0]!=='{'){const en=ko2en(s).toUpperCase();log(`한/영 자동 전환: ${s} → ${en}`);s=en}
   if(s)log((tool?tool.prompt+' ':'명령: ')+s,'me');
   if(fence&&!s){finishFence();return}
-  if(!s){if(tool){if(tool.selecting){if(!sel.size){toast('객체를 먼저 선택하세요');return}tool.selecting=false;if(tool.afterSelect){tool.afterSelect();return}tool.prompt=tool._prompt;setPrompt(tool.prompt);return}tool.onEnter?tool.onEnter():endTool();setPrompt(tool?tool.prompt:'명령:')}else startTool(lastCmd);return}
+  if(!s){if(tool){if(tool.selecting){if(!sel.size&&!tool.allowEmptySel){toast('객체를 먼저 선택하세요');return}tool.selecting=false;if(tool.afterSelect){tool.afterSelect();return}tool.prompt=tool._prompt;setPrompt(tool.prompt);return}tool.onEnter?tool.onEnter():endTool();setPrompt(tool?tool.prompt:'명령:')}else startTool(lastCmd);return}
   if(fence){fenceInput(s);return}
   if(/^f$/i.test(s)&&(pendWin||(tool&&tool.selecting))){startFence();return}
   if(s[0]==='['||s[0]==='{'){try{const r=runBatch(JSON.parse(s));log(r.ok?`AI 명령 ${(Array.isArray(JSON.parse(s))?JSON.parse(s).length:1)}개 실행`:r.errors.join(' / '),r.ok?'ok':'err')}catch(err){log('JSON 오류: '+err.message,'err')}return}
@@ -1836,7 +1855,7 @@ const API_DOC=`무카 CAD 명령표 — 화면 버튼, 명령창, AI가 모두 �
   {"cmd":"offset","id":"e1","dist":5,"side":[0,10]}
   {"cmd":"fillet","id1":"e1","id2":"e2","p1":[90,0],"p2":[0,40],"r":5}   (p1·p2 = 남길 쪽 선택점, r 0 = 구석)
   {"cmd":"explode","ids":["e3"]}   (폴리선 → 선)
-  {"cmd":"trim","id":"e1","pick":[65,0]}   (pick 쪽 구간 삭제, 다른 모든 객체가 경계)
+  {"cmd":"trim","id":"e1","pick":[65,0]}   (pick 쪽 구간 삭제, 다른 모든 객체가 경계 · "edges":["e2","e3"] 를 주면 그 객체만 경계 — extend 도 같음)
   {"cmd":"extend","id":"e1","pick":[28,40]}   (pick에 가까운 끝을 다음 경계까지)
   {"cmd":"chamfer","id1":"e1","id2":"e2","p1":[..],"p2":[..],"d1":10,"d2":15}
   {"cmd":"delete","ids":["e4"]}   {"cmd":"modify","id":"e1","r":30}
@@ -4960,7 +4979,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.9.17';
+const APP_VER='v1.9.18';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5732,6 +5751,9 @@ TOOLS.options=()=>{setTimeout(()=>{
   const m=modal('옵션 (OPTIONS)',W)});return null};
 /* 별칭 보강: PDF 출력 · 한글 단어 */
 Object.assign(ALIAS,{PDF:'plot',EXPORTPDF:'plot',PLOTPDF:'plot'});
+/* v1.9.18: 자르기·연장 모드 (표준 ↔ 빠른 작업) */
+Object.assign(ALIAS,{TRIMEXTENDMODE:'trimextendmode',TRIMMODE:'trimextendmode'});Object.assign(CMD_KO,{trimextendmode:'자르기·연장 모드 바꾸기'});
+try{Object.assign(KO_CMD,{자르기모드:'trimextendmode',연장모드:'trimextendmode'})}catch(_){}
 /* v1.9.17 (10-25 패치 v1.9.16 → 번호만 바꿈): 사용 기록 'XH'·'XV'(수평·수직 구성선을 한 번에) · '새파일'(한글로 친 새 도면) */
 TOOLS.xlineh=()=>{const T=TOOLS.xline();T.onInput('H');return T};TOOLS.xlinev=()=>{const T=TOOLS.xline();T.onInput('V');return T};
 Object.assign(CMD_KO,{xlineh:'수평 구성선',xlinev:'수직 구성선'});Object.assign(ALIAS,{XH:'xlineh',XV:'xlinev',XLH:'xlineh',XLV:'xlinev'});
@@ -6007,7 +6029,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [Claude 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261028b"></script>
+<script src="../assets/config.js?v=20261028c"></script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
 <script src="cloud.js?v=20261021a"></script>
