@@ -94,7 +94,7 @@
     const r1=el('div','aicRow');const bM=el('button','tbtn primary');bM.id='aicMcpb';bM.textContent='Claude 연결 파일 받기';bM.onclick=getMcpb;r1.append(bM);s1.append(r1);
     s1.append(el('p','sub','<code>mucca-cad.mcpb</code> 파일이 내려받아집니다. 이 브라우저 전용 연결 코드가 파일 안에 미리 들어 있습니다.'));out.push(s1);
     const s2=stepEl(2,'Claude 앱에 설치');
-    s2.append(el('p','sub','1. 받은 파일을 Claude 앱 창 <b>프로필 › 설정 › 확장 프로그램</b> 화면에 끌어다 놓으세요.<br>2. <b>[설치]</b>를 눌러 주세요.'));
+    s2.append(el('p','sub','1. 다운로드 폴더의 <code>mucca-cad.mcpb</code> 를 <b>더블클릭</b> → Claude 앱에 뜨는 창에서 <b>[설치]</b>.<br>2. 더블클릭이 안 되면 Claude 앱 <b>설정 › 확장 프로그램</b>(새 버전: <b>데스크톱 앱 › 확장 프로그램 [관리]</b>) › <b>고급 설정</b> › <b>[확장 프로그램 설치…]</b>에서 파일을 고르거나 그 화면에 끌어다 놓으세요. <a href="/guide/ai-connect/" target="_blank" rel="noopener" style="color:#f1c232;text-decoration:underline">그림으로 보기</a>'));
     const warn=el('p','sub','⚠ 주의: 연결 파일을 받은 이 창은 닫지 말고 그대로 둔 채 진행해 주세요.');warn.style.cssText='color:#f1c232;font-weight:600;margin-top:6px';s2.append(warn);out.push(s2);
     const s3=stepEl(3,'자동 연결');
     const wait=el('p','sub aicWait','');wait.style.cssText='color:#f1c232;font-weight:600;margin:4px 0';s3.append(wait);

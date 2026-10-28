@@ -1,4 +1,4 @@
-/* [테스트 서버] 여러 도면 동시에 — 「새 창」 (2026-10-28, 유튜브 댓글 "여러 파일이 동시에 열릴 수 있을까요?")
+/* 여러 도면 동시에 — 「새 창」 (v1.9.16, 2026-10-28 · 테스트 서버 10-28 시험 뒤 본체 반영, 유튜브 댓글 "여러 파일이 동시에 열릴 수 있을까요?")
    - 무카 CAD 는 창(브라우저 탭) 하나 = 도면 하나. 창을 더 열면 도면을 여러 개 동시에 열 수 있다.
    - 복사(Ctrl+C)는 PC 클립보드에 'MUCCACAD:' 로 들어가므로, 다른 창에서 Ctrl+V 하면 레이어·블록·치수 스타일까지 그대로 붙는다.
    - 이 파일: 상단 [새 창] 버튼 · 명령 NEWWIN(새창) · 새 창 안내 · 탭 제목 = 열린 파일 이름(창 구분용) */
@@ -34,5 +34,5 @@
     }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  window.LABMULTI = { openWin, setTitle };
+  window.MUCCAMULTI = { openWin, setTitle };
 })();

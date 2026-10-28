@@ -259,7 +259,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.15</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.16</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -4960,7 +4960,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.9.15';
+const APP_VER='v1.9.16';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5333,8 +5333,8 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     if(!box){box=document.createElement('div');box.id='aiUpdHelp';box.style.cssText='margin:6px 0 2px;display:grid;gap:6px';
       const ub=document.createElement('button');ub.className='tbtn primary';ub.id='aiUpdBtn';ub.textContent='새 연결 파일 받기 (업데이트)';
       const tip=document.createElement('div');tip.className='empty';tip.style.cssText='font-size:12px;line-height:1.5';
-      tip.textContent='받은 mucca-cad.mcpb 를 Claude 앱 창 프로필 › 설정 › 확장 프로그램 화면에 끌어다 놓고 [설치](또는 [업데이트])를 누르면 저절로 다시 연결됩니다. 이 창은 그대로 두고 진행하세요. 안 되면 Claude 앱을 껐다 켜 보세요.';
-      ub.onclick=()=>{openAic();getMcpb();aiSt.textContent='파일을 받았습니다. Claude 앱 창 프로필 › 설정 › 확장 프로그램 화면에 끌어다 놓고 [설치]를 누르면 자동으로 다시 연결됩니다.'};
+      tip.textContent='받은 mucca-cad.mcpb 를 더블클릭하거나 Claude 앱 설정 › 확장 프로그램 › 고급 설정 화면에 끌어다 놓고 [설치](또는 [업데이트])를 누르면 저절로 다시 연결됩니다. 이 창은 그대로 두고 진행하세요. 안 되면 Claude 앱을 껐다 켜 보세요.';
+      ub.onclick=()=>{openAic();getMcpb();aiSt.textContent='파일을 받았습니다. 더블클릭하거나 Claude 앱 설정 › 확장 프로그램 › 고급 설정 화면에 끌어다 놓고 [설치]를 누르면 자동으로 다시 연결됩니다.'};
       box.append(ub,tip);aiSt.after(box)}
     for(const x of ['aiLoginHelp','aiPlanHelp']){const b=document.getElementById(x);if(b)b.hidden=true}
     box.hidden=false}
@@ -5399,7 +5399,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     AIC.waitT=setInterval(async()=>{
       if((AIC.state==='on'&&!outdated())||Date.now()-AIC.waiting>15*60*1000){clearInterval(AIC.waitT);AIC.waiting=0;renderDlg();return}
       let st=null;try{st=await fetch(AIC.base+'/status',{cache:'no-store'}).then(r=>r.json())}catch(_){}
-      if(st&&st.app==='mucca-mcp'&&verLt(st.version,MUCCA_MCP_VER)){AIC.err='이전 버전(v'+st.version+') 연결 프로그램이 실행 중입니다. 방금 받은 파일을 Claude 앱 창 프로필 › 설정 › 확장 프로그램 화면에 끌어다 놓고 [설치]하면 자동으로 이어집니다. 안 되면 Claude 앱을 껐다 켜 보세요.';renderDlg()}
+      if(st&&st.app==='mucca-mcp'&&verLt(st.version,MUCCA_MCP_VER)){AIC.err='이전 버전(v'+st.version+') 연결 프로그램이 실행 중입니다. 방금 받은 파일을 더블클릭하거나 Claude 앱 설정 › 확장 프로그램 › 고급 설정 화면에 끌어다 놓고 [설치]하면 자동으로 이어집니다. 안 되면 Claude 앱을 껐다 켜 보세요.';renderDlg()}
       else if(st&&st.app==='mucca-mcp'){const ok=await connect(lsGet(),{silent:true});
         if(ok){clearInterval(AIC.waitT);AIC.waiting=0;log('Claude 연결 완료 — 설치한 연결 프로그램과 자동으로 연결했습니다','ok');renderDlg()}
         else{AIC.err='이전에 설치한 연결 프로그램이 실행 중입니다. 방금 받은 파일로 Claude 앱에서 다시 설치하면 자동으로 이어집니다.';renderDlg()}}
@@ -5428,7 +5428,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     s1.append(el('p','sub','<code>mucca-cad.mcpb</code> 파일이 내려받아집니다. 이 브라우저 전용 연결 코드가 파일 안에 미리 들어 있습니다.'));
     box.append(s1);
     const s2=el('div','aicStep','<b><span class="n">2</span>Claude 앱에 설치</b>');
-    s2.append(el('p','sub','1. 받은 파일을 Claude 앱 창 <b>프로필 › 설정 › 확장 프로그램</b> 화면에 끌어다 놓으세요.<br>2. <b>[설치]</b>를 눌러 주세요.'));
+    s2.append(el('p','sub','1. 다운로드 폴더의 <code>mucca-cad.mcpb</code> 를 <b>더블클릭</b> → Claude 앱에 뜨는 창에서 <b>[설치]</b>.<br>2. 더블클릭이 안 되면 Claude 앱 <b>설정 › 확장 프로그램</b>(새 버전: <b>데스크톱 앱 › 확장 프로그램 [관리]</b>) › <b>고급 설정</b> › <b>[확장 프로그램 설치…]</b>에서 파일을 고르거나 그 화면에 끌어다 놓으세요. <a href="/guide/ai-connect/" target="_blank" rel="noopener" style="color:#f1c232;text-decoration:underline">그림으로 보기</a>'));
     const warn=el('p','sub','⚠ 주의: 연결 파일을 받은 이 창은 닫지 말고 그대로 둔 채 진행해 주세요.');warn.style.cssText='color:#f1c232;font-weight:600;margin-top:6px';s2.append(warn);
     box.append(s2);
     const s3a=el('div','aicStep','<b><span class="n">3</span>자동 연결</b>');
@@ -6003,12 +6003,13 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [Claude 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261025f"></script>
+<script src="../assets/config.js?v=20261028a"></script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
 <script src="cloud.js?v=20261021a"></script>
 <script src="airef.js?v=2"></script>
 <script src="dwg.js?v=10"></script>
 <script src="parts.js?v=1"></script>
+<script src="multi.js?v=1"></script>
 </body>
 </html>
