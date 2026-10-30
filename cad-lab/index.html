@@ -260,7 +260,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.19</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.20</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -1803,7 +1803,11 @@ async function openSpecial(f){
     log(ready?`첨부 ${n}장 — 오른쪽 입력칸에 원하는 내용을 쓰고 [그리기]를 누르면 Claude가 보고 그립니다.`:`첨부 ${n}장 — 그리려면 상단 [AI 연결]이 필요합니다. 입력칸은 내 PC의 Claude Code(Pro 이상)로 그리고, 무료 요금제라면 이 파일을 Claude 앱 대화창에 첨부해 "무카 CAD에 그대로 그려줘"라고 쓰면 됩니다.`,'ok');
     if(!aiIn.value.trim())aiIn.value='첨부한 도면을 그대로 2D 도면으로 그려줘';aiIn.focus();return true}
   return false}
+let SAMPLE_GV=-1;
 async function openFile(f,G){if(!G&&await openSpecial(f))return;
+  /* 2026-10-30 (유튜브 댓글 'DWG 1장 안 열림'): 첫 화면 예제를 손대지 않은 채 DXF·DWG 를 열면 예제를 비우고 연다.
+     예제(0,0 근처)가 남으면 원점에서 먼 실제 좌표 도면과 한 화면에 맞추느라 둘 다 점처럼 작아져 안 열린 것처럼 보였음. 테스트 서버(10-27)와 같은 동작 */
+  if(/\.(dxf|dwg)$/i.test(f.name)&&geomVer===SAMPLE_GV&&doc.entities.length){pushUndo();doc.entities.length=0;sel.clear();changed();SAMPLE_GV=-1;log('첫 화면 예제 도면을 비우고 엽니다 (되돌리기 Ctrl+Z)','me')}
   /* 게이지 구간: DWG 에서 넘어오면 80~99%, DXF 만 열 때는 0~99% (해석 → 넣기) */
   const T0=performance.now(),fromDwg=!!G;if(!G&&/\.dxf$/i.test(f.name)&&f.size>4*1048576)G=openGauge(f.name,f.size/1048576,null);
   const P1=fromDwg?80:8,P2=fromDwg?86:45,PS=fromDwg?12:53;
@@ -4980,7 +4984,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.9.19';
+const APP_VER='v1.9.20';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -6099,6 +6103,7 @@ window.cad=Object.freeze({
   resize();syncToggles();renderLayers();renderProps();updateInfo();
   log('무카 CAD 베타 '+APP_VER+' · AutoCAD 호환 조작(Autodesk 와 무관한 독립 프로그램 · 상단 [정보]): 클릭→클릭 = 선택 창, 누른 채 끌기 = 올가미, 그립 클릭 = 신축(Space로 이동·회전·축척·대칭), 오른쪽 클릭 = 메뉴, Space = 반복, Shift = 임시 직교.');
   runBatch(shaftCmds(),{record:false});undoStack=[];redoStack=[];
+  SAMPLE_GV=geomVer;   /* 첫 화면 예제 도면 — 이 값 그대로면 '손대지 않은 예제' */
   try{await document.fonts.ready}catch(_){}
   resize();zoomExtents();dirty=true;
   if(window.claude&&window.claude.use){
@@ -6107,7 +6112,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261029a"></script>
+<script src="../assets/config.js?v=20261030a"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
