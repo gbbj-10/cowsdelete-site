@@ -246,11 +246,11 @@
   function make3MF(root, T) {
     const vmap = new Map(), verts = [], tris = [], k = v => Math.round(v * 1e4);
     const id = (x, y, z) => { const key = k(x) + ',' + k(y) + ',' + k(z); let i = vmap.get(key); if (i == null) { i = verts.length; vmap.set(key, i); verts.push([x, y, z]); } return i; };
-    root.updateMatrixWorld(true); const rootInv = T ? new T.Matrix4().copy(root.matrixWorld).invert() : null;   // 화면용 돌림·가운데 맞춤은 빼고 모델 좌표(mm, Z 위)로
+    root.updateMatrixWorld(true); const rootInv = T ? new T.Matrix4().copy(root.matrixWorld).invert() : null; const L3 = window.LAB3D, yUp = !!(L3 && L3.ext && L3.ext.yUp);   // 화면용 돌림·가운데 맞춤은 빼고 모델 좌표(mm, Z 위)로
     root.traverse(o => {
       if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
       const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, p = g.attributes.position, m = (T ? new T.Matrix4().multiplyMatrices(rootInv, o.matrixWorld) : o.matrixWorld).elements;
-      const W = i => { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); const X = m[0] * x + m[4] * y + m[8] * z + m[12], Y = m[1] * x + m[5] * y + m[9] * z + m[13], Z = m[2] * x + m[6] * y + m[10] * z + m[14]; return [X, -Z, Y]; };   // 화면(Y 위) → 3MF(Z 위)
+      const W = i => { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); const X = m[0] * x + m[4] * y + m[8] * z + m[12], Y = m[1] * x + m[5] * y + m[9] * z + m[13], Z = m[2] * x + m[6] * y + m[10] * z + m[14]; return yUp ? [X, -Z, Y] : [X, Y, Z]; };   // 사진·AI 모델은 Y 위로 넣어져 있음 → Z 위로 되돌림 (규칙 엔진 3D 는 이미 Z 위)
       for (let i = 0; i + 2 < p.count; i += 3) { const a = id(...W(i)), b = id(...W(i + 1)), c = id(...W(i + 2)); if (a !== b && b !== c && a !== c) tris.push([a, b, c]); }
     });
     if (!tris.length) throw new Error('3D 모양이 없습니다');

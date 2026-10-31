@@ -215,7 +215,7 @@
     const rx = new T.Matrix4().makeRotationX(-Math.PI / 2);
     for (const m of meshes(T)) { const p = m.p; if (!p.geoV) { p.geoV = p.geo.clone().applyMatrix4(rx); p.geoV.computeBoundingBox(); p.edgesV = new T.EdgesGeometry(p.geoV, 28); }
       v.root.add(new T.Mesh(p.geoV, m.mesh.material)); v.root.add(new T.LineSegments(p.edgesV, m.line.material)); }
-    L.ext = { kind: 'photo', step: async () => { const R = await v.ensureOCC(); return R.makeCompound(PH.model.parts.map(p => p.shape.clone())).blobSTEP(); } };
+    L.ext = { kind: 'photo', yUp: true /* 위 rx 로 Y 위로 돌려 넣음 → STL·3MF 저장 때 되돌림 */, step: async () => { const R = await v.ensureOCC(); return R.makeCompound(PH.model.parts.map(p => p.shape.clone())).blobSTEP(); } };
     if (v.mode() === '2d') v.setMode('split');
     v.emptyEl.style.display = 'none';
     const bb = modelBox();

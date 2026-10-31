@@ -1085,11 +1085,16 @@
   function baseName() { const t = (document.title || 'mucca').replace(/\s*[-|·].*$/, '').trim(); return (window.__docName || t || 'mucca').replace(/[\\/:*?"<>|]/g, '_'); }
   pane.querySelector('#l3stl').onclick = async () => {
     await ensure3D(); if (!lastPlan && !LAB.ext) { log('3D로 만들 윤곽이 없습니다', 'err'); return; }
+    // 2026-10-31 조미료님: 3D 프린터·CAD 에서 Z 가 위로 — 화면용(Y 위·돌림·가운데 맞춤)을 빼고 모델 좌표(mm, Z 위)로 저장. 부품별 위치(matrix)도 반영, 면 법선도 넣음
     const tris = [];
-    root.traverse(o => { if (!o.isMesh) return; const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry; const p = g.attributes.position; for (let i = 0; i < p.count; i++) tris.push(p.getX(i), p.getY(i), p.getZ(i)); });
+    root.updateMatrixWorld(true); const yUp = !!(LAB.ext && LAB.ext.yUp), inv = new T.Matrix4().copy(root.matrixWorld).invert(), M = new T.Matrix4(), v = new T.Vector3();
+    root.traverse(o => { if (!o.isMesh) return; const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry; const p = g.attributes.position; M.multiplyMatrices(inv, o.matrixWorld);
+      for (let i = 0; i < p.count; i++) { v.set(p.getX(i), p.getY(i), p.getZ(i)).applyMatrix4(M); if (yUp) tris.push(v.x, -v.z, v.y); else tris.push(v.x, v.y, v.z); } });
     const n = tris.length / 9, buf = new ArrayBuffer(84 + n * 50), dv = new DataView(buf); dv.setUint32(80, n, true);
-    for (let i = 0; i < n; i++) { const o = 84 + i * 50; for (let k = 0; k < 9; k++) dv.setFloat32(o + 12 + k * 4, tris[i * 9 + k], true); }
-    download(new Blob([buf], { type: 'model/stl' }), baseName() + '.stl'); log('STL 저장: 삼각형 ' + n + '개', 'ok');
+    for (let i = 0; i < n; i++) { const o = 84 + i * 50, q = tris.slice(i * 9, i * 9 + 9), ux = q[3] - q[0], uy = q[4] - q[1], uz = q[5] - q[2], wx = q[6] - q[0], wy = q[7] - q[1], wz = q[8] - q[2];
+      let nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx; const L = Math.hypot(nx, ny, nz) || 1; dv.setFloat32(o, nx / L, true); dv.setFloat32(o + 4, ny / L, true); dv.setFloat32(o + 8, nz / L, true);
+      for (let k = 0; k < 9; k++) dv.setFloat32(o + 12 + k * 4, q[k], true); }
+    LAB.lastStl = buf; if (!LAB.noDownload) download(new Blob([buf], { type: 'model/stl' }), baseName() + '.stl'); log('STL 저장: 삼각형 ' + n + '개 (mm · Z 위)', 'ok');
   };
 
   /* ---------------- 저장: STEP (OpenCascade는 이때만 받음) ---------------- */
