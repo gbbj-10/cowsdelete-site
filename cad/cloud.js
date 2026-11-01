@@ -436,8 +436,13 @@
       const { data: row, error } = await sb.from('shared_items').insert({ kind, title: t, description: desc.value.trim(), tags: tg, data, thumb: pv.dataset.u || null }).select('id').single();
       go.disabled = false;
       if (error) { say('공유하지 못했습니다: ' + error.message, 'err'); return; }
-      m.remove(); say(`커뮤니티에 공유했습니다: ${t} — 크레딧 +1 대기 (7일 뒤 또는 누군가 가져가면 확정)`, 'ok'); evt('share', { kind });
-      sheet('공유했습니다', [$('p', { class: 'cl-p', text: '커뮤니티에서 누구나 찾아볼 수 있습니다. 크레딧 +1이 대기 중이며, 7일 동안 신고가 없거나 다른 사람이 가져가면 확정됩니다. 빈 도면·이미 있는 모양·하루 4번째 공유부터는 크레딧이 없습니다. 요청 게시판에 같은 걸 찾는 글이 있으면 답으로 걸어 보세요.' })],
+      m.remove(); evt('share', { kind });
+      /* v1.10.2 (11-02): 블록은 올리면 바로 크레딧 +1 확정, 도면은 +1 대기(7일 뒤 또는 누군가 가져가면 확정) */
+      let got = null; try { const q = await sb.from('shared_items').select('credited').eq('id', row.id).maybeSingle(); got = q.data ? !!q.data.credited : null; } catch (_) { }
+      const rule = '빈 블록·이미 있는 모양·하루 4번째 공유부터는 크레딧이 없고, 신고로 숨겨지면 돌려놓습니다.';
+      const msg = got === false ? '이번 공유는 크레딧 대상이 아닙니다. ' + rule : kind === 'block' ? '크레딧 +1을 받았습니다. ' + rule : '크레딧 +1이 대기 중이며, 7일 동안 신고가 없거나 다른 사람이 가져가면 확정됩니다. ' + rule;
+      say(`커뮤니티에 공유했습니다: ${t} — ${got === false ? '크레딧 없음' : kind === 'block' ? '크레딧 +1' : '크레딧 +1 대기'}`, 'ok');
+      sheet('공유했습니다', [$('p', { class: 'cl-p', text: '커뮤니티에서 누구나 찾아볼 수 있습니다. ' + msg + ' 요청 게시판에 같은 걸 찾는 글이 있으면 답으로 걸어 보세요.' })],
         [$('a', { class: 'tbtn primary', href: '/community/?id=' + row.id, target: '_blank', rel: 'noopener', text: '커뮤니티에서 보기' })]);
     };
   }
