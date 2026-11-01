@@ -21,7 +21,7 @@
       <div class="in"><ul class="ladder">${rows}</ul>
       <p class="muted" style="font-size:14px;margin:16px 0 6px"><b style="color:var(--ink)">명장</b> 점수 기준이 아니라 전체 사용자 중 기여 점수 상위 10%에게 주는 등급입니다. 기술사 점수(30점) 이상인 사람만 후보이고, 순위는 공유·가져감이 생길 때마다 다시 매깁니다.</p>
       <p class="muted" style="font-size:14px;margin:0 0 6px"><b style="color:var(--ink)">기여 점수</b> 공유가 확정되면 +1, 다른 사람이 내 블록·도면을 가져갈 때마다 +1, 요청에 답해 채택되면 +2</p>
-      <p class="muted" style="font-size:14px;margin:0 0 6px"><b style="color:var(--ink)">크레딧</b> 처음 3개. 공유하면 +1이 대기했다가 7일 동안 신고가 없거나 누군가 가져가면 확정. 누군가 찾았는데 없던 것을 올리면 +2 더. 요청 게시판 현상금으로도 받습니다.</p>
+      <p class="muted" style="font-size:14px;margin:0 0 6px"><b style="color:var(--ink)">크레딧</b> 처음 3개. 공유하면 +1이 대기했다가 7일 동안 신고가 없거나 누군가 가져가면 확정. 누군가 찾았는데 없던 것을 올리면 +2 더. 요청 게시판 현상금으로도 받습니다. <b style="color:var(--ink)">가져오기</b>는 처음 가져오는 블록·도면 1개에 크레딧 1개(운영자 블록 포함), 한 번 가져온 것은 다시 무료입니다.</p>
       <p class="muted" style="font-size:14px;margin:0 0 6px;display:flex;gap:8px;align-items:center">${S.gradeIcon(9, 22)}<span><b style="color:var(--ink)">운영자</b> 카우스 소거법 운영자(흑우)만 다는 표시입니다. 기여 순위와 명장 계산에서는 빠집니다.</span></p>
       <p class="muted" style="font-size:14px;margin:0">빈 도면, 이미 있는 모양, 하루 4번째 공유부터는 크레딧이 없습니다. 신고로 숨겨지면 받은 크레딧을 돌려놓습니다.</p></div></div>`;
     document.body.append(d);

@@ -451,7 +451,7 @@
     const { data, error } = await sb.rpc('community_copy', { item_id: id });
     if (error) { say('가져오지 못했습니다: ' + error.message, 'err'); return; }
     const d = data.data;
-    if (data.paid) say('크레딧 1개를 써서 가져왔습니다', 'ok');
+    if (data.paid) say(`크레딧 ${data.cost || 1}개를 써서 가져왔습니다${data.credits != null ? ` (남은 크레딧 ${data.credits})` : ''}`, 'ok');
     if (data.kind === 'block') {
       let name = d.name || data.title, n = name, i = 2; while (BL()[n]) n = `${name}_${i++}`;
       pushUndo(); for (const l of d.layers || []) { if (!doc.layers.find(x => x.name === l.name)) doc.layers.push(l); }

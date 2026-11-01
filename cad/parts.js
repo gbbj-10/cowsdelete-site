@@ -54,7 +54,7 @@
     searchLib(words).then(({ login, rows, err }) => {
       if (!login) { box.innerHTML = '라이브러리 블록은 로그인하면 함께 보여 드립니다. 아래에서 바로 그릴 수 있어요.'; return; }
       if (err || !rows.length) { box.innerHTML = '라이브러리에 맞는 블록이 없습니다 → 아래에서 골라 그리세요.'; return; }
-      box.innerHTML = '<b>라이브러리에 있는 블록</b> (바로 넣기)';
+      box.innerHTML = '<b>라이브러리에 있는 블록</b> (바로 넣기 · 처음 넣는 블록은 크레딧 1개)';
       for (const r of rows) {
         const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:4px';
         const t = document.createElement('span'); t.style.flex = '1'; t.textContent = `${r.title} · ${r.author_nick || ''}${r.sort_group > 0 ? ' (공개 규격)' : ''}`;
