@@ -1,4 +1,4 @@
-/* 무카 CAD 테스트 서버 — 2D | 3D 나란히 보기 (lab 전용)
+/* 무카 CAD — 2D | 3D 나란히 보기 (2026-11-01 v1.10.0 본체 반영 · cad/ 와 cad-lab/ 이 같은 파일. 운영자 게이트·시험 도면·3D 엔진 미리 받기는 cad-lab/ 에서만)
    - 3D 엔진(three.js)은 페이지가 뜬 뒤 쉬는 시간에 미리 받고, 3D 버튼을 누르면 바로 씀
    - STEP 저장용 OpenCascade(약 7.2MB)는 STEP 버튼에 마우스를 올리거나 누를 때만 받음
    - 2D 도면이 바뀌면 3D가 따라 바뀜 (0.25초 뒤 다시 계산)
@@ -14,6 +14,7 @@
 
   /* ---------------- 운영자 전용 게이트 ---------------- */
   const isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  const isLab = /\/cad-lab\//.test(location.pathname);   // 테스트 서버(운영자 전용)인가
   const gateBox = document.createElement('div');
   gateBox.className = 'labgate';
   function showGate(msg, link) {
@@ -108,7 +109,7 @@
   if (tb) tb.before(b3);
   const brand = document.querySelector('.brand, .logo, #brand');
   const tag = document.createElement('span'); tag.className = 'labtag'; tag.textContent = 'TEST';
-  (brand || b3).after(tag);
+  if (isLab) (brand || b3).after(tag);   // TEST 표시는 테스트 서버에서만
 
   let mode = '2d';
   try { mode = localStorage.getItem('muccalab.v3mode') || '2d'; } catch (_) { }
@@ -122,11 +123,12 @@
   }
   pane.querySelectorAll('.seg button').forEach(b => b.onclick = () => setMode(b.dataset.m));
   b3.onclick = () => setMode(mode === '2d' ? 'split' : '2d');
+  b3.addEventListener('pointerenter', () => { ensure3D().catch(() => { }); }, { once: true });   // 3D 엔진(약 0.6MB)은 3D 버튼에 손이 갈 때 받기 시작
   LAB.toggle = () => setMode(mode === '2d' ? 'split' : '2d');
   LAB.setMode = setMode;
   const kindSel = pane.querySelector('#l3kind'), tIn = pane.querySelector('#l3t'), stEl = pane.querySelector('#l3st'), emptyEl = pane.querySelector('#l3empty');
   kindSel.onchange = () => rebuild(true); tIn.onchange = () => rebuild(true);
-  const caseSel = pane.querySelector('#l3case');
+  const caseSel = pane.querySelector('#l3case'); if (!isLab) caseSel.closest('label').hidden = true;   // 시험 도면은 테스트 서버에서만
   function fillCases() { const L = window.LABCASES || []; if (caseSel.options.length > 1 || !L.length) return; for (const c of L) { const o = document.createElement('option'); o.value = c.id; o.textContent = c.lv + '. ' + c.title; caseSel.append(o); } }
   setTimeout(fillCases, 0); setTimeout(fillCases, 1500);
   caseSel.addEventListener('keydown', e => e.stopPropagation());
@@ -149,7 +151,8 @@
     return loading3;
   }
   // 페이지가 뜨고 2.5초 뒤 쉬는 시간에 미리 받아 둠 (3D 버튼을 처음 눌러도 바로 뜨게)
-  setTimeout(() => (window.requestIdleCallback || (f => setTimeout(f, 1)))(() => ensure3D().catch(() => { })), 2500);
+  // 본체(cad/)는 3D 를 쓰는 사람만 받게: 3D 버튼에 마우스를 올리거나 누를 때 받음 (첫 화면 무게 그대로)
+  if (isLab) setTimeout(() => (window.requestIdleCallback || (f => setTimeout(f, 1)))(() => ensure3D().catch(() => { })), 2500);
 
   /* 3D 창 = 모델을 손으로 돌리는 영역
      왼쪽 드래그: 드래그한 방향으로 모델이 굴러감 · 오른쪽/가운데 드래그(또는 Shift): 이동
@@ -1345,6 +1348,6 @@
   LAB.ruleSolid = async () => { const R = await ensureOCC(); const pl = plan(); if (!pl || pl.empty) throw new Error('규칙 엔진이 3D로 만들 윤곽이 없습니다'); return makeSolid(R, pl); };
   LAB._v = () => ({ T, root, scene, cam, renderer, draw3, fit3, setView: v => { if (pivot) setView(v); }, setMode, mode: () => mode, ensure3D, ensureOCC, stEl, emptyEl, pane, download, baseName });
   /* ---------------- 시작 ---------------- */
-  checkAdmin().then(ok => { if (ok && mode !== '2d') setMode(mode); });
+  if (isLab) checkAdmin().then(ok => { if (ok && mode !== '2d') setMode(mode); });
   if (mode !== '2d') setMode(mode);
 })();

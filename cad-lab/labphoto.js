@@ -1,4 +1,4 @@
-/* 무카 CAD 테스트 서버 — 사진 → 3D (lab 전용)
+/* 무카 CAD — 사진 → 3D (2026-11-01 v1.10.0 본체 반영)
    사용자가 AI 입력칸 📎 로 사진을 붙이고 "이 사진으로 3D 만들어줘 (발판 500)" 처럼 요청하면,
    사용자의 Claude 가 연결 프로그램의 기존 도구(mucca_guide · mucca_draw · mucca_snapshot)만으로
      ① 사진 격자로 픽셀 좌표 읽기 → ② 치수 1개로 비율 계산 → ③ 부품별 3D 코드(replicad) 실행
@@ -33,7 +33,7 @@
       const ims = [...document.querySelectorAll('.aiRefs .aiRef img')].map(i => ({ src: i.src, alt: i.alt }));   // 보내기 직전 첨부 칸의 사진
       const t = w0(text); if (t === text) return t;
       if (ims.length) { PH.photos = []; PH.pending = Promise.all(ims.map(i => addPhoto(i.src, i.alt))).catch(() => { }); }
-      return t + '\n[테스트 서버] 사진·손그림으로 3D 모델을 만들어 달라는 요청이면 mucca_guide 의 "사진 → 3D" 절차를 따른다 (첨부 사진은 photo_list 로 번호 확인).';
+      return t + '\n[무카 CAD] 사진·손그림으로 3D 모델을 만들어 달라는 요청이면 mucca_guide 의 "사진 → 3D" 절차를 따른다 (첨부 사진은 photo_list 로 번호 확인).';
     };
   }
   hookAiref(); setTimeout(hookAiref, 1500); setTimeout(hookAiref, 5000);
@@ -440,7 +440,7 @@
   try { if (typeof ALIAS === 'object' && typeof TOOLS === 'object') { ALIAS['3DRESET'] = 'photo3dreset'; TOOLS.photo3dreset = () => { reset3d(); log('2D 도면 기준 3D로 돌아갔습니다', 'ok'); return null; }; } } catch (_) { }
 
   /* ---------------- 가이드 (mucca_guide 뒤에 붙음) ---------------- */
-  PH.guide = `사진 → 3D (테스트 서버 전용) — 사진·손그림 + 치수 1개로 부품을 이해해서 3D 모델과 2D 도면을 만든다
+  PH.guide = `사진 → 3D — 사진·손그림 + 치수 1개로 부품을 이해해서 3D 모델과 2D 도면을 만든다
 명령은 mucca_draw 로 보내되 다른 그리기 명령과 섞지 않는다. 이미지 결과는 바로 다음 mucca_snapshot 호출로 받는다.
 
 절차 (사용자에게는 단계마다 짧게 알린다)

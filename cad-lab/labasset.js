@@ -1,4 +1,4 @@
-/* 무카 CAD 테스트 서버 — 3D → 영업 에셋 (3화 ③)
+/* 무카 CAD — 3D → 영업 에셋 (3화 ③, 2026-11-01 v1.10.0 본체 반영)
    3D 창 [에셋 ▾] : 제품샷(흰 배경) · 분해도 · 360° 회전 영상(mp4) · GLB · 웹 3D 보기(HTML 파일 1개) · 아이폰 AR(USDZ)
    모두 브라우저 안에서 만든다 (서버·토큰 비용 없음). 엔진(three-asset.js, 약 0.8MB)은 처음 쓸 때만 받는다.
    AI 연결: mucca_draw 의 {"cmd":"model3d_asset","make":["shots","exploded","video","glb","html"]} */
@@ -322,7 +322,7 @@
       if (pv && P.queue) { const im = await createImageBitmap(pv.blob); const k = Math.min(1, 1400 / im.width), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); const u = cv.toDataURL('image/png'); P.queue.push({ png: u.slice(u.indexOf(',') + 1), note: '에셋 미리보기: ' + pv.name }); P.lastImage = u; r.note = '다음 mucca_snapshot 호출 때 미리보기 그림이 옵니다'; }
       r.next = '파일은 사용자 다운로드 폴더(묶음 zip). 휴대폰으로 보내려면 사용자가 3D 창 [에셋 ▾] › 휴대폰으로 보내기를 누름'; return r;
     });
-    P.guide += `\n\n3D → 영업 에셋 (테스트 서버) — 3D 모델이 있을 때 {"cmd":"model3d_asset","make":["shots","exploded","video","glb","html"],"res":"1080"|"4k"}
+    P.guide += `\n\n3D → 영업 에셋 — 3D 모델이 있을 때 {"cmd":"model3d_asset","make":["shots","exploded","video","glb","html"],"res":"1080"|"4k"}
   shots = 흰 배경 제품샷 4장(대표 45°·정면·측면·위 45°, "views" 로 바꿈: front34 iso rear34 front right left rear top top34) · exploded = 분해도(부품 번호별로 벌림)
   video = 360° 회전 mp4 8초("sec") · glb = 보기용 3D(색 포함, m 단위) · html = 휴대폰에서 돌려 보는 HTML 파일 1개(분해 슬라이더) · usdz = 아이폰 AR
   결과는 사용자 다운로드 폴더에 zip 으로, 대표 그림은 다음 mucca_snapshot 으로 온다. 휴대폰(카톡)으로 보내기는 사용자가 [에셋 ▾] 메뉴에서 직접 누른다`;

@@ -259,7 +259,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.9.20</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.0</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -4983,7 +4983,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.9.20';
+const APP_VER='v1.10.0';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5319,8 +5319,8 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     catch(e){out.push({cmd:k,ok:false,error:e&&e.message||String(e)})}}
     return {ok:out.every(x=>x.ok!==false),results:out,...summary()}}
   const TOOLS_JS={
-    mucca_guide:()=>{const s=summary();return `${API_DOC}\n\n${RULES}\n\n현재 도면: ${JSON.stringify(s)}${s.bbox?`\n새 도형 추천 기준점: x=${Math.ceil((s.bbox.maxX+60)/10)*10}, y=0`:''}`},
-    mucca_draw:async a=>{window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_DRAW'});let cmds=a.commands;if(typeof cmds==='string')cmds=JSON.parse(cmds);if(!Array.isArray(cmds)||!cmds.length)throw new Error('commands 배열이 비어 있습니다');
+    mucca_guide:()=>{const s=summary();return `${API_DOC}\n\n${RULES}${window.LABPHOTO?'\n\n'+LABPHOTO.guide:''}${window.LAB2D?'\n\n'+LAB2D.guide:''}\n\n현재 도면: ${JSON.stringify(s)}${s.bbox?`\n새 도형 추천 기준점: x=${Math.ceil((s.bbox.maxX+60)/10)*10}, y=0`:''}`},
+    mucca_draw:async a=>{window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_DRAW'});let cmds=a.commands;if(typeof cmds==='string')cmds=JSON.parse(cmds);if(!Array.isArray(cmds)||!cmds.length)throw new Error('commands 배열이 비어 있습니다');if(window.LABPHOTO&&cmds.some(c=>LABPHOTO.isCmd(c)))return LABPHOTO.cmds(cmds);
       if(cmds.some(c=>/^library_/.test(String(c&&c.cmd||''))))return libraryCmds(cmds);
       if(cmds.length>2000)throw new Error('명령이 너무 많습니다(최대 2000)');
       await waitReplay();if(a.note){aiSt.textContent=String(a.note).slice(0,200);log('Claude: '+String(a.note).slice(0,200),'me')}
@@ -5330,7 +5330,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
       return {ok:!errs.length,commands:cmds.length,errors:errs.slice(0,30),ids:(r.results||[]).slice(0,400).map(x=>x&&(x.id||x.ids)||null),...summary()}},
     mucca_state:()=>summary(),
     mucca_list:a=>{const L=cad.list({type:a.type,layer:a.layer}),n=Math.max(1,Math.min(1000,a.limit||200));return {total:L.length,items:L.slice(0,n)}},
-    mucca_snapshot:async a=>{if(window.AIREF){const _r=AIREF.next();if(_r)return _r}await waitReplay();const url=cad.snapshot({fit:a.fit!==false});return {png:url.slice(url.indexOf(',')+1),note:`무카 CAD 화면 ${cv.width}×${cv.height}px · 도형 ${doc.entities.length}개`}},
+    mucca_snapshot:async a=>{if(window.LABPHOTO){const _p=LABPHOTO.next();if(_p)return _p}if(window.AIREF){const _r=AIREF.next();if(_r)return _r}await waitReplay();const url=cad.snapshot({fit:a.fit!==false});return {png:url.slice(url.indexOf(',')+1),note:`무카 CAD 화면 ${cv.width}×${cv.height}px · 도형 ${doc.entities.length}개`}},
     mucca_undo:async a=>{await waitReplay();const n=Math.max(1,Math.min(50,a.steps||1));for(let i=0;i<n;i++)undo();return summary()}
   };
   async function handleCall({id,tool,args}){let ok=true,result=null,error='';
@@ -5793,6 +5793,7 @@ CMD_KO.cmd3d='3D 모델링 (준비 중)';
 for(const k of ['EXT','EXTRUDE','REVOLVE','REV','BOX','CYLINDER','CYL','SPHERE','CONE','WEDGE','TORUS','PRESSPULL','UNION','UNI','SUBTRACT','SU','INTERSECT','IN','LOFT','SWEEP','3DROTATE','3DMOVE','3DORBIT','3DO','SOLIDEDIT','SLICE','SL','THICKEN','POLYSOLID','SHELL'])if(!ALIAS[k])ALIAS[k]='cmd3d';
 Object.assign(KO_CMD,{길이:'dist',길이를:'dist',길이재기:'dist',길이측정:'dist',거리재기:'dist',리습:'appload',올가미:'selhelp',올가미선택:'selhelp',윈도우:'selhelp',윈도우선택:'selhelp',걸침:'selhelp',전개도:'cmd3d',리스프:'appload',캐드리스프:'appload',리스프파일:'appload',캐드리스프파일:'appload',도곽:'sheet',도곽틀:'sheet',도면틀:'sheet',도면양식틀:'sheet',라인:'line',동그라미:'circle',써클:'circle',서클:'circle',폴리라인:'polyline',테이블:'table',표:'table',네모:'rect',네모박스:'rect',박스:'rect',사각:'rect',직사각형:'rect',사각박스:'rect',전체:'zoomext',전체보기:'zoomext',줌전체:'zoomext',피디에프:'plot',출력:'plot',인쇄:'plot',옵션:'options',설정:'options'});
 TOOLS.zoomext=()=>{zoomExtents();log('줌 전체 (ZE)','ok');return null};CMD_KO.zoomext='줌 전체';
+ALIAS['3D']='view3d';ALIAS['3DVIEW']='view3d';ALIAS['2D3D']='view3d';TOOLS.view3d=()=>{if(window.LAB3D)LAB3D.toggle();else log('3D 기능을 불러오는 중입니다','err');return null};
 const ALIAS_DEF=Object.assign({},ALIAS),KEYMAP_DEF=Object.assign({},KEYMAP),SC_KEY='muccacad.shortcuts.v1';
 let scSaved=null;
 function comboOf(ev){const c=ev.code||'';const k=c.startsWith('Key')?c.slice(3):c.startsWith('Digit')?c.slice(5):/^F\d{1,2}$/.test(c)?c:null;if(!k)return null;return [(ev.ctrlKey||ev.metaKey)&&'Ctrl',ev.altKey&&'Alt',ev.shiftKey&&'Shift',k].filter(Boolean).join('+')}
@@ -6047,10 +6048,16 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [Claude 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261030a"></script>
+<script src="../assets/config.js?v=20261101a"></script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
 <script src="cloud.js?v=20261021a"></script>
+<!-- v1.10.0 (2026-11-01, 3화): 테스트 서버에서 검증한 3D 기능 본체 반영 — 2D|3D 보기·사진→3D·2D 대조·영업 에셋·3D→도면·3MF·가공 전 점검 -->
+<script src="lab3d.js?v=16"></script>
+<script src="labphoto.js?v=6"></script>
+<script src="lab2dcheck.js?v=5"></script>
+<script src="labasset.js?v=2"></script>
+<script src="labmake.js?v=5"></script>
 <script src="airef.js?v=2"></script>
 <script src="dwg.js?v=10"></script>
 <script src="parts.js?v=1"></script>

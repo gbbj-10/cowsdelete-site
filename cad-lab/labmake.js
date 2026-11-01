@@ -1,4 +1,4 @@
-/* 무카 CAD 테스트 서버 — 만들기 도구 (lab 전용, 2026-10-31)
+/* 무카 CAD — 만들기 도구 (2026-10-31 테스트 서버, 2026-11-01 v1.10.0 본체 반영)
    text-to-cad(github.com/earthtojake/text-to-cad) 기능을 보고 무카 CAD 에 맞게 들여온 것.
    ① 3D → 치수 도면  : 3D 창 [도면 만들기] · 명령 {"cmd":"model3d_drawing"}
       AI 모델(model3d) 또는 규칙 엔진 3D 를 3각법(정면·평면·우측면, 숨은선 포함)으로 펼치고
@@ -219,7 +219,7 @@
       for (let i = 1; i < 4; i++) cmds.push({ cmd: 'line', from: [rnd(tx0), rnd(fy0 + rowH * i)], to: [rnd(fx1), rnd(fy0 + rowH * i)], layer: '외형선' });
       const PP = src === 'model' && ph().model ? ph().model.parts : [], name = String(c.title || (typeof window.__docName === 'string' && window.__docName) || (PP.length === 1 ? PP[0].name : PP.length > 1 ? `3D 모델 (부품 ${PP.length}개)` : '3D 모델')).slice(0, 40);
       const d = new Date(), ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const rows = [`도면명: ${name}`, `3각법 · 단위 mm · 척도 1:1 · ${ds}`, `원본: ${src === 'model' ? 'AI 3D 모델(model3d)' : '규칙 엔진 3D'} → 2D 자동 도면`, '무카 CAD 테스트 서버 · 치수는 확인 후 사용'];
+      const rows = [`도면명: ${name}`, `3각법 · 단위 mm · 척도 1:1 · ${ds}`, `원본: ${src === 'model' ? 'AI 3D 모델(model3d)' : '규칙 엔진 3D'} → 2D 자동 도면`, '무카 CAD · 치수는 확인 후 사용'];
       rows.forEach((t, i) => cmds.push({ cmd: 'text', at: [rnd(tx0 + TH), rnd(ty1 - rowH * (i + 1) + (rowH - TH) / 2)], text: t, h: rnd(i ? TH * 0.9 : TH * 1.1), layer: '문자' }));
     }
     const r = runBatch(cmds.concat(dims), { label: '3D → 도면' });
@@ -447,7 +447,7 @@
   if (!addMenu()) { let n = 0; const t = setInterval(() => { if (addMenu() || ++n > 40) clearInterval(t); }, 500); }
 
   /* 가이드 (mucca_guide 뒤에 붙음) */
-  MK.guide = `3D → 2D 도면 · 가공 전 점검 (테스트 서버 전용)
+  MK.guide = `3D → 2D 도면 · 가공 전 점검
  · {"cmd":"model3d_drawing"} — 지금 3D(AI 모델 model3d, 없으면 규칙 엔진)를 3각법 3면도(정면=X·Z, 평면=X·Y, 우측면=Y·Z)로 펼쳐 도면 오른쪽 빈 곳에 그림. 원·호 복원, 숨은선, 구멍 n-Ø, PCD, 중심선, 전체 크기 치수, 도곽·표제란. 옵션: "source":"model"|"rule", "hidden":false, "dims":false, "frame":false, "title":"도면명", "at":[x,y]
  · {"cmd":"cut_check","thickness":판두께mm} (일반 그리기 명령) — 레이저·판금 DXF 점검: 열린 끝·겹친 선·0.2mm 미만 선·판 두께보다 작은 구멍·얇은 살·남은 글자/치수/해치. 결과 issues 의 x,y 로 위치 확인`;
   try {
