@@ -60,21 +60,26 @@
     if (n >= 5) {
       const m = pl[Math.floor(n / 3)], m2 = pl[Math.floor(2 * n / 3)];
       const c = closed ? circ3(A, m, m2) : circ3(A, pl[Math.floor(n / 2)], B);
-      if (c && c.r < D * 5) {
-        const tol = Math.max(1e-3, c.r * 2e-3);
+      // 거의 곧은 꺾은선(휜 정도가 현의 0.5% 미만)은 원으로 맞추지 않음 — 반지름이 엄청 큰 가짜 원·호가 생기던 문제 (11-01 펌프 시험)
+      const sag = closed ? Infinity : Math.max(...pl.map(q => Math.abs((q[0] - A[0]) * (B[1] - A[1]) - (q[1] - A[1]) * (B[0] - A[0])) / (ch || 1)));
+      if (c && c.r < D * 0.75 && sag > Math.max(0.02, ch * 0.005)) {
+        const tol = Math.max(1e-3, Math.min(0.05, c.r * 2e-3));
         if (pl.every(q => Math.abs(Math.hypot(q[0] - c.x, q[1] - c.y) - c.r) < tol)) {
           if (closed) return { t: 'circle', c, r: c.r };
-          // 호: 진행 방향(반시계/시계)
-          const cr = (pl[1][0] - A[0]) * (pl[2][1] - pl[1][1]) - (pl[1][1] - A[1]) * (pl[2][0] - pl[1][0]);
-          let a0 = Math.atan2(A[1] - c.y, A[0] - c.x) / D2R, a1 = Math.atan2(B[1] - c.y, B[0] - c.x) / D2R;
-          if (cr < 0) [a0, a1] = [a1, a0];
-          const sw = ((a1 - a0) % 360 + 360) % 360;
-          return { t: 'arc', c, r: c.r, a0: (a0 + 360) % 360, a1: (a1 + 360) % 360, sw: sw || 360 };
+          // 호 방향·크기: 점을 따라가며 돈 각도를 더함 (작은 호가 360° 가까운 큰 호로 뒤집히던 문제, 11-01)
+          const ang = q => Math.atan2(q[1] - c.y, q[0] - c.x) / D2R;
+          let tot = 0, abs = 0; for (let i = 1; i < n; i++) { let d = ang(pl[i]) - ang(pl[i - 1]); d = ((d + 540) % 360) - 180; tot += d; abs += Math.abs(d); }
+          if (abs > Math.abs(tot) * 1.2 + 1) return polyOf(pl, closed);      // 갔다가 되돌아오는 선 → 호 아님
+          if (Math.abs(tot) >= 359.5) return { t: 'circle', c, r: c.r };
+          const s0 = (ang(tot >= 0 ? A : B) + 360) % 360, sw = Math.abs(tot);
+          return { t: 'arc', c, r: c.r, a0: s0, a1: (s0 + sw) % 360, sw };
         }
       }
     }
-    // 꺾은선: 일직선 위 중간점 빼기
-    const o = [pl[0]];
+    return polyOf(pl, closed);
+  }
+  function polyOf(pl, closed) {   // 꺾은선: 일직선 위 중간점 빼기
+    const n = pl.length, o = [pl[0]];
     for (let i = 1; i < n - 1; i++) { const a = o[o.length - 1], b = pl[i], d = pl[i + 1]; const cr = Math.abs((b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0])), L = Math.hypot(d[0] - a[0], d[1] - a[1]) || 1; if (cr / L > 1e-4) o.push(b); }
     o.push(pl[n - 1]);
     if (closed && o.length > 2) o.pop();
@@ -128,7 +133,7 @@
     return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
   }
   // 같은 지름 구멍 무리 → 개수, PCD(같은 원 위에 고르게 있으면)
-  function holeGroups(G) {
+  function holeGroups(G, D) {
     const cs = G.filter(g => g.t === 'circle'), m = new Map();
     for (const c of cs) { const k = Math.round(c.r * 20); (m.get(k) || m.set(k, []).get(k)).push(c); }
     const out = [];
@@ -139,7 +144,7 @@
         const C = L.map(c => [c.c.x, c.c.y]), a0 = C[0], a1 = C.reduce((m, p) => Math.hypot(p[0] - a0[0], p[1] - a0[1]) > Math.hypot(m[0] - a0[0], m[1] - a0[1]) ? p : m, C[1]);
         const a2 = C.reduce((m, p) => { const f = q => Math.min(Math.hypot(q[0] - a0[0], q[1] - a0[1]), Math.hypot(q[0] - a1[0], q[1] - a1[1])); return f(p) > f(m) ? p : m; }, C[1]);
         const cc = circ3(a0, a1, a2);
-        if (cc && cc.r > g.d && C.every(p => Math.abs(Math.hypot(p[0] - cc.x, p[1] - cc.y) - cc.r) < Math.max(0.05, cc.r * 0.005))) g.pcd = { x: cc.x, y: cc.y, d: cc.r * 2 };
+        if (cc && cc.r > g.d && cc.r < D * 0.5 && C.every(p => Math.abs(Math.hypot(p[0] - cc.x, p[1] - cc.y) - cc.r) < Math.max(0.05, cc.r * 0.005))) g.pcd = { x: cc.x, y: cc.y, d: cc.r * 2 };
       }
       out.push(g);
     }
@@ -191,7 +196,7 @@
       if (v.k === 'front' || v.k === 'right') dims.push({ cmd: 'dim_linear', p1: [rnd(x0), rnd(y0)], p2: [rnd(x1), rnd(y0)], at: [rnd((x0 + x1) / 2), rnd(y0 - sp * 1.6)], dir: 'h', layer: '치수', style: '3D도면' });
       if (v.k === 'front' || v.k === 'top') dims.push({ cmd: 'dim_linear', p1: [rnd(x0), rnd(y0)], p2: [rnd(x0), rnd(y1)], at: [rnd(x0 - sp * 1.6), rnd((y0 + y1) / 2)], dir: 'v', layer: '치수', style: '3D도면' });
       // 구멍: 같은 지름끼리 하나에만 n-Ø 치수, 고르게 놓인 3개 이상이면 PCD
-      const hg = holeGroups(g.vis).slice(0, c.max_holes || 8);
+      const hg = holeGroups(g.vis, D).slice(0, c.max_holes || 8);
       for (const h of hg) {
         const tip = h.list.slice().sort((p, q) => (q.c.x + q.c.y) - (p.c.x + p.c.y))[0];
         dims.push({ cmd: 'dim_diameter', center: PC(tip.c, o), r: rnd(tip.r), angle: 45, text: h.n > 1 ? `${h.n}-Ø${fmtN(h.d)}` : undefined, layer: '치수', style: '3D도면' });
@@ -212,7 +217,7 @@
       const tx0 = fx1 - TBW, ty1 = fy0 + TBH, rowH = TBH / 4;
       cmds.push({ cmd: 'polyline', points: [[tx0, fy0], [fx1, fy0], [fx1, ty1], [tx0, ty1]].map(p => p.map(rnd)), closed: true, layer: '외형선' });
       for (let i = 1; i < 4; i++) cmds.push({ cmd: 'line', from: [rnd(tx0), rnd(fy0 + rowH * i)], to: [rnd(fx1), rnd(fy0 + rowH * i)], layer: '외형선' });
-      const name = String(c.title || (src === 'model' && ph().model && ph().model.parts[0] && ph().model.parts[0].name) || (typeof window.__docName === 'string' && window.__docName) || '3D 모델').slice(0, 40);
+      const PP = src === 'model' && ph().model ? ph().model.parts : [], name = String(c.title || (typeof window.__docName === 'string' && window.__docName) || (PP.length === 1 ? PP[0].name : PP.length > 1 ? `3D 모델 (부품 ${PP.length}개)` : '3D 모델')).slice(0, 40);
       const d = new Date(), ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const rows = [`도면명: ${name}`, `3각법 · 단위 mm · 척도 1:1 · ${ds}`, `원본: ${src === 'model' ? 'AI 3D 모델(model3d)' : '규칙 엔진 3D'} → 2D 자동 도면`, '무카 CAD 테스트 서버 · 치수는 확인 후 사용'];
       rows.forEach((t, i) => cmds.push({ cmd: 'text', at: [rnd(tx0 + TH), rnd(ty1 - rowH * (i + 1) + (rowH - TH) / 2)], text: t, h: rnd(i ? TH * 0.9 : TH * 1.1), layer: '문자' }));
@@ -226,6 +231,7 @@
     return res;
   }
   MK.makeDrawing = makeDrawing;
+  MK._t = { projectAll, viewGeom, bbOf, classify, shapeOf };   // 시험용
   const sizeTxt = res => { const f = res.views[0], t = res.views[1]; return `${f.w} × ${t.h} × ${f.h}`; };
   const summary = res => `3D → 도면: 3각법 3면도 · 크기 ${sizeTxt(res)} mm · 선 ${res.lines} · 원 ${res.circles} · 호 ${res.arcs}${res.holes.length ? ' · 원 지름 ' + res.holes.map(h => `${h.view} ${h.n > 1 ? h.n + '-' : ''}Ø${h.d}`).join(', ') : ''}${res.pcd.length ? ' · PCD ' + res.pcd.map(p => 'Ø' + p.d).join(', ') : ''} · 치수 ${res.dims}개 (${(res.ms / 1000).toFixed(1)}초)`;
   if (ph() && ph().addCmd) ph().addCmd('model3d_drawing', async c => { const r = await makeDrawing(c); return r; });
