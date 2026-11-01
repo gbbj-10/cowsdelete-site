@@ -317,6 +317,11 @@
         m.append($('hr'));
       }
       m.append(item('JSON 파일로 저장', '', '내 PC에 .json 파일로 내려받기 · [열기]로 다시 불러오기', () => bs.click()));
+      /* v1.10.1 (11-01 갤러리 제안 "저장에도 DXF로 저장이 나오면 좋겠다"): 저장 메뉴에서 바로 DXF·DWG 파일로 */
+      const dx = document.getElementById('bDxf'), dw = document.getElementById('miDwg');
+      if (dx || dw) m.append($('hr'));
+      if (dx) m.append(item('DXF로 저장', '', '내 PC에 DXF 파일(zip 묶음)로 내려받기 · AutoCAD 등 다른 캐드에서 열기', () => dx.click()));
+      if (dw) m.append(item('DWG로 저장 (AutoCAD 2013)', 'DWGOUT', '내 PC에 .dwg 파일로 내려받기 · 블록·속성 포함', () => dw.click()));
     }
     const place = () => { const r = b.getBoundingClientRect(); m.style.left = Math.max(4, Math.min(r.left, innerWidth - m.offsetWidth - 4)) + 'px'; m.style.top = (r.bottom + 4) + 'px'; };
     function open(first) { build(); m.hidden = false; b.setAttribute('aria-expanded', 'true'); place(); if (first) { const f = m.querySelector('button'); if (f) f.focus(); } }

@@ -260,7 +260,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.0</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.1</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -1738,7 +1738,7 @@ document.getElementById('bDxf').onclick=()=>{const txt=exportDXF();if(dl)offer('
 async function saveDwg(){if(!window.MuccaDWG){log('DWG 변환 도구를 불러오지 못했습니다. [출력 ▾] › DXF 내보내기로 저장한 뒤 AutoCAD에서 여세요.','err');return}
   if(!doc.entities.length){log('저장할 도형이 없습니다.','err');return}
   const t0=performance.now(),first=MuccaDWG.firstTime;log(`DWG로 저장하는 중…${first?' (처음 한 번은 변환 도구 약 250KB를 받습니다)':''}`,'me');
-  try{const bytes=await MuccaDWG.fromDxf(exportDXF(),'AC1027');
+  try{const bytes=await MuccaDWG.fromDxf(exportDXF({ellipse:true}),'AC1027');
     await offer('mucca-drawing.dwg',new Blob([bytes],{type:'application/acad'}));
     const LS=MuccaDWG.lastSave;log(`DWG 저장 (AutoCAD 2013 형식 · ${(bytes.length/1024).toFixed(0)}KB · ${((performance.now()-t0)/1000).toFixed(1)}초${LS&&LS.inserts?` · 블록 ${LS.blocks}종 · 블록 삽입 ${LS.inserts.toLocaleString('ko-KR')}개${LS.attribs?` · 속성 ${LS.attribs.toLocaleString('ko-KR')}개`:''} 포함`:''}). 해치·여러 줄 문자·치수는 DXF 내보내기와 같이 선·문자로 풀어서 저장됩니다. AutoCAD 2013 이상에서 열립니다. 안 열리면 [출력 ▾] › DXF 내보내기를 쓰세요(DXF가 더 안정적입니다).`,'ok');
     window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE'})}
@@ -2541,8 +2541,8 @@ const _renderProps0=renderProps;renderProps=function(){_renderProps0();if(sel.si
 };
 
 /* ----- DXF 내보내기 (R12, 블록 포함) ----- */
-exportDXF=function(){
-  const o=[],w=(code,val)=>{o.push(String(code));o.push(typeof val==='number'?(Number.isInteger(val)?String(val):(+val).toFixed(6)):String(val))};
+exportDXF=function(opt){
+  opt=opt||{};const o=[],w=(code,val)=>{o.push(String(code));o.push(typeof val==='number'?(Number.isInteger(val)?String(val):(+val).toFixed(6)):String(val))};
   w(0,'SECTION');w(2,'HEADER');w(9,'$ACADVER');w(1,'AC1009');w(9,'$INSUNITS');w(70,4);w(9,'$LTSCALE');w(40,doc.ltscale||1);w(0,'ENDSEC');
   w(0,'SECTION');w(2,'TABLES');w(0,'TABLE');w(2,'LTYPE');w(70,Object.keys(LT).length);
   for(const v of Object.values(LT)){w(0,'LTYPE');w(2,v.name.toUpperCase());w(70,0);w(3,dxfStr(v.ko));w(72,65);w(73,v.pat.length);w(40,v.pat.reduce((s,x)=>s+Math.abs(x),0));for(const x of v.pat)w(49,x)}
@@ -2566,7 +2566,13 @@ exportDXF=function(){
       case 'point':{w(0,'POINT');w8(lay);w(10,e.p.x);w(20,e.p.y);w(30,0);break}
       case 'ray':{w(0,'RAY');w8(lay);w(10,e.p.x);w(20,e.p.y);w(30,0);w(11,e.d.x);w(21,e.d.y);w(31,0);break}
       case 'table':{const g=tblGeom(e);for(const [p,q] of g.L)L(lay,p,q);for(const t of g.T)T(lay,t.p,t.s,t.h,0,t.align==='center');break}
-      case 'ellipse':PL(lay,ellSamples(e,96).slice(0,e.a0==null?-1:undefined),e.a0==null);break;
+      case 'ellipse':{/* v1.10.1: 원과 같은 타원(가로=세로)은 원·호로 저장 — DXF(R12)·DWG 로 저장 뒤 다시 열어도 원으로 남게 (예전엔 폴리선으로 바뀜) */
+        if(Math.abs(e.rx-e.ry)<=1e-6*Math.max(1,Math.abs(e.rx))){if(e.a0==null){w(0,'CIRCLE');w8(lay);w(10,e.c.x);w(20,e.c.y);w(30,0);w(40,e.rx)}else ARC(lay,e.c,e.rx,n360(e.a0+(e.rot||0)),n360(e.a1+(e.rot||0)));break}
+        /* v1.10.1: DWG 저장용(opt.ellipse)은 타원을 ELLIPSE 그대로 넘김 — 작업 공간(acad-ts)이 읽어 DWG 타원으로 저장. 다시 열어도 타원·원 그대로 (예전엔 폴리선으로 바뀜) */
+        if(opt.ellipse&&e.rx>0&&e.ry>0){const sw=e.ry>e.rx,R=sw?e.ry:e.rx,rot=((e.rot||0)+(sw?90:0))*D2R,sh=sw?-90:0,full=e.a0==null;
+          let t0=full?0:n360(e.a0+sh),t1=full?360:n360(e.a1+sh);if(!full&&t1<=t0)t1+=360;
+          w(0,'ELLIPSE');w8(lay);w(10,e.c.x);w(20,e.c.y);w(30,0);w(11,R*Math.cos(rot));w(21,R*Math.sin(rot));w(31,0);w(210,0);w(220,0);w(230,1);w(40,Math.min(1,(sw?e.rx:e.ry)/R));w(41,full?'0.0':String(t0*D2R));w(42,full?String(2*Math.PI):String(t1*D2R));break}
+        PL(lay,ellSamples(e,96).slice(0,e.a0==null?-1:undefined),e.a0==null);break}
       case 'xline':{const c=e.p;L(lay,sub(c,mul(e.d,XLL)),add(c,mul(e.d,XLL)));break}
       case 'text':{const lines=String(e.s).split('\n');lines.forEach((ln,i)=>{const off=e.mt?-(e.h+i*e.h*1.66*(e.ls||1)):-i*e.h*1.66*(e.ls||1);T(lay,add(e.p,rotPt({x:0,y:off},{x:0,y:0},e.rot||0)),ln,e.h,e.rot||0,e.align==='center'&&!e.mt)});break}
       case 'hatch':{for(const lp of e.loops)PL(lay,lp,true);const pat=HATCH_PAT[e.pattern];if(!pat||!pat.lines.length)break;const b=bbox([e]);if(!b)break;const cx=(b.minX+b.maxX)/2,cy=(b.minY+b.maxY)/2,R=Math.hypot(b.maxX-b.minX,b.maxY-b.minY)/2+1;
@@ -4984,7 +4990,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.10.0';
+const APP_VER='v1.10.1';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -6112,11 +6118,11 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261101a"></script>
+<script src="../assets/config.js?v=20261101b"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
-<script src="../cad/cloud.js?v=20261021a"></script>
+<script src="../cad/cloud.js?v=20261101a"></script>
 <!-- v1.10.0 (2026-11-01, 3화): 테스트 서버에서 검증한 3D 기능 본체 반영 — 2D|3D 보기·사진→3D·2D 대조·영업 에셋·3D→도면·3MF·가공 전 점검 -->
 <script src="lab3d.js?v=16"></script>
 <script src="labphoto.js?v=6"></script>
@@ -6125,8 +6131,8 @@ window.cad=Object.freeze({
 <script src="labmake.js?v=5"></script>
 <script src="labcases.js?v=1"></script>
 <script src="labparts.js?v=1"></script>
-<script src="labsave.js?v=1"></script>
 <script src="labcmdai.js?v=1"></script>
+<script src="labsave.js?v=2"></script>
 <script src="../cad/airef.js?v=2"></script>
 <script src="../cad/dwg.js?v=10"></script>
 <script src="../cad/parts.js?v=1"></script>
