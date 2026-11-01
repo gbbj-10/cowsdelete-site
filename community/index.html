@@ -163,7 +163,7 @@
       <div><h4>${esc(r.title)}</h4><div class="by">${S.gradeIcon(r.author_grade)}${esc(r.author_nick)} · ${new Date(r.created_at).toLocaleDateString('ko-KR')} · 가져감 ${r.copies}</div>
       ${r.description?`<p class="desc">${esc(r.description)}</p>`:''}
       <div class="tags">${(r.tags||[]).map(t=>`<a href="/community/?q=${encodeURIComponent(t)}">#${esc(t)}</a>`).join('')}</div>
-      <div class="acts"><button class="btn primary sm" data-get title="처음 가져오면 크레딧 1개 · 한 번 가져온 것은 다시 무료">내 캐드로 가져오기 · 크레딧 1</button><button class="btn line sm" data-like aria-pressed="${liked}">${liked?'♥ 좋아요 취소':'♡ 좋아요'} ${r.likes}</button><button class="btn line sm" data-report>신고</button></div>
+      <div class="acts"><button class="btn primary sm" data-get title="${mine?'내가 올린 것은 무료':'처음 가져오면 크레딧 1개 · 한 번 가져온 것은 다시 무료'}">내 캐드로 가져오기${mine?'':' · 크레딧 1'}</button><button class="btn line sm" data-like aria-pressed="${liked}">${liked?'♥ 좋아요 취소':'♡ 좋아요'} ${r.likes}</button><button class="btn line sm" data-report>신고</button></div>
       ${mine?`<div class="mine-del"><button class="btn line sm" data-del>${r.status==='hidden'?'신고로 숨겨짐 · 삭제':'공유 내리기'}</button></div>`:''}
       <p class="lic">공유된 항목은 누구나 보고 복사해 쓸 수 있습니다. 실제 사용 전에 치수와 규격은 직접 확인하세요.</p></div></div></div>`;
     document.body.append(d);
