@@ -102,9 +102,10 @@
       return s.rotate(ang, [0, 0, 0], ax.map(x => x / s2));
     };
     // 회전체: prof = [[반지름, 축방향 위치], ...] 닫힌 다각형 (축 위 점 c 기준)
+    // 11-02: 단면에 {smooth:[[r,a],...]} 를 주면 매끈한 곡선 단면 회전체 (병·노즐·휠캡)
     H.revolve = (c, axis, prof) => {
-      if (!Array.isArray(prof) || prof.length < 3) throw new Error('revolve: 단면 점 3개 이상');
-      let d = R.draw(prof[0]); for (const q of prof.slice(1)) d = d.lineTo(q); const s = d.close().sketchOnPlane('XZ').revolve();
+      if (Array.isArray(prof) && prof.length < 3) throw new Error('revolve: 단면 점 3개 이상');
+      const s = drawing(prof).sketchOnPlane('XZ').revolve();
       return orient(s, axis || 'Z').translate(c);
     };
     H.torus = (c, Rr, r, axis) => orient(R.drawCircle(r).translate(Rr, 0).sketchOnPlane('XZ').revolve(), axis || 'Z').translate(c);
@@ -117,8 +118,16 @@
       if (prof.rrect) { const [w, h, r] = prof.rrect; return (r > 0 ? R.drawRoundedRectangle(w, h, Math.min(r, w / 2 - 0.01, h / 2 - 0.01)) : R.drawRectangle(w, h)).rotate(prof.angle || 0).translate(at[0], at[1]); }
       if (prof.circle) return R.drawCircle(prof.circle).translate(at[0], at[1]);
       if (prof.slot) { const [L, w] = prof.slot; return R.drawRoundedRectangle(L, w, w / 2 - 0.01).rotate(prof.angle || 0).translate(at[0], at[1]); }
-      if (prof.smooth) { const P = prof.smooth; return R.drawPointsInterpolation(P.concat([P[0]])).close(); }
-      throw new Error('윤곽은 점 배열 또는 {rrect:[w,h,r]} · {circle:r} · {slot:[길이,폭]} · {smooth:[점들]} (+ at:[u,v], angle)');
+      if (prof.smooth) {   // 11-02: 닫힌 매끈한 곡선 — 점마다 지나는 주기 Catmull-Rom 을 구간별 3차 베지어로 (끊김 없이 매끈, 로프트 때 단면끼리 구간 수가 같으면 잘 이어짐). 예전 .close() 오류로 smooth 가 안 되던 것 수정
+        const P = prof.smooth.map(q => [+q[0], +q[1]]), n = P.length; if (n < 3) throw new Error('smooth: 점 3개 이상');
+        let d = R.draw(P[0]);
+        for (let i = 0; i < n; i++) { const p0 = P[(i - 1 + n) % n], p1 = P[i], p2 = P[(i + 1) % n], p3 = P[(i + 2) % n];
+          const dl = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]) || 1e-9, d01 = dl(p0, p1), d12 = dl(p1, p2), d23 = dl(p2, p3);   // 구간 길이로 접선 크기 맞춤 → 덜 부풀어 오름
+          const c1 = [0, 1].map(j => p1[j] + (p2[j] - p0[j]) / (d01 + d12) * d12 / 3), c2 = [0, 1].map(j => p2[j] - (p3[j] - p1[j]) / (d12 + d23) * d12 / 3);
+          d = d.cubicBezierCurveTo(p2, c1, c2); }
+        return d.close().rotate(prof.angle || 0).translate(at[0], at[1]); }
+      if (prof.ellipse) { const [a, b] = prof.ellipse; return (Math.abs(a - b) < 1e-9 ? R.drawCircle(a) : R.drawEllipse(a, b)).rotate(prof.angle || 0).translate(at[0], at[1]); }
+      throw new Error('윤곽은 점 배열 또는 {rrect:[w,h,r]} · {circle:r} · {ellipse:[a,b]} · {slot:[길이,폭]} · {smooth:[점들]} (+ at:[u,v], angle)');
     }
     function extrudeDrawing(plane, dr, d0, d1) {
       if (!(d1 > d0)) [d0, d1] = [Math.min(d0, d1), Math.max(d0, d1)]; if (d1 - d0 < 1e-6) throw new Error('돌출 깊이가 0입니다');
@@ -129,6 +138,27 @@
       throw new Error('plane 은 "XY" · "XZ" · "YZ"');
     }
     H.prism = (plane, prof, d0, d1) => extrudeDrawing(plane, drawing(prof), d0, d1);
+    /* 11-02 자유 곡면 (자동차 외관·선체·손잡이·덕트): 단면 여러 개를 매끈하게 잇기 · 단면을 3D 곡선 따라 쓸기 */
+    // loft(plane, [[깊이, 윤곽], ...], {ruled}) — plane 은 prism 과 같음: "YZ"(앞에서 본 단면, 깊이 x) · "XZ"(옆 단면, 깊이 y) · "XY"(위 단면, 깊이 z)
+    H.loft = (plane, sections, opt) => {
+      if (!Array.isArray(sections) || sections.length < 2) throw new Error('loft: 단면 2개 이상 [[깊이, 윤곽], ...]');
+      const P = String(plane || 'YZ').toUpperCase(); if (!['XY', 'XZ', 'YZ'].includes(P)) throw new Error('plane 은 "XY" · "XZ" · "YZ"');
+      const S = sections.map(([w, prof]) => { if (!Number.isFinite(+w)) throw new Error('loft: 깊이는 숫자'); return [+w, prof]; }).sort((a, b) => a[0] - b[0]);
+      for (let i = 1; i < S.length; i++) if (S[i][0] - S[i - 1][0] < 1e-6) throw new Error('loft: 깊이가 같은 단면이 두 개입니다');
+      const sk = S.map(([w, prof]) => drawing(prof).sketchOnPlane('XY', P === 'XZ' ? -w : w));
+      let s = sk[0].loftWith(sk.slice(1), { ruled: !!(opt && opt.ruled) });
+      if (P === 'XZ') s = s.rotate(90, [0, 0, 0], [1, 0, 0]);
+      if (P === 'YZ') s = s.rotate(90, [0, 0, 0], [1, 0, 0]).rotate(90, [0, 0, 0], [0, 0, 1]);
+      return s;
+    };
+    // sweep([[x,y,z],...], 윤곽) — 점들을 지나는 매끈한 3D 곡선을 따라 단면을 쓸기. 단면 (u,v) 는 곡선 시작점에서 진행 방향에 수직인 면
+    H.sweep = (pts, prof, opt) => {
+      if (!Array.isArray(pts) || pts.length < 2) throw new Error('sweep: 경로 점 2개 이상');
+      const Q = pts.map(p => [+p[0], +p[1], +(p[2] || 0)]);
+      const edge = Q.length === 2 ? R.makeLine(Q[0], Q[1]) : R.makeBSplineApproximation(Q, { tolerance: (opt && opt.tol) || 1e-3, smoothing: null, degMax: 5, degMin: 3 });
+      const sk = new R.Sketch(R.assembleWire([edge]));
+      return sk.sweepSketch((pl, origin) => drawing(prof).sketchOnPlane(pl, origin), { frenet: !(opt && opt.frenet === false) });
+    };
     const pol = (c, r, a) => [c[0] + r * Math.cos(a * Math.PI / 180), c[1] + r * Math.sin(a * Math.PI / 180)];
     // 원호 띠(흙받이·덮개): 중심 c, 안·바깥 반지름, 각도 a0→a1(도, 반시계)
     H.arcBand = (plane, c, rIn, rOut, a0, a1, d0, d1) => {
@@ -474,8 +504,12 @@
   sphere(c, r) · torus(c, R, r, "Y")
   tire(c, "Y", 바깥반지름, 폭, 두께, 모서리r)   바퀴 타이어 (축 방향 "X"|"Y"|"Z")
   revolve(c, "Y", [[r,a],...])          단면(반지름 r, 축방향 a) 닫힌 다각형을 축 둘레로 회전 (림·허브·노즐). r=0 (축 위 점) 써도 됨
+     매끈한 곡선 단면은 revolve(c, "Z", {smooth:[[r,a],...]}) (병·노즐·휠캡)
+  loft(plane, [[깊이, 윤곽], ...])       자유 곡면: 단면 여러 개를 매끈하게 이음 (자동차 외관·선체·손잡이·덕트). plane 은 prism 과 같음
+     예) 차체: loft("YZ", [[0,{smooth:[[-700,300],[700,300],[650,900],[-650,900]]}], [1500,{rrect:[1700,1100,200],at:[0,800]}], [4200,{smooth:[...]}]])
+  sweep([[x,y,z],...], 윤곽)            단면을 3D 곡선 따라 쓸기 (손잡이·배관 단면·몰딩). 윤곽 (u,v) 는 시작점에서 진행 방향에 수직인 면
   prism(plane, 윤곽, d0, d1)            2D 윤곽 돌출. plane "XZ"=옆모습(u=x,v=z, 깊이 y d0→d1) · "XY"=위(u=x,v=y, 깊이 z) · "YZ"=앞(u=y,v=z, 깊이 x)
-     윤곽: [[u,v],...] 다각형 · {rrect:[u방향 길이, v방향 길이, 모서리r],at:[u,v],angle:도} · {circle:r,at} · {slot:[길이,폭],at,angle} · {smooth:[[u,v],...]} 매끈한 닫힌 곡선
+     윤곽: [[u,v],...] 다각형 · {rrect:[u방향 길이, v방향 길이, 모서리r],at:[u,v],angle:도} · {circle:r,at} · {ellipse:[a,b],at,angle} · {slot:[길이,폭],at,angle} · {smooth:[[u,v],...]} 매끈한 닫힌 곡선
   arcBand(plane, [cu,cv], rIn, rOut, a0, a1, d0, d1)   원호 띠 (흙받이·덮개). 각도는 u축에서 반시계
   pipe([[x,y,z],...], r)                점들을 지나는 매끈한 관 (케이블·호스)
   union(a,b,...) · cut(a, b, ...) · common(a,b) · group(a,b,...)
