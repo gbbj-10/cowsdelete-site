@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>기어도면 작도후 클로드가 제안하는 개선 요청사항 — 요청 게시판 | 카우스 소거법</title>
+<meta name="description" content="요청 사항 1. 오류 :`model3d_compare`에 `views`를 직접 지정하면 `Cannot read properties of undefined (reading &#39;cx&#39;)` 오류만 나오고 원인을 알 수 없음 &gt;&gt; 오류 수정, 그리고 원인(예: 박스 안에 도형…">
+<link rel="canonical" href="https://cowsdelete.com/r/9ed58432-2f27-4fe2-a6ef-ea1c06e5851a/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="기어도면 작도후 클로드가 제안하는 개선 요청사항 — 요청 게시판 | 카우스 소거법">
+<meta property="og:description" content="요청 사항 1. 오류 :`model3d_compare`에 `views`를 직접 지정하면 `Cannot read properties of undefined (reading &#39;cx&#39;)` 오류만 나오고 원인을 알 수 없음 &gt;&gt; 오류 수정, 그리고 원인(예: 박스 안에 도형…">
+<meta property="og:url" content="https://cowsdelete.com/r/9ed58432-2f27-4fe2-a6ef-ea1c06e5851a/">
+<meta property="og:image" content="https://cowsdelete.com/assets/og.jpg">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+<link rel="stylesheet" href="/assets/site.css?v=20261018c">
+<link rel="stylesheet" href="/assets/board.css?v=20261018c">
+
+</head>
+<body>
+<header class="site-top"><div class="wrap">
+  <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법<small>Development Storage</small></span></a>
+  <nav class="site-nav">
+    <a href="/cad/">무카 CAD</a>
+    <a href="/community/" aria-current="page">커뮤니티</a>
+    <a href="/qna/">문의</a>
+    <span class="who" data-who></span>
+  </nav>
+</div></header>
+<main>
+<div class="wrap" style="padding-top:22px"><nav class="ctabs" aria-label="커뮤니티"><a href="/community/">블록·도면 공유</a><a href="/board/">엔지니어 갤러리</a><a href="/requests/" aria-current="page">요청</a></nav></div>
+<div class="wrap board"><article class="post">
+  <header class="ph"><a class="pgal" href="/requests/">요청 게시판</a><h1>기어도면 작도후 클로드가 제안하는 개선 요청사항</h1>
+    <div class="pm"><span class="au"><img class="gr" src="/assets/grade/g1.png" srcset="/assets/grade/g1.png 1x, /assets/grade/g1@2x.png 2x" width="18" height="18" alt="기능사" title="기능사">해비아빠</span><time datetime="2026-11-02T14:26:50.543383+00:00">2026.11.02 23:26</time><span>찾는 중</span><span>답 0</span><span>현상금 1 크레딧</span></div></header>
+  <div class="pb">요청 사항 
+ 1.  오류  :`model3d_compare`에 `views`를 직접 지정하면 `Cannot read properties of undefined (reading &#39;cx&#39;)` 오류만 나오고 원인을 알 수 없음 &gt;&gt; 오류 수정, 그리고 원인(예: 박스 안에 도형 없음)을 알려 주는 메시지 기능 추가
+2. 기능 :	단면도 한 장짜리 도면을 3면도로 가정해 표제란, 지시선, 상세도(DETAIL B)를 별개 뷰 6개로 쪼갬. 재현율 0.37, 정확도 0.19로 의미 없는 결과 &gt;&gt; 단면도 전용 대조: 3D를 축 방향으로 잘라 그 윤곽을 도면 단면과 비교. 표제란·상세도·지시선 자동 제외
+3. 기능 :	선과 호를 하나씩 읽어 점을 계산하고 호 각도·방향까지 수작업으로 풀어 회전해야 함 &gt;&gt; revolve_section 명령 신설: 축(중심선)과 단면 외곽선 id만 주면 닫힌 프로파일을 자동 연결해 회전
+4. 개선 :	단조 외곽선과 기계가공 외곽선(가공 여유 약 1.5mm)이 같은 외형선 레이어에 섞여 있어, 어느 쪽이 형상인지 추측해야 함  &gt;&gt; 레이어를 구분(예: 단조외형 / 가공외형)하거나, 겹친 윤곽 중 바깥쪽을 자동 표시</div>
+  <div class="pact"><a class="btn primary" href="/requests/?id=9ed58432-2f27-4fe2-a6ef-ea1c06e5851a">답하러 가기</a></div>
+</article><div class="backrow"><a class="btn line sm" href="/requests/">요청 목록</a></div></div>
+</main>
+<footer class="titleblock"><div class="wrap">
+  <div class="tb">
+    <div><span class="h">도명</span>카우스 소거법, 소처럼 일하는 흑우들을 없애자</div>
+    <div><span class="h">커뮤니티</span><a href="/community/">블록·도면</a> / <a href="/board/">갤러리</a> / <a href="/requests/">요청</a></div>
+    <div><span class="h">안내</span><a href="/beta/">베타 이용 안내</a><br><a href="/privacy/">개인정보처리방침</a> · <a href="/oss/">오픈소스 고지</a></div>
+    <div><span class="h">채널</span><a href="https://www.youtube.com/@cowsdelete" target="_blank" rel="noopener">YouTube @cowsdelete</a></div>
+  </div>
+</div></footer>
+<script src="/assets/config.js?v=20261018c"></script>
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/site.js?v=20261102b"></script>
+
+</body>
+</html>
