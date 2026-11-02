@@ -40,6 +40,7 @@
   }
   async function insertLib(id) {
     const C = window.__muccaCloud;
+    if (C.importGate && !(await C.importGate(id))) return null;   /* v1.10.3: 크레딧 확인 팝업 */
     const { data, error } = await C.sb.rpc('community_copy', { item_id: id }); if (error) throw new Error(error.message);
     const d = data.data || {}; let name = String(d.name || data.title).replace(/[<>\/\\":;?*|,=`]/g, ' ').trim(), n = name, i = 2;
     while (BL()[n]) n = `${name}_${i++}`;
@@ -54,12 +55,12 @@
     searchLib(words).then(({ login, rows, err }) => {
       if (!login) { box.innerHTML = '라이브러리 블록은 로그인하면 함께 보여 드립니다. 아래에서 바로 그릴 수 있어요.'; return; }
       if (err || !rows.length) { box.innerHTML = '라이브러리에 맞는 블록이 없습니다 → 아래에서 골라 그리세요.'; return; }
-      box.innerHTML = '<b>라이브러리에 있는 블록</b> (바로 넣기 · 처음 넣는 블록은 크레딧 1개)';
+      box.innerHTML = '<b>라이브러리에 있는 블록</b> (바로 넣기 · 처음 넣는 블록은 크레딧 1개 — 하루 무료 3개)';
       for (const r of rows) {
         const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:4px';
         const t = document.createElement('span'); t.style.flex = '1'; t.textContent = `${r.title} · ${r.author_nick || ''}${r.sort_group > 0 ? ' (공개 규격)' : ''}`;
         let b;
-        if (r.sort_group > 0) { b = document.createElement('button'); b.className = 'tbtn'; b.textContent = '넣기'; b.onclick = async () => { b.disabled = true; try { await insertLib(r.id); b.textContent = '넣음' } catch (e) { toast(e.message); b.disabled = false } }; }
+        if (r.sort_group > 0) { b = document.createElement('button'); b.className = 'tbtn'; b.textContent = '넣기'; b.onclick = async () => { b.disabled = true; try { const ok = await insertLib(r.id); if (ok === null) { b.disabled = false; return } b.textContent = '넣음' } catch (e) { toast(e.message); b.disabled = false } }; }
         else { b = document.createElement('a'); b.className = 'tbtn'; b.textContent = '커뮤니티'; b.target = '_blank'; b.href = '/community/?q=' + encodeURIComponent(r.title); }
         row.append(t, b); box.append(row);
       }

@@ -87,7 +87,7 @@
 
 <script src="/assets/config.js?v=20261018c"></script>
 <script src="/assets/vendor/supabase.js"></script>
-<script src="/assets/site.js?v=20261102a"></script>
+<script src="/assets/site.js?v=20261102b"></script>
 <script>
 (async function(){
   'use strict';
@@ -170,7 +170,11 @@
     const close=()=>{d.remove();history.replaceState(null,'',location.pathname+(q?`?q=${encodeURIComponent(q)}`:''))};
     d.addEventListener('click',e=>{if(e.target===d)close()});d.querySelector('[data-x]').onclick=close;
     document.addEventListener('keydown',function k(e){if(e.key==='Escape'){close();document.removeEventListener('keydown',k)}});
-    d.querySelector('[data-get]').onclick=()=>{location.href='/cad/?import='+r.id};
+    d.querySelector('[data-get]').onclick=async()=>{
+      /* v1.10.3: 무료·크레딧을 모두 썼으면 캐드로 가지 않고 안내 (확인 팝업은 캐드에서) */
+      if(S.user&&sb){try{const {data:q}=await sb.rpc('import_quote',{item_id:r.id});
+        if(q&&q.will==='blocked'){const n=document.createElement('div');n.className='dlg';n.style.zIndex='1001';n.innerHTML=`<div class="box" role="alertdialog" aria-modal="true" aria-label="크레딧이 없습니다" style="width:min(440px,100%)"><header><h3>크레딧이 없습니다</h3><button class="x" data-x>닫기</button></header><div class="in"><p>오늘 무료 크레딧 ${q.free_daily}개를 모두 썼고, 내 크레딧도 ${q.credits}개라 가져올 수 없습니다.</p><p class="muted">무료 크레딧은 내일 0시에 다시 ${q.free_daily}개로 채워집니다. 블록을 공유하면 1개마다 크레딧 1개를 바로 받습니다. 한 번 가져온 블록은 다시 가져와도 무료입니다.</p></div></div>`;document.body.append(n);n.querySelector('[data-x]').onclick=()=>n.remove();n.addEventListener('click',e=>{if(e.target===n)n.remove()});return}}catch(_){}}
+      location.href='/cad/?import='+r.id};
     d.querySelector('[data-like]').onclick=async ev=>{
       if(!S.user){S.login(location.origin+'/community/?id='+r.id);return}
       const b=ev.currentTarget;b.disabled=true;
@@ -202,7 +206,7 @@
       box.innerHTML=`${S.gradeIcon(w.grade,28)}<span><b>${S.GRADES[w.grade]}</b> · 기여 ${w.points}점</span>
         <span class="meter" title="${w.next?S.GRADES[w.grade+1]+'까지 '+Math.max(0,w.next-w.points)+'점':(w.grade===9?'운영자':'명장')}"><i style="width:${pct}%"></i></span>
         ${w.grade===9?'<span>카우스 소거법 운영자</span>':`<span>${w.users} 중 ${w.rank}위${w.grade===4?` · 명장 컷 ${w.master_cut}점`:''}</span>`}
-        <span>크레딧 <b>${w.credits}</b>${w.pending?` · 확정 대기 ${w.pending}`:''}</span>
+        <span>오늘 무료 <b>${w.free_left??'-'}</b>/${w.free_daily??3} · 크레딧 <b>${w.credits}</b>${w.pending?` · 확정 대기 ${w.pending}`:''}</span>
         <span class="sp"><button class="linkbtn" data-guide>등급 안내</button><a class="linkbtn" href="/requests/">요청 게시판</a></span>`;}
     box.querySelector('[data-guide]').onclick=S.gradeGuide;
   }

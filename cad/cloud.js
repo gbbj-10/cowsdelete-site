@@ -33,6 +33,44 @@
     return m;
   }
 
+  /* ---------- v1.10.3 (11-02): 가져오기 크레딧 확인 — 하루 무료 3개(매일 3개로 다시 채움) → 다 쓰면 내 크레딧 1개
+     넣기 전 팝업(오늘 하루 보지 않기), 무료·크레딧 모두 없으면 안내만. 반환 true = 진행 ---------- */
+  const SKIP_KEY = 'mucca.importConfirmSkip';
+  const todayKST = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  function noCreditSheet(q) {
+    sheet('크레딧이 없습니다', [
+      $('p', { class: 'cl-p', text: `오늘 무료 크레딧 ${q.free_daily || 3}개를 모두 썼고, 내 크레딧도 ${q.credits || 0}개라 가져올 수 없습니다.` }),
+      $('p', { class: 'cl-p', text: `무료 크레딧은 내일 0시에 다시 ${q.free_daily || 3}개로 채워집니다. 블록을 커뮤니티에 공유하면 1개마다 크레딧 1개를 바로 받습니다. 한 번 가져온 블록은 다시 가져와도 무료입니다.` })],
+      [$('a', { class: 'tbtn', href: '/community/', target: '_blank', rel: 'noopener', text: '커뮤니티 보기' })]);
+  }
+  async function importGate(id) {
+    if (!sb) return true;
+    let q; try { const r = await sb.rpc('import_quote', { item_id: id }); if (r.error) return true; q = r.data; } catch (_) { return true; }
+    if (!q || !q.login || q.will === 'none') return true;
+    if (q.will === 'blocked') { noCreditSheet(q); return false; }
+    let skip = ''; try { skip = localStorage.getItem(SKIP_KEY) || ''; } catch (_) { }
+    if (skip === todayKST()) return true;
+    return await new Promise(res => {
+      const free = q.will === 'free';
+      const cb = $('input', { type: 'checkbox', id: 'clSkipToday' });
+      const txt = free ? `오늘 무료 크레딧 1개를 씁니다. (남은 무료 ${q.free_left}/${q.free_daily} → ${q.free_left - 1}/${q.free_daily} · 내 크레딧 ${q.credits})`
+        : `오늘 무료 크레딧 ${q.free_daily}개를 모두 써서 내 크레딧 ${q.cost}개를 씁니다. (내 크레딧 ${q.credits} → ${q.credits - q.cost})`;
+      let done = false; const fin = v => { if (done) return; done = true; if (v && cb.checked) { try { localStorage.setItem(SKIP_KEY, todayKST()); } catch (_) { } } m.remove(); res(v); };
+      const ok = $('button', { class: 'tbtn primary', text: '가져오기', onclick: () => fin(true) });
+      const no = $('button', { class: 'tbtn', text: '취소', onclick: () => fin(false) });
+      const m = sheet('블록을 가져오면 크레딧이 쓰입니다', [
+        $('p', { class: 'cl-p', text: `「${q.title || ''}」 — ${txt}` }),
+        $('p', { class: 'cl-hint', text: '한 번 가져온 블록은 다시 가져와도 무료입니다. 무료 크레딧은 매일 0시에 다시 채워집니다.' }),
+        $('label', { class: 'cl-hint', style: 'display:flex;gap:6px;align-items:center;margin-top:8px;cursor:pointer' }, cb, $('span', { text: '오늘 하루 보지 않기' }))], [no, ok]);
+      const x = m.querySelector('[data-x]'); if (x) x.addEventListener('click', () => fin(false));
+      m.addEventListener('click', e => { if (e.target === m) fin(false); });
+      new MutationObserver((_, o) => { if (!m.isConnected) { o.disconnect(); fin(false); } }).observe(document.body, { childList: true });
+      ok.focus();
+    });
+  }
+  window.__muccaCloud.importGate = importGate;
+  window.__muccaCloud.noCreditSheet = noCreditSheet;
+
   /* ---------- 스타일 ---------- */
   document.head.append($('style', {}, `
   .acct{display:flex;align-items:center;gap:6px}
@@ -175,7 +213,7 @@
     wbox.append(gradeImg(w.grade, 'cl-big'), $('div', {},
       $('b', { text: `${GRADES[w.grade]} · 기여 ${w.points}점` }), bar,
       $('div', { class: 'cl-hint', text: w.grade === 9 ? '카우스 소거법 운영자' : w.grade >= 5 ? `명장 · 전체 ${w.users}명 중 ${w.rank}위 (상위 ${w.master_pct}%)` : w.grade === 4 ? `명장은 전체 상위 ${w.master_pct}% · 지금 컷 ${w.master_cut}점 (현재 ${w.users}명 중 ${w.rank}위)` : `${GRADES[w.grade + 1]}까지 ${Math.max(0, w.next - w.points)}점 · ${w.users}명 중 ${w.rank}위` }),
-      $('div', { class: 'cl-p', text: `크레딧 ${w.credits}${w.pending ? ` (확정 대기 ${w.pending})` : ''}` }),
+      $('div', { class: 'cl-p', text: `오늘 무료 ${w.free_left ?? '-'}/${w.free_daily ?? 3} · 크레딧 ${w.credits}${w.pending ? ` (확정 대기 ${w.pending})` : ''}` }),
       $('div', { class: 'cl-hint', text: '공유가 확정되면 +1점, 다른 사람이 내 블록을 가져갈 때마다 +1점, 요청에 답해 채택되면 +2점' }),
       $('a', { href: '/requests/', target: '_blank', rel: 'noopener', class: 'cl-hint', text: '요청 게시판 보기' })));
   }
@@ -439,7 +477,7 @@
       m.remove(); evt('share', { kind });
       /* v1.10.2 (11-02): 블록은 올리면 바로 크레딧 +1 확정, 도면은 +1 대기(7일 뒤 또는 누군가 가져가면 확정) */
       let got = null; try { const q = await sb.from('shared_items').select('credited').eq('id', row.id).maybeSingle(); got = q.data ? !!q.data.credited : null; } catch (_) { }
-      const rule = '빈 블록·이미 있는 모양·하루 4번째 공유부터는 크레딧이 없고, 신고로 숨겨지면 돌려놓습니다.';
+      const rule = '빈 블록·이미 있는 모양은 크레딧이 없고, 신고로 숨겨지면 돌려놓습니다.';
       const msg = got === false ? '이번 공유는 크레딧 대상이 아닙니다. ' + rule : kind === 'block' ? '크레딧 +1을 받았습니다. ' + rule : '크레딧 +1이 대기 중이며, 7일 동안 신고가 없거나 다른 사람이 가져가면 확정됩니다. ' + rule;
       say(`커뮤니티에 공유했습니다: ${t} — ${got === false ? '크레딧 없음' : kind === 'block' ? '크레딧 +1' : '크레딧 +1 대기'}`, 'ok');
       sheet('공유했습니다', [$('p', { class: 'cl-p', text: '커뮤니티에서 누구나 찾아볼 수 있습니다. ' + msg + ' 요청 게시판에 같은 걸 찾는 글이 있으면 답으로 걸어 보세요.' })],
@@ -453,10 +491,11 @@
   async function runImport() {
     const id = new URLSearchParams(location.search).get('import'); if (!id || imported) return; imported = true;
     history.replaceState(null, '', location.pathname);
+    if (!(await importGate(id))) { say('가져오기를 취소했습니다', 'me'); return; }
     const { data, error } = await sb.rpc('community_copy', { item_id: id });
     if (error) { say('가져오지 못했습니다: ' + error.message, 'err'); return; }
     const d = data.data;
-    if (data.paid) say(`크레딧 ${data.cost || 1}개를 써서 가져왔습니다${data.credits != null ? ` (남은 크레딧 ${data.credits})` : ''}`, 'ok');
+    if (data.paid) say(`크레딧 ${data.cost || 1}개를 써서 가져왔습니다 (남은 크레딧 ${data.credits})`, 'ok'); else if (data.free) say(`오늘 무료 크레딧 1개를 써서 가져왔습니다 (남은 무료 ${data.free_left})`, 'ok');
     if (data.kind === 'block') {
       let name = d.name || data.title, n = name, i = 2; while (BL()[n]) n = `${name}_${i++}`;
       pushUndo(); for (const l of d.layers || []) { if (!doc.layers.find(x => x.name === l.name)) doc.layers.push(l); }

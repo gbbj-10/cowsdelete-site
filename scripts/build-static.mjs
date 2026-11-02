@@ -81,7 +81,7 @@ ${body}
 </div></footer>
 <script src="/assets/config.js?v=20261018c"></script>
 <script src="/assets/vendor/supabase.js"></script>
-<script src="/assets/site.js?v=20261102a"></script>
+<script src="/assets/site.js?v=20261102b"></script>
 ${tail}
 </body>
 </html>
