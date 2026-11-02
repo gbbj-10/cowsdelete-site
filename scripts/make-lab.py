@@ -21,6 +21,9 @@ assert s.count(a)==1, 'parts hook'
 s=s.replace(a,"if(window.LABPARTS&&LABPARTS.handle(key))return true;"+a,1)
 s=s.replace('<script src="parts.js', '<script src="../cad/parts.js', 1)
 s=s.replace('<script src="multi.js', '<script src="../cad/multi.js', 1)
+s=s.replace('<script src="labbom.js', '<script src="../cad/labbom.js', 1)
+s=s.replace('<script src="labelev.js', '<script src="../cad/labelev.js', 1)
+assert '../cad/labbom.js' in s and '../cad/labelev.js' in s, 'bom/elev path'
 assert '../cad/multi.js' in s, 'multi path'
 assert '../cad/parts.js' in s, 'parts path'
 # AI별 연결 안내(Claude · GPT · Gemini 탭)는 v1.10.1 부터 본체에 있음 (scripts/lab_aiguide.js 는 기록용)

@@ -161,7 +161,9 @@
   const vw = { dist: 300, tx: 0, tz: 0 };
   function init3() {
     cv3 = pane.querySelector('#l3cv');
-    renderer = new T.WebGLRenderer({ canvas: cv3, antialias: true, preserveDrawingBuffer: true });
+    // 그래픽 가속(WebGL)이 꺼진 브라우저: 오류 대신 안내만 보여 줌 (11-01 오류 기록 lab3d.js:984 'children')
+    try { renderer = new T.WebGLRenderer({ canvas: cv3, antialias: true, preserveDrawingBuffer: true }); }
+    catch (e) { renderer = null; stEl.innerHTML = '<span class="e">이 브라우저에서 3D 그래픽(WebGL)을 켤 수 없습니다. 크롬 설정 › 시스템 › \'가능한 경우 그래픽 가속 사용\'을 켜고 다시 시작해 주세요.</span>'; return; }
     renderer.setClearColor(0x0d1014, 1);
     scene = new T.Scene();
     cam = new T.PerspectiveCamera(35, 1, 0.1, 1e6); cam.up.set(0, 0, 1);
@@ -1063,7 +1065,7 @@
     stEl.innerHTML = L.join('<br>');
   }
   function rebuild(force) {
-    if (!T || mode === '2d') return;
+    if (!T || !renderer || mode === '2d') return;
     if (LAB.ext) { draw3(); return; }
     let pl;
     try { pl = plan(); } catch (err) { stEl.innerHTML = `<span class="e">3D로 바꾸지 못했습니다: ${err.message}</span>`; return; }
