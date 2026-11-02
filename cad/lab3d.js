@@ -161,9 +161,7 @@
   const vw = { dist: 300, tx: 0, tz: 0 };
   function init3() {
     cv3 = pane.querySelector('#l3cv');
-    // 그래픽 가속(WebGL)이 꺼진 브라우저: 오류 대신 안내만 보여 줌 (11-01 오류 기록 lab3d.js:984 'children')
-    try { renderer = new T.WebGLRenderer({ canvas: cv3, antialias: true, preserveDrawingBuffer: true }); }
-    catch (e) { renderer = null; stEl.innerHTML = '<span class="e">이 브라우저에서 3D 그래픽(WebGL)을 켤 수 없습니다. 크롬 설정 › 시스템 › \'가능한 경우 그래픽 가속 사용\'을 켜고 다시 시작해 주세요.</span>'; return; }
+    renderer = new T.WebGLRenderer({ canvas: cv3, antialias: true, preserveDrawingBuffer: true });
     renderer.setClearColor(0x0d1014, 1);
     scene = new T.Scene();
     cam = new T.PerspectiveCamera(35, 1, 0.1, 1e6); cam.up.set(0, 0, 1);
@@ -257,7 +255,7 @@
   }
 
   // 평면 그래프 바깥 경계: 끝점 맞추기 → T자 교차 쪼개기 → 반쪽 모서리로 면 찾기 → 덩어리마다 가장 넓은 면 = 바깥 윤곽
-  function planarOuter(polys, tol) {
+  function planarOuter(polys, tol, wantFaces) {   // wantFaces(11-03): 모든 면도 돌려줌 (부호 있는 넓이 sA, 덩어리 c)
     const segs = [];
     for (const p of polys) for (let i = 0; i < p.length - 1; i++) if (Math.hypot(p[i + 1].x - p[i].x, p[i + 1].y - p[i].y) > tol * 0.01) segs.push([p[i], p[i + 1]]);
     const cell = tol * 2, grid = new Map(), nodes = []; let snap = 0;
@@ -286,12 +284,12 @@
     const comp = new Map(); let nc = 0;
     for (const s0 of adj.keys()) { if (comp.has(s0)) continue; const st = [s0]; comp.set(s0, nc); while (st.length) { const a = st.pop(); for (const b of adj.get(a)) if (!comp.has(b)) { comp.set(b, nc); st.push(b); } } nc++; }
     // 면 따라 돌기: (u→v) 다음은 v에서 (v→u) 바로 시계 방향 이웃
-    const used = new Set(), best = new Map();
+    const used = new Set(), best = new Map(), faces = [];
     for (const [u0, L0] of adj) for (const v0 of L0) {
       if (used.has(u0 + '>' + v0)) continue;
       let u = u0, v = v0; const face = []; let guard = 0;
       while (!used.has(u + '>' + v) && guard++ < 200000) { used.add(u + '>' + v); face.push(u); const L = adj.get(v), i = L.indexOf(u), w = L[(i - 1 + L.length) % L.length]; u = v; v = w; }
-      const pts = face.map(n => nodes[n]); const A = Math.abs(area(pts)), c = comp.get(u0);
+      const pts = face.map(n => nodes[n]); const sA = area(pts), A = Math.abs(sA), c = comp.get(u0); if (wantFaces) faces.push({ pts, sA, c });
       if (!best.has(c) || A > best.get(c).A) best.set(c, { A, pts });
     }
     const out = [], leftSegs = []; let leftN = 0;
@@ -304,7 +302,7 @@
       } else { leftN++; }
     }
     if (leftN) for (const [u, v] of E) { const c = comp.get(u); const b = best.get(c); if (!(b && b.A > tol * tol * 4)) leftSegs.push([nodes[u], nodes[v]]); }
-    return { loops: out.filter(l => l.pts.length >= 3), left: leftSegs, leftN, snap };
+    return { loops: out.filter(l => l.pts.length >= 3), left: leftSegs, leftN, snap, faces: wantFaces ? faces.map(f => Object.assign(f, { outer: best.get(f.c) && best.get(f.c).pts === f.pts })) : undefined };
   }
 
   // 3D로 바꿀 도형: CAD에서 선택한 것이 있으면 그것만 (부품도에서 부품 하나 고르기)
@@ -314,6 +312,7 @@
   }
   LAB.srcEnts = srcEnts;
   LAB._dbg = () => ({ rowHull, collectLoops, solid: pl => solidFor(occR, pl), ensureOCC });
+  LAB.planarOuter = planarOuter;   // 11-03 labsection.js(단면 → 회전체·단조/가공 외형)에서 씀
   LAB._loops = () => { const r = collectLoops(); return r.loops.filter(L => !L.parent).map(L => ({ bb: [L.bb.x0, L.bb.y0, L.bb.x1, L.bb.y1].map(v => +v.toFixed(1)), n: L.pts.length, c: !!L.circle, kids: L.kids.length })); };
 
   // 뷰 실루엣 보강: 같은 뷰의 조각(외형선·해치 경계)을 모아 높이마다 가장 넓은 범위로 채움 (부분 단면·구멍으로 끊긴 윤곽용)
@@ -1065,7 +1064,7 @@
     stEl.innerHTML = L.join('<br>');
   }
   function rebuild(force) {
-    if (!T || !renderer || mode === '2d') return;
+    if (!T || mode === '2d') return;
     if (LAB.ext) { draw3(); return; }
     let pl;
     try { pl = plan(); } catch (err) { stEl.innerHTML = `<span class="e">3D로 바꾸지 못했습니다: ${err.message}</span>`; return; }

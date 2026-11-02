@@ -5,9 +5,9 @@ s = src
 s = s.replace('<title>무카 CAD</title>', '<title>무카 CAD 테스트</title>\n<meta name="robots" content="noindex,nofollow">', 1)
 s = re.sub(r'<script src="cloud\.js\?v=([^"]+)"></script>', r'<script src="../cad/cloud.js?v=\1"></script>', s, count=1)
 # v1.10.0 (11-01): 3D 기능(lab3d·labphoto·lab2dcheck·labasset·labmake)은 본체에 들어감 → 본체의 <script src="lab3d.js…"> 는 테스트판에선 cad-lab/ 의 같은 이름 파일을 씀(새 기능은 여기서 먼저 고쳐 시험 → 확인 뒤 cad/ 로 복사)
-# 아직 시험 중인 기능만 테스트판에 더함: 시험 도면 · 탱크 부품 · 명령줄 = AI 입력창 · 단면 → 회전체(labsection.js, 11-03) (저장 위치 고르기 labsave.js·AI별 연결 안내는 v1.10.1 에서 본체로)
+# 아직 시험 중인 기능만 테스트판에 더함: 시험 도면 · 탱크 부품 · 명령줄 = AI 입력창 (저장 위치 고르기 labsave.js·AI별 연결 안내는 v1.10.1 에서 본체로)
 _m = re.search(r'<script src="labmake\.js\?v=[^"]+"></script>', s); assert _m, 'labmake tag'
-s = s[:_m.end()] + '\n<script src="labcases.js?v=1"></script>\n<script src="labparts.js?v=1"></script>\n<script src="labcmdai.js?v=1"></script>\n<script src="labsection.js?v=1"></script>' + s[_m.end():]
+s = s[:_m.end()] + '\n<script src="labcases.js?v=1"></script>\n<script src="labparts.js?v=1"></script>\n<script src="labcmdai.js?v=1"></script>' + s[_m.end():]
 s = re.sub(r'(<script src="\.\./assets/config\.js[^"]*"></script>)', r'\1\n<script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>', s, count=1)
 # AI 채팅 참고 이미지(📎)는 본 캐드(cad/airef.js)에 들어감 → 테스트판은 경로만 맞춤
 s = s.replace('<script src="airef.js', '<script src="../cad/airef.js', 1)
@@ -30,7 +30,7 @@ assert '../cad/parts.js' in s, 'parts path'
 def rep(s,a,b):
     assert s.count(a)==1, 'rep: '+a[:50]; return s.replace(a,b,1)
 assert 'function curTab()' in s and "modal('AI 연결 — 내 AI로 그리기'" in s, 'aiguide patch'
-assert s.count('lab3d.js') == 1 and s.count('labcases.js') == 1 and s.count('labsave.js') == 1 and 'view3d' in s and 'noindex' in s and 'lab-' in s, 'patch failed'
+assert s.count('lab3d.js') == 1 and s.count('labcases.js') == 1 and s.count('labsave.js') == 1 and s.count('labsection.js') == 1 and 'view3d' in s and 'noindex' in s and 'lab-' in s, 'patch failed'
 # [테스트 서버] 명령줄 = AI 입력창 (cad-lab/labcmdai.js): 명령이 아닌 한글은 전부 LABCMDAI.route 로
 s=rep(s,"    log('입력: '+t,'me');\n    logLink(","    if(window.LABCMDAI)return LABCMDAI.route(t,'KO_'+en.replace(/[^A-Z0-9_.-]/g,'').slice(0,21));\n    log('입력: '+t,'me');\n    logLink(")
 s=rep(s,"function routeToAI(t){","function routeToAI(t){if(window.LABCMDAI)return LABCMDAI.route(t,'AI_ROUTE');")

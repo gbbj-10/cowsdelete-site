@@ -52,10 +52,25 @@
     for (const e of ents) {
       if (!['line', 'polyline', 'circle', 'arc', 'ellipse'].includes(e.type)) continue;
       if (only ? !only.has(e.layer) : (IGN_LAYERS.has(e.layer) || skip.has(e.layer))) continue;
+      if (opt.section && !only && /해치|hatch/i.test(String(e.layer || ''))) continue;   // 단면 해치 선은 대조에서 뺌
       if (e.lt && IGN_LT.has(String(e.lt).toLowerCase())) continue;
       (isHid(e) ? hid : vis).push(...entPolys(e));
     }
+    if (opt.section && opt.leaders !== true) { const n0 = vis.length; pruneLeaders(vis, hid); C2.prunedLeaders = n0 - vis.length; }
     return { vis, hid };
+  }
+  // 단면도: 지시선(한쪽 끝이 아무 데도 안 닿은 곧은 선)을 뺌 — 외형선 레이어에 그린 지시선 때문에 뷰 상자가 커지던 것. 최대 3번 반복, 전체 길이의 15% 까지만
+  function pruneLeaders(vis, hid) {
+    const all = vis.concat(hid), b = bbOf(all), tol = Math.max(0.01, Math.hypot(b.w, b.h) * 1e-3), lenOf = p => { let s = 0; for (let i = 1; i < p.length; i++) s += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); return s; };
+    const total = all.reduce((s, p) => s + lenOf(p), 0); let cut = 0;
+    const sd = (q, a, c) => { const vx = c[0] - a[0], vy = c[1] - a[1], L = vx * vx + vy * vy; let t = L ? ((q[0] - a[0]) * vx + (q[1] - a[1]) * vy) / L : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(q[0] - a[0] - t * vx, q[1] - a[1] - t * vy); };
+    for (let round = 0; round < 3; round++) {
+      const cur = vis.concat(hid);
+      const touches = (q, self) => cur.some(o => o !== self && o.some((r, i) => Math.hypot(r[0] - q[0], r[1] - q[1]) <= tol || (i && sd(q, o[i - 1], r) <= tol)));
+      const drop = vis.filter(p => p.length === 2 && !(Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]) <= tol) && (!touches(p[0], p) || !touches(p[1], p)));
+      const dl = drop.reduce((s, p) => s + lenOf(p), 0); if (!drop.length || cut + dl > total * 0.15) break;
+      cut += dl; for (const p of drop) vis.splice(vis.indexOf(p), 1);
+    }
   }
 
   /* ---------- 2) 뷰 나누기 (가까운 선끼리 묶음) ---------- */
@@ -149,6 +164,35 @@
     return out;
   }
 
+  /* 단면 투상 (11-03, 요청 「기어도면…」 2번): 6방향마다 보는 쪽 절반을 잘라 낸 3D 를 투상 = 축이 지나는 면으로 자른 단면도
+     (자른 면 윤곽 + 그 뒤로 보이는 선). 어느 절반이 보는 쪽인지 몰라도 되게 양쪽 다 만듦 + 자른 면 윤곽만('단면만_') */
+  async function projectSection(src) {
+    const { R, s } = await shapeOf(src);
+    const out = {};
+    for (const [k, rots] of Object.entries(VIEWS)) {
+      for (const half of [1, -1]) {
+        let t = s.clone(); for (const [a, ax] of rots) t = t.rotate(a, [0, 0, 0], ax);
+        let cutT = null;
+        try {
+          const [[x0, y0, z0], [x1, y1, z1]] = t.boundingBox.bounds, cy = (y0 + y1) / 2, m = Math.max(x1 - x0, y1 - y0, z1 - z0) + 10;
+          const bx = half > 0 ? R.makeBox([x0 - m, y0 - m, z0 - m], [x1 + m, cy, z1 + m]) : R.makeBox([x0 - m, cy, z0 - m], [x1 + m, y1 + m, z1 + m]);
+          cutT = t.cut(bx);
+          const pr = R.drawProjection(cutT, 'front');
+          const toP = d => { const o = []; for (const path of d.toSVGPaths()) for (const pl of ph()._svgPolys(path)) o.push(pl.map(([x, y]) => [x, -y])); return o; };
+          out['단면_' + k + (half > 0 ? '' : '_뒤')] = { vis: toP(pr.visible), hid: toP(pr.hidden), section: true };
+          if (half > 0) {   // 자른 면 윤곽만 (뒤로 보이는 선을 안 그린 단면도용): 자른 자리의 아주 얇은 판만 투상
+            const e = Math.max(1e-3, m * 1e-4); let sl = null;
+            try { sl = t.clone().intersect(R.makeBox([x0 - m, cy, z0 - m], [x1 + m, cy + e, z1 + m])); const p2 = R.drawProjection(sl, 'front'); out['단면만_' + k] = { vis: toP(p2.visible), hid: [], section: true }; } catch (_) { }
+            try { sl && sl.delete(); } catch (_) { }
+          }
+        } catch (_) { try { t.delete(); } catch (__) { } }
+        try { cutT && cutT.delete(); } catch (_) { }
+      }
+    }
+    try { s.delete(); } catch (_) { }
+    return out;
+  }
+
   /* ---------- 4) 선 대조 ---------- */
   function sample(polys, step) {
     const o = [];
@@ -192,6 +236,19 @@
     const src = opt.source || (ph() && ph().model ? 'model' : 'rule');
     const t0 = performance.now();
     const PR = await project6(src);
+    if (opt.section) Object.assign(PR, await projectSection(src));   // 단면도 대조: 일반 투상 + 단면 투상 중 맞는 것
+    // 단면도: 구멍(보어) 때문에 위·아래 반쪽이 떨어져 두 묶음이 되면, 합친 크기가 3D 투상과 맞는 묶음끼리 합침
+    if (opt.section && !(Array.isArray(opt.views) && opt.views.length)) {
+      const sizes = Object.values(PR).filter(P => P.vis.length).map(P => bbOf(P.vis.concat(P.hid)));
+      const fit = b => Math.min(...sizes.map(q => Math.min(Math.max(Math.abs(q.w - b.w) / (b.w || 1), Math.abs(q.h - b.h) / (b.h || 1)), Math.max(Math.abs(q.h - b.w) / (b.w || 1), Math.abs(q.w - b.h) / (b.h || 1)))));
+      for (let guard = 0; guard < 20; guard++) {
+        const bad = cl.filter(c => fit(c.bb) > 0.15); let best = null;
+        for (let i = 0; i < bad.length; i++) for (let j = i + 1; j < bad.length; j++) { const m = bbOf(bad[i].vis.concat(bad[i].hid, bad[j].vis, bad[j].hid)), f = fit(m); if (f <= 0.15 && (!best || f < best.f)) best = { a: bad[i], b: bad[j], f }; }
+        if (!best) break;
+        best.a.vis.push(...best.b.vis); best.a.hid.push(...best.b.hid); best.a.bb = bbOf(best.a.vis.concat(best.a.hid)); cl.splice(cl.indexOf(best.b), 1);
+      }
+      cl.forEach((c, i) => { c.no = i + 1; });
+    }
     const allbb = bbOf(cl.flatMap(c => c.vis.concat(c.hid))), D = Math.hypot(allbb.w, allbb.h);
     const tol = +opt.tol > 0 ? +opt.tol : Math.max(0.05, D * 0.004), step = tol / 2;
     const views = [];
@@ -215,12 +272,21 @@
       }
       if (best) views.push(Object.assign({ c }, best));
     }
+    // 단면도 대조: 크기가 3D 어느 투상과도 안 맞는 묶음(표제란·상세도·글자 표·지시선 묶음)은 빼고 따로 알려 줌
+    let excluded = [];
+    if (opt.section && !(Array.isArray(opt.views) && opt.views.length)) {
+      const keep = views.filter(v => v.sizeErr <= 0.15);
+      if (keep.length) { excluded = views.filter(v => v.sizeErr > 0.15); views.length = 0; views.push(...keep); }
+      excluded = excluded.map(v => ({ box: [v.c.bb.x0, v.c.bb.y0, v.c.bb.x1, v.c.bb.y1].map(x => Math.round(x * 10) / 10), size_mm: [+v.c.bb.w.toFixed(1), +v.c.bb.h.toFixed(1)], why: '크기가 3D 단면·투상과 안 맞음 (표제란·상세도·표·지시선으로 보고 뺌)' }));
+      for (const c of cl) if (!views.some(v => v.c === c) && !excluded.some(x => x.box[0] === Math.round(c.bb.x0 * 10) / 10 && x.box[1] === Math.round(c.bb.y0 * 10) / 10)) excluded.push({ box: [c.bb.x0, c.bb.y0, c.bb.x1, c.bb.y1].map(x => Math.round(x * 10) / 10), why: '맞는 투상 없음' });
+    }
     // 합계 (표본 수로 가중)
     let nA = 0, hA = 0, nB = 0, hB = 0; for (const v of views) { nA += v.s.A.length; hA += v.s.hA.reduce((s, x) => s + x, 0); nB += v.s.B.length; hB += v.s.hB.reduce((s, x) => s + x, 0); }
     const rec = nA ? hA / nA : 0, prec = nB ? hB / nB : 0, f1 = rec + prec ? 2 * rec * prec / (rec + prec) : 0;
     const res = { source: src, pass: rec >= PASS && prec >= PASS, recall: +rec.toFixed(4), precision: +prec.toFixed(4), f1: +f1.toFixed(4), tol_mm: +tol.toFixed(3), ms: Math.round(performance.now() - t0),
       views: views.map(v => ({ no: v.c.no, box: [v.c.bb.x0, v.c.bb.y0, v.c.bb.x1, v.c.bb.y1].map(x => Math.round(x * 10) / 10), matched: v.view, rot: v.rot, scale: +v.scale.toFixed(4), size_err: +v.sizeErr.toFixed(3), hidden_used: v.useHid,
         recall: +v.s.rec.toFixed(4), precision: +v.s.prec.toFixed(4), missing_pts: v.s.hA.length - v.s.hA.reduce((s, x) => s + x, 0), extra_pts: v.s.hB.length - v.s.hB.reduce((s, x) => s + x, 0) })) };
+    if (opt.section) { res.mode = 'section'; res.excluded = excluded; if (C2.prunedLeaders) res.leaders_removed = C2.prunedLeaders; }
     if (cl.emptyViews && cl.emptyViews.length) res.warn = `도형이 없어 뺀 뷰 상자: ${cl.emptyViews.join(' · ')}`;
     try { res.key = keyCheck(views, opt); } catch (e) { res.key = { error: String(e && e.message || e) }; }
     C2.last = { res, views, allbb, tol };
