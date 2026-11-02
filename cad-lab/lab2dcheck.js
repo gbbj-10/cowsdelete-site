@@ -65,8 +65,15 @@
     const items = L.vis.map(p => ({ p, h: false })).concat(L.hid.map(p => ({ p, h: true })));
     if (!items.length) return [];
     if (Array.isArray(opt.views) && opt.views.length) {   // 직접 지정한 뷰 상자 [[x0,y0,x1,y1],...]
-      return opt.views.map((v, i) => { const b = (Array.isArray(v) ? v : v.box).map(Number); const box = [Math.min(b[0], b[2]), Math.min(b[1], b[3]), Math.max(b[0], b[2]), Math.max(b[1], b[3])];
-        const its = items.filter(t => inBox(box, t.p)); return { no: i + 1, vis: its.filter(t => !t.h).map(t => t.p), hid: its.filter(t => t.h).map(t => t.p), want: v.view || null }; }).filter(c => c.vis.length);
+      const all = opt.views.map((v, i) => { const b = (Array.isArray(v) ? v : v.box).map(Number); const box = [Math.min(b[0], b[2]), Math.min(b[1], b[3]), Math.max(b[0], b[2]), Math.max(b[1], b[3])];
+        const its = items.filter(t => inBox(box, t.p)), vis = its.filter(t => !t.h).map(t => t.p), hid = its.filter(t => t.h).map(t => t.p);
+        return { no: i + 1, box, vis, hid, want: v.view || null, bb: vis.length ? bbOf(vis.concat(hid)) : null }; });
+      // 상자 안에 선이 하나도 통째로 들어 있지 않으면 원인을 알려 줌 (예전: 'cx' 를 못 읽는 오류만 났음)
+      const empty = all.filter(c => !c.vis.length).map(c => `뷰 ${c.no} [${c.box.map(x => Math.round(x * 10) / 10).join(', ')}]`);
+      const ok = all.filter(c => c.vis.length);
+      if (!ok.length) throw new Error(`지정한 뷰 상자 안에 도형이 없습니다: ${empty.join(' · ')} — 상자는 [x0,y0,x1,y1] 도면 좌표이고, 선 전체가 상자 안에 들어 있어야 셉니다 (치수·문자·중심선 레이어는 뺍니다)`);
+      ok.emptyViews = empty;
+      return ok;
     }
     const all = bbOf(items.map(t => t.p)), gap = Math.max(all.w, all.h) * (+opt.gap || 0.025);
     const bbs = items.map(t => bbOf([t.p])), par = items.map((_, i) => i);
@@ -214,6 +221,7 @@
     const res = { source: src, pass: rec >= PASS && prec >= PASS, recall: +rec.toFixed(4), precision: +prec.toFixed(4), f1: +f1.toFixed(4), tol_mm: +tol.toFixed(3), ms: Math.round(performance.now() - t0),
       views: views.map(v => ({ no: v.c.no, box: [v.c.bb.x0, v.c.bb.y0, v.c.bb.x1, v.c.bb.y1].map(x => Math.round(x * 10) / 10), matched: v.view, rot: v.rot, scale: +v.scale.toFixed(4), size_err: +v.sizeErr.toFixed(3), hidden_used: v.useHid,
         recall: +v.s.rec.toFixed(4), precision: +v.s.prec.toFixed(4), missing_pts: v.s.hA.length - v.s.hA.reduce((s, x) => s + x, 0), extra_pts: v.s.hB.length - v.s.hB.reduce((s, x) => s + x, 0) })) };
+    if (cl.emptyViews && cl.emptyViews.length) res.warn = `도형이 없어 뺀 뷰 상자: ${cl.emptyViews.join(' · ')}`;
     try { res.key = keyCheck(views, opt); } catch (e) { res.key = { error: String(e && e.message || e) }; }
     C2.last = { res, views, allbb, tol };
     return res;
