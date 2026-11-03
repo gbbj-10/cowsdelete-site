@@ -156,8 +156,8 @@
     draw: (id, v, at) => { const F = byId(id); if (!F) throw new Error('없는 양식: ' + id); return draw(F, defaults(F, v), at); },
     match, B169, sizesIn, drawn: () => DRAWN
   };
-  /* 한글 입력 가로채기: 파이프·탱크(labparts) 앞에서 엘보·티·레듀서 */
-  const hookParts = () => { const P = window.LABPARTS; if (!P || P.__forms) return !!(P && P.__forms); const orig = P.handle.bind(P);
+  /* 한글 입력 가로채기: 파이프·탱크(테스트판 labparts · 본체 parts.js) 앞에서 엘보·티·레듀서 */
+  const hookParts = () => { const P = window.LABPARTS || window.MUCCAPARTS; if (!P || P.__forms) return !!(P && P.__forms); const orig = P.handle.bind(P);
     P.handle = key => { const F = match(key); if (F && !/파이프|배관|강관|탱크/.test(key)) { open(F); log(`'${key}' → ${F.name} 고르기 창`, 'ok'); return true; } return orig(key); }; P.__forms = true; return true; };
   if (!hookParts()) { let n = 0; const t = setInterval(() => { if (hookParts() || ++n > 40) clearInterval(t); }, 300); }
   /* 짧은 한글 입력('엘보 4인치' · '100A 레듀서 80A' · '티 DN150')은 AI 로 보내기 전에 양식을 크기 채운 채로 엶 */

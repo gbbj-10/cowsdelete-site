@@ -1,5 +1,5 @@
 pdfme 6.2.8 — https://github.com/pdfme/pdfme (MIT License, Copyright (c) 2021 hand-dot)
-무카 CAD 테스트 서버에서 PDF 양식(부품표·도면 제출 표지·견적 표지)을 만들 때 씁니다. esbuild 로 generator·schemas(text·image·table·line·rectangle)·pdf-lib 만 묶었고, 바코드(bwip-js)·날짜 선택(air-datepicker)은 빼고 묶었습니다.
+무카 CAD 에서 PDF 양식(부품표·도면 제출 표지·견적 표지)을 만들 때 씁니다. esbuild 로 generator·schemas(text·image·table·line·rectangle)·pdf-lib 만 묶었고, 바코드(bwip-js)·날짜 선택(air-datepicker)은 빼고 묶었습니다.
 
 함께 묶인 오픈소스 (이름 버전 라이선스):
 - @pdfme/generator 6.2.8 MIT

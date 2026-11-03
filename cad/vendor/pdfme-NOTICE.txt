@@ -1,0 +1,33 @@
+pdfme 6.2.8 — https://github.com/pdfme/pdfme (MIT License, Copyright (c) 2021 hand-dot)
+무카 CAD 에서 PDF 양식(부품표·도면 제출 표지·견적 표지)을 만들 때 씁니다. esbuild 로 generator·schemas(text·image·table·line·rectangle)·pdf-lib 만 묶었고, 바코드(bwip-js)·날짜 선택(air-datepicker)은 빼고 묶었습니다.
+
+함께 묶인 오픈소스 (이름 버전 라이선스):
+- @pdfme/generator 6.2.8 MIT
+- @pdfme/schemas 6.2.8 MIT
+- @pdfme/common 6.2.8 MIT
+- @pdfme/pdf-lib 6.2.8 MIT
+- @pdf-lib/standard-fonts 1.0.0 MIT
+- @pdf-lib/upng 1.0.1 MIT
+- fontkit 2.0.4 MIT
+- zod 4.6.7 MIT
+- date-fns 4.4.0 MIT
+- pako 3.0.3 (MIT AND Zlib)
+- acorn 8.19.0 MIT
+- html-entities 2.6.0 MIT
+- dompurify 3.4.17 (MPL-2.0 OR Apache-2.0)
+- buffer 6.0.3 MIT
+- brotli 1.3.3 MIT
+- tslib 2.9.1 0BSD
+- unicode-properties 1.4.1 MIT
+- unicode-trie 2.0.0 MIT
+- restructure 3.0.2 MIT
+- dfa 1.2.0 MIT
+- clone 2.1.2 MIT
+- tiny-inflate 1.0.3 MIT
+- base64-js 1.5.1 MIT
+- ieee754 1.2.1 BSD-3-Clause
+- fast-deep-equal 3.1.3 MIT
+- @swc/helpers 0.5.23 Apache-2.0
+
+MIT License 본문: https://opensource.org/license/mit
+글꼴: MuccaKS Gothic = 나눔고딕(NAVER, SIL Open Font License 1.1)에서 KS X 1001 글자만 남긴 부분 글꼴(OFL 예약 이름 규정에 따라 이름을 바꿈). 본문은 NanumGothic-OFL.txt
