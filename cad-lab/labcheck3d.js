@@ -161,10 +161,12 @@
   window.LABCHECK3D = { inspect, views5, selftest, CASES };
 
   /* ---------- 명령줄 ---------- */
+  /* 3D 만 보기(2D 칸 숨김)일 때도 보이게: 창을 화면 전체 위로 */
+  function lift(m) { try { document.body.appendChild(m); m.style.position = 'fixed'; m.style.zIndex = '60'; } catch (_) { } return m; }
   function showImage(title, url, text) {
     const im = document.createElement('img'); im.src = url; im.alt = title; im.style.cssText = 'display:block;max-width:100%;height:auto;border-radius:6px;background:#fff';
     const p = document.createElement('p'); p.style.cssText = 'margin:8px 0 0;white-space:pre-line'; p.textContent = text || '';
-    const m = modal(title, [im, p]); try { m.querySelector('.sheet').style.maxWidth = 'min(1280px, 96vw)'; m.querySelector('.sheet').style.width = 'min(1280px, 96vw)'; } catch (_) { }
+    const m = lift(modal(title, [im, p])); try { m.querySelector('.sheet').style.maxWidth = 'min(1280px, 96vw)'; m.querySelector('.sheet').style.width = 'min(1280px, 96vw)'; } catch (_) { }
   }
   try {
     TOOLS.view5 = () => { (async () => { try { if (!ph().model) { log('5면 자가검사는 AI 로 만든 3D(model3d)가 있을 때 씁니다', 'err'); return; } log('3D 5면 그림과 겹침·떠 있음 점검 중…', 'me'); const r = await views5({}); const k = r.check; log(`5면 자가검사: ${k.ok ? '문제 없음' : `큰 겹침 ${k.overlap.length}쌍 · 떠 있음 ${k.floating.length} · 부피 0 ${k.empty.length}`} (부품 ${k.parts}개, ${(k.ms / 1000).toFixed(1)}초)`, k.ok ? 'ok' : 'err'); showImage('3D 5면 자가검사', ph().lastImage, (k.ok ? '큰 겹침·떠 있음·부피 0 없음' : [...k.floating.map(f => `떠 있음 ${f.part} ${f.name} : 다른 부품과 ${f.gap_mm} mm 떨어짐`), ...k.empty.map(e => `부피 0 ${e.part} ${e.name}`), ...k.overlap.slice(0, 10).map(o => `겹침 ${o.a} ↔ ${o.b} : ${o.vol_mm3} mm³ (작은 쪽의 ${o.pct_of_smaller}%)`), k.overlap.length > 10 ? `… 큰 겹침 ${k.overlap.length - 10}쌍 더` : ''].filter(Boolean).join('\n')) + (k.overlap_small.length ? `\n살짝 박힘(5% 미만, 볼트·용접처럼 일부러일 수 있음) ${k.overlap_small.length}쌍` : '') + '\nAI 로 만든 3D 라면 같은 AI 대화에서 "5면 자가검사 결과대로 고쳐 줘" 라고 하면 됩니다.'); } catch (e) { log('5면 자가검사 실패: ' + (e.message || e), 'err'); } })(); return null; };
@@ -172,7 +174,7 @@
       const t = document.createElement('table'); t.style.cssText = 'border-collapse:collapse;font:12px/1.5 var(--mono,monospace);width:100%';
       t.innerHTML = '<tr><th style="text-align:left">형상</th><th>부피 오차%</th><th>겉넓이 오차%</th><th>무게중심 mm</th><th>크기 mm</th><th>메시%</th><th>STEP%</th><th>판정</th></tr>' + r.rows.map(x => `<tr><td>${x.name}</td><td>${x.vol ? x.vol.err_pct : '-'}</td><td>${x.area ? x.area.err_pct : '-'}</td><td>${x.center ? x.center.err_mm : '-'}</td><td>${x.size ? x.size.err_mm : '-'}</td><td>${x.mesh_vol_err_pct ?? '-'}</td><td>${x.step_vol_err_pct ?? '-'}</td><td>${x.pass ? '통과' : '✗ ' + x.fail.join('·')}</td></tr>`).join('');
       t.querySelectorAll('td,th').forEach(e => { e.style.padding = '3px 6px'; e.style.borderBottom = '1px solid var(--rule,#ccc)'; if (e.cellIndex) e.style.textAlign = 'right'; });
-      modal(`3D 정답 비교 시험 — ${r.pass}/${r.total} 통과`, [t]); } catch (e) { log('3D 정답 비교 시험 실패: ' + (e.message || e), 'err'); } })(); return null; };
+      lift(modal(`3D 정답 비교 시험 — ${r.pass}/${r.total} 통과`, [t])); } catch (e) { log('3D 정답 비교 시험 실패: ' + (e.message || e), 'err'); } })(); return null; };
     Object.assign(ALIAS, { VIEW5: 'view5', '5VIEW': 'view5', INSPECT3D: 'view5', SELFTEST3D: 'selftest3d', TEST3D: 'selftest3d' });
     Object.assign(CMD_KO, { view5: '3D 5면 자가검사', selftest3d: '3D 정답 비교 시험' });
     for (const k of ['5면', '5면검사', '5면그림', '자가검사', '3D점검', '겹침검사']) KO_CMD[k] = 'view5';

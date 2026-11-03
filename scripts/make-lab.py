@@ -36,7 +36,7 @@ s=rep(s,"    log('입력: '+t,'me');\n    logLink(","    if(window.LABCMDAI)retu
 s=rep(s,"function routeToAI(t){","function routeToAI(t){if(window.LABCMDAI)return LABCMDAI.route(t,'AI_ROUTE');")
 # [테스트 서버] DWG 열기 엔진 시험 (11-03): acadrust(MPL-2.0, wasm) 먼저 → 실패하면 acad-ts. 저장은 그대로 acad-ts
 _m = re.search(r'<script src="\.\./cad/dwg\.js\?v=[^"]+"></script>', s); assert _m, 'dwg tag'
-s = s[:_m.end()] + '\n<script src="labdwgrs.js?v=2"></script>\n<script src="labcheck3d.js?v=3"></script>' + s[_m.end():]
+s = s[:_m.end()] + '\n<script src="labdwgrs.js?v=2"></script>\n<script src="labcheck3d.js?v=4"></script>' + s[_m.end():]
 s=rep(s,"(처음 한 번은 변환 도구 약 250KB를 받습니다. 파일은","(처음 한 번은 변환 도구 약 1.5MB를 받습니다. 파일은")
 s=rep(s,"log('DWG 변환: 오픈소스 acad-ts(MIT) 사용.","log((MuccaDWG.lastEngine==='acadrust'?'DWG 변환: 오픈소스 acadrust(MPL-2.0) 사용 [테스트 서버 새 변환기].':'DWG 변환: 오픈소스 acad-ts(MIT) 사용.')+'")
 # 11-03: 테스트판 labphoto.js 에 아랫면(bottom) 시점 추가 → 캐시 번호를 테스트판 전용으로
