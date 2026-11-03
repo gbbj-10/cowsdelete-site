@@ -1,0 +1,10 @@
+mucca_dwg-0.6.8.wasm — 무카 CAD DWG 변환기 (테스트 서버)
+
+이 파일은 acadrust 0.6.8 (Hakan AK, MPL-2.0) 을 고치지 않고 그대로
+WebAssembly 로 빌드한 것입니다. 무카 CAD 쪽 코드는 아래 두 가지뿐입니다.
+  - 입출력 연결 함수 (DXF→DWG, DWG→DXF)
+  - web-time 대신 쓰는 빈 시간 함수 (진단용 시간 재기만 꺼짐)
+
+acadrust 원본 소스: https://github.com/hakanaktt/acadrust (MPL-2.0)
+MPL-2.0 전문: https://www.mozilla.org/en-US/MPL/2.0/
+빌드에 쓴 연결 코드: cad-lab/vendor/mucca_dwg-src/ (MPL-2.0)

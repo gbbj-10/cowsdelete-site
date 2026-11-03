@@ -343,7 +343,7 @@
   }
 
   /* ---------------- 4) 3D 보기 이미지 ---------------- */
-  const CAMS = { iso: [1, -1, 0.75], front34: [1, -0.9, 0.55], rear34: [-1, -0.9, 0.55], right: [0, -1, 0], left: [0, 1, 0], front: [1, 0, 0], rear: [-1, 0, 0], top: [0, 0, 1], top34: [0.5, -0.6, 1.2] };
+  const CAMS = { bottom: [0.0001, 0, -1], iso: [1, -1, 0.75], front34: [1, -0.9, 0.55], rear34: [-1, -0.9, 0.55], right: [0, -1, 0], left: [0, 1, 0], front: [1, 0, 0], rear: [-1, 0, 0], top: [0, 0, 1], top34: [0.5, -0.6, 1.2] };
   function viewImage(c) {
     if (!PH.model) throw new Error('먼저 model3d 로 3D 모델을 만드세요');
     const v = V(), T = v.T; const W = Math.min(1600, c.w || 1200), H = Math.min(1200, c.h || 900);

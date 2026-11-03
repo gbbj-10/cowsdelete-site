@@ -1,0 +1,17 @@
+[package]
+name = "mucca_dwg"
+version = "0.1.0"
+edition = "2021"
+license = "MPL-2.0"
+[lib]
+crate-type = ["cdylib","rlib"]
+[dependencies]
+acadrust = { path = "../src", default-features = false }
+[profile.release]
+opt-level = "s"
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+[patch.crates-io]
+web-time = { path = "../shim" }
