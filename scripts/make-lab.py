@@ -7,7 +7,7 @@ s = re.sub(r'<script src="cloud\.js\?v=([^"]+)"></script>', r'<script src="../ca
 # v1.10.0 (11-01): 3D 기능(lab3d·labphoto·lab2dcheck·labasset·labmake)은 본체에 들어감 → 본체의 <script src="lab3d.js…"> 는 테스트판에선 cad-lab/ 의 같은 이름 파일을 씀(새 기능은 여기서 먼저 고쳐 시험 → 확인 뒤 cad/ 로 복사)
 # 아직 시험 중인 기능만 테스트판에 더함: 시험 도면 · 탱크 부품 · 명령줄 = AI 입력창 (저장 위치 고르기 labsave.js·AI별 연결 안내는 v1.10.1 에서 본체로)
 _m = re.search(r'<script src="labmake\.js\?v=[^"]+"></script>', s); assert _m, 'labmake tag'
-s = s[:_m.end()] + '\n<script src="labcases.js?v=1"></script>\n<script src="labparts.js?v=1"></script>\n<script src="labcmdai.js?v=1"></script>\n<script src="labpartforms.js?v=2"></script>\n<script src="labaisteps.js?v=2"></script>\n<script src="labspec.js?v=1"></script>\n<script src="labpdfform.js?v=1"></script>' + s[_m.end():]
+s = s[:_m.end()] + '\n<script src="labcases.js?v=1"></script>\n<script src="labparts.js?v=1"></script>\n<script src="labcmdai.js?v=1"></script>\n<script src="labpartforms.js?v=2"></script>\n<script src="labaisteps.js?v=2"></script>\n<script src="labspec.js?v=1"></script>\n<script src="labpdfform.js?v=2"></script>' + s[_m.end():]
 s = re.sub(r'(<script src="\.\./assets/config\.js[^"]*"></script>)', r'\1\n<script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>', s, count=1)
 # AI 채팅 참고 이미지(📎)는 본 캐드(cad/airef.js)에 들어감 → 테스트판은 경로만 맞춤
 s = s.replace('<script src="airef.js', '<script src="../cad/airef.js', 1)

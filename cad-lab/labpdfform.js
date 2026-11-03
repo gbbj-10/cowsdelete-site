@@ -251,7 +251,7 @@
     const prev = el('button', { type: 'button', className: 'mini', textContent: '◀', onclick: () => showPage(page - 1) }), next = el('button', { type: 'button', className: 'mini', textContent: '▶', onclick: () => showPage(page + 1) });
     right.append(el('div', { className: 'pvbar' }, [prev, pvInfo, next]), cnv, el('small', { className: 'd', textContent: 'PDF 는 이 브라우저 안에서 만듭니다(도면·부품표를 서버로 보내지 않음). 처음 한 번은 양식 도구와 한글 글꼴(약 1.3MB)을 받습니다.' }));
     async function showPage(n) { if (!pdfDoc) return; page = Math.max(1, Math.min(pdfDoc.numPages, n)); const pg = await pdfDoc.getPage(page), vp = pg.getViewport({ scale: 1 }), k = Math.min(2, 840 / vp.width), v2 = pg.getViewport({ scale: k });
-      cnv.width = Math.round(v2.width); cnv.height = Math.round(v2.height); await pg.render({ canvasContext: cnv.getContext('2d'), viewport: v2 }).promise; pvInfo.textContent = `${page} / ${pdfDoc.numPages}쪽 · ${(last.u8.length / 1024).toFixed(0)}KB${last.parts.length > 1 ? ' · ' + last.parts.map(p => p[0] + ' ' + p[1]).join(' + ') : ''}`; }
+      cnv.width = Math.round(v2.width); cnv.height = Math.round(v2.height); await pg.render({ canvasContext: cnv.getContext('2d'), viewport: v2, intent: 'print' }).promise;   // print: 창이 가려져 있어도 멈추지 않음(화면용은 requestAnimationFrame 을 기다림) pvInfo.textContent = `${page} / ${pdfDoc.numPages}쪽 · ${(last.u8.length / 1024).toFixed(0)}KB${last.parts.length > 1 ? ' · ' + last.parts.map(p => p[0] + ' ' + p[1]).join(' + ') : ''}`; }
     let tmr = null; function dirty(tbChanged) { last = null; save(); clearTimeout(tmr); if (tbChanged || pdfDoc) tmr = setTimeout(() => run(false), 700); }
     async function run(fromBtn) {
       if (busy) return last; busy = true; pvB.disabled = svB.disabled = true; pvInfo.textContent = '만드는 중…';
