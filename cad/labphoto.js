@@ -218,6 +218,28 @@
     const by = {}; for (const p of parts) (by[p.no] = by[p.no] || { no: p.no, name: p.name, n: 0 }).n++;
     return { parts: parts.length, kinds: Object.keys(by).length, size_mm: bb.size.map(r1), min: bb.min.map(r1), max: bb.max.map(r1), list: Object.values(by).map(b => b.no + ' ' + b.name + (b.n > 1 ? '×' + b.n : '')).join(', ').slice(0, 1500), next: 'model3d_check 로 사진에 겹쳐 확인 → model3d_view 로 3D 확인' };
   }
+  /* 11-03: 부품 하나씩 더하기 (Procedura 방식) — 지금 모델은 그대로 두고 부품만 더하거나(같은 번호면 바꿈), 더한 부품만 바로 점검 */
+  async function addModel(c) {
+    if (!PH.model) { const r = await runModel(c); return Object.assign(r, { note: '모델이 없어서 model3d 로 새로 만들었습니다' }); }
+    const v = V(); await v.ensure3D(); const R = await v.ensureOCC();
+    const code = Array.isArray(c.code) ? c.code.join('\n') : String(c.code || ''); if (!code.trim()) throw new Error('code 가 비어 있습니다');
+    const parts = []; const { H } = helpers(R, parts);
+    if (c.scale) { const s = c.scale; const mmpp = +s.mm_per_px || (s.px_per_mm ? 1 / s.px_per_mm : 0); const o = s.origin || [0, 0]; if (mmpp > 0) { H.px = (x, y) => [(x - o[0]) * mmpp, (o[1] - y) * mmpp]; H.px3 = (x, y, ymm) => [(x - o[0]) * mmpp, ymm || 0, (o[1] - y) * mmpp]; } }
+    const names = Object.keys(H);
+    try { await new AsyncFn('R', ...names, '"use strict";{\n' + code + '\n}')(R, ...names.map(k => H[k])); }
+    catch (e) { for (const p of parts) try { p.shape.delete(); } catch (_) { }
+      const m = String(e && e.stack || '').match(/<anonymous>:(\d+):(\d+)/); const line = m ? +m[1] - LINE0 : null;
+      throw new Error(`코드 오류${line ? ` (코드 ${line}번째 줄: ${(code.split('\n')[line - 1] || '').trim().slice(0, 120)})` : ''}: ${(e && e.message) || e}`); }
+    if (!parts.length) throw new Error('더할 부품이 없습니다. part(번호, 이름, 색, 형상) 으로 넣으세요');
+    const nos = new Set(parts.map(p => p.no)); let replaced = 0;
+    if (c.replace !== false) { PH.model.parts = PH.model.parts.filter(p => { if (!nos.has(p.no)) return true; try { p.shape.delete(); } catch (_) { } try { p.geo && p.geo.dispose(); p.edges && p.edges.dispose(); } catch (_) { } replaced++; return false; }); }
+    try { PH.model.comp && PH.model.comp.delete(); } catch (_) { } PH.model.comp = null;
+    PH.model.parts.push(...parts); PH.model.code += '\n// --- model3d_add ' + [...nos].join(',') + ' ---\n' + code; PH.model.proj = {}; PH.model.at = Date.now();
+    show();
+    const bb = modelBox(), out = { parts: PH.model.parts.length, added: parts.length, replaced, added_nos: [...nos], size_mm: bb.size.map(r1) };
+    if (c.check !== false && window.LABCHECK3D) { try { out.check = await LABCHECK3D.inspect({ only: [...nos] }); out.note = out.check.ok ? '더한 부품: 큰 겹침·떠 있음 없음' : '더한 부품에 고칠 곳이 있습니다(check 참고) — 같은 번호로 model3d_add 를 다시 보내면 바뀝니다'; } catch (e) { out.check_error = String(e.message || e); } }
+    return out;
+  }
   const r1 = x => Math.round(x * 10) / 10;
   function modelBox() {
     const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
@@ -450,7 +472,9 @@
     model3d_check: c => checkImage(c),
     model3d_view: c => viewImage(c),
     model3d_to2d: c => to2d(c),
-    model3d_clear: () => { reset3d(); return { cleared: true }; }
+    model3d_clear: () => { reset3d(); return { cleared: true }; },
+    model3d_add: c => addModel(c),
+    model3d_code: () => { if (!PH.model) throw new Error('3D 모델이 없습니다'); return { parts: PH.model.parts.length, list: [...new Set(PH.model.parts.map(p => p.no + ' ' + p.name))].join(', ').slice(0, 1500), code: PH.model.code.length <= 20000 ? PH.model.code : PH.model.code.slice(0, 20000), code_chars: PH.model.code.length }; }
   };
   PH.cmds = async function (cmds) {
     if (PH.pending) await PH.pending;
@@ -492,6 +516,9 @@
     또는 두 점 맞춤 {"cmd":"model3d_check","photo":2,"view":"front","fit":[[사진x1,사진y1,모델u1,모델v1],[사진x2,사진y2,모델u2,모델v2]]}
       (u,v = 그 보기의 가로·세로 mm: right → (x,z) · left → (-x,z) · front → (y,z) · rear → (-y,z) · top → (x,y). 원근이 강한 앞·뒤 사진에 좋음)
     → mucca_snapshot 으로 그림을 보고 분홍 윤곽이 사진과 어긋난 부품을 고쳐 model3d 를 다시 (최소 2번)
+ 6-1. 부품 하나씩: 부품이 많으면 model3d 로 몸체만 먼저 → {"cmd":"model3d_add","code":"part(...)"} 로 부품 몇 개씩 더한다.
+    같은 번호 부품은 바뀌고(replace), 더한 부품만 바로 점검한 결과(check: 큰 겹침·떠 있음)가 함께 돌아온다 → 고칠 곳이 있으면 그 부품만 다시 model3d_add
+    지금 모델 코드 보기: {"cmd":"model3d_code"}
  8. 3D 확인: {"cmd":"model3d_view","view":"front34"} (iso·front34·rear34·right·front·top) → 부품 번호 표시된 그림
  9. 2D 도면: {"cmd":"model3d_to2d","views":["right","front","top"]} → 외형선·숨은선·전체 치수·제목 + 부품 번호 풍선·부품표(끄려면 "bom":false)
     (1번 보기 기준, 2번 오른쪽, 3번 위)

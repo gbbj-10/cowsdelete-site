@@ -1,4 +1,4 @@
-/* 무카 CAD 테스트 서버 — 외부 CAD 파일 가져오기 (2026-11-03, cadmpeg 0.6.7 · Apache-2.0 · WebAssembly)
+/* 무카 CAD — 외부 CAD 파일 가져오기 (2026-11-03 테스트 서버 시험 → v1.10.9 본체, cadmpeg 0.6.7 · Apache-2.0 · WebAssembly)
    [열기]·끌어다 놓기로 SolidWorks(.sldprt) · Fusion 360(.f3d) · Inventor(.ipt) · CATIA(.CATPart) · Rhino(.3dm) · FreeCAD(.FCStd)
    · IGES(.igs/.iges) · SAT(.sat) 를 열면 브라우저 안에서 STEP 으로 바꾼 뒤 3D 창에 부품으로 넣음. STEP(.step/.stp)은 바로 넣음.
    파일은 서버로 올라가지 않음. 넣은 뒤에는 5면 자가검사 · 도면 만들기 · STEP 저장 · 에셋을 그대로 씀
@@ -44,7 +44,7 @@
       const secs = ((performance.now() - t0) / 1000).toFixed(1);
       if (G) G.done(true, `${r.size_mm.join(' × ')} mm · ${secs}초`, '3D 로 열었습니다');
       log(`${f.name}: ${kind} → 3D 열기 완료 (크기 ${r.size_mm.join(' × ')} mm${info.faces ? ` · 면 ${info.faces}개` : ''}${info.decode_losses || info.export_losses ? ` · 바뀌며 빠진 정보 ${(info.decode_losses || 0) + (info.export_losses || 0)}건` : ''} · ${secs}초). 이제 [도면 만들기]·[STEP 저장]·5면 자가검사를 쓸 수 있습니다.`, 'ok');
-      if (!STEP.test(f.name)) log('외부 CAD 변환: 오픈소스 cadmpeg(Apache-2.0) [테스트 서버]. 형식마다 읽는 정도가 다릅니다(곡면·조립·치수 정보는 빠질 수 있음).', '');
+      if (!STEP.test(f.name)) log('외부 CAD 변환: 오픈소스 cadmpeg(Apache-2.0). 형식마다 읽는 정도가 다릅니다(곡면·조립·치수 정보는 빠질 수 있음).', '');
       evt('CADIMP_OK_' + ext.toUpperCase());
     } catch (e) {
       if (G) G.done(false, String(e && e.message || e).slice(0, 80));

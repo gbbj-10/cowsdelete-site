@@ -1,0 +1,12 @@
+[package]
+name = "mucca-cadconv"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+[lib]
+crate-type = ["cdylib", "rlib"]
+[dependencies]
+cadmpeg-registry = { path = "../cadmpeg-registry", default-features = false, features = ["fcstd","f3d","inventor","sldprt","catia","rhino","step","iges","sat"] }
+cadmpeg-ir = { path = "../cadmpeg-ir" }
+cadmpeg-core = { path = "../cadmpeg-core" }

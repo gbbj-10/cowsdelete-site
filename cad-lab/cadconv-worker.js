@@ -1,4 +1,4 @@
-/* 무카 CAD 테스트 서버 — 외부 CAD 파일 → STEP 변환 작업 공간 (cadmpeg 0.6.7 · Apache-2.0 · WebAssembly)
+/* 무카 CAD — 외부 CAD 파일 → STEP 변환 작업 공간 (cadmpeg 0.6.7 · Apache-2.0 · WebAssembly)
    SolidWorks(.sldprt) · Fusion 360(.f3d) · Inventor(.ipt) · CATIA(.CATPart) · Rhino(.3dm) · FreeCAD(.FCStd) · IGES · SAT → STEP 바이트 */
 let W = null;
 async function load() {

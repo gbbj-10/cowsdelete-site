@@ -1,4 +1,4 @@
-/* 무카 CAD 테스트 서버 — 오토캐드 명령 점검표에서 고른 명령 (2026-11-03)
+/* 무카 CAD — 오토캐드 명령 점검표에서 고른 명령 (2026-11-03 테스트 서버 시험 → v1.10.9 본체)
    cadcraft(MIT/Apache, 오토캐드식 Rust CAD)의 명령 433개와 무카 명령을 맞대어 본 결과, 무카에 없는 136개 중
    도면 작업에 자주 쓰고 무카 구조로 바로 되는 것을 골라 넣음. (화면 그리기를 바꿔야 하는 ISOLATEOBJECTS 같은 것은 뺌)
    - OOPS : 마지막으로 지운 객체 되살리기
@@ -276,7 +276,7 @@
   window.LABCMDS = { massprop, audit, similar, breakPts, list: Object.keys(KO) };
 
   /* AI 안내 (mucca_guide 뒤) */
-  const G = `면적 성질 · 도면 점검 (테스트 서버)
+  const G = `면적 성질 · 도면 점검
  · {"cmd":"massprop","ids":[닫힌 도형 id...]} — 면적·둘레·도심·단면 2차 모멘트(Ix·Iy·Ixy)·단면 계수·회전 반경. 큰 윤곽 안의 닫힌 도형은 구멍으로 뺌
  · {"cmd":"audit","fix":true} — 길이 0 선·반지름 0 원·좌표 이상·빈 문자·없는 도면층 점검(fix 면 고침)
  · {"cmd":"select_similar","ids":[...]} — 같은 종류·도면층(블록은 이름까지) 객체 id 목록
