@@ -259,7 +259,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.7</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.8</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -1777,7 +1777,7 @@ async function openSpecial(f){
     /* 크기 구간 기록 (2026-10-25): M15 = 10~15MB. TRY 만 있고 OK·FAIL 이 없으면 메모리 부족 등으로 탭이 멈춘 것 */
     const MB=mb<1?'M1':mb<3?'M3':mb<5?'M5':mb<10?'M10':mb<15?'M15':mb<20?'M20':mb<30?'M30':mb<50?'M50':'M99';
     window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_TRY_'+MB});
-    log(`${f.name}: DWG 읽는 중…${mb>=10?` (${mb.toFixed(0)}MB 큰 파일 — ${mb>=30?'2~4분':'1~2분'}쯤 걸립니다${mb>=35?'. 35MB가 넘으면 브라우저 메모리 한계로 탭이 멈출 수 있습니다. 안 열리면 AutoCAD에서 PURGE(소거)로 줄이거나, 필요한 부분만 WBLOCK으로 따로 저장해서 여세요':mb>=30?'. 컴퓨터 메모리가 부족하면 탭이 멈출 수 있습니다':''})`:''}${first?' (처음 한 번은 변환 도구 약 250KB를 받습니다. 파일은 서버로 올라가지 않고 이 브라우저 안에서만 바뀝니다)':''}`,'me');
+    log(`${f.name}: DWG 읽는 중…${mb>=10?` (${mb.toFixed(0)}MB 큰 파일 — ${mb>=30?'2~4분':'1~2분'}쯤 걸립니다${mb>=35?'. 35MB가 넘으면 브라우저 메모리 한계로 탭이 멈출 수 있습니다. 안 열리면 AutoCAD에서 PURGE(소거)로 줄이거나, 필요한 부분만 WBLOCK으로 따로 저장해서 여세요':mb>=30?'. 컴퓨터 메모리가 부족하면 탭이 멈출 수 있습니다':''})`:''}${first?' (처음 한 번은 변환 도구 약 1.5MB를 받습니다. 파일은 서버로 올라가지 않고 이 브라우저 안에서만 바뀝니다)':''}`,'me');
     const G=openGauge(f.name,mb,MuccaDWG.cancel?()=>MuccaDWG.cancel():null);G.set(1,'DWG 파일 여는 중',4);
     const fmtN=n=>Number(n).toLocaleString('ko-KR');
     try{const r=await MuccaDWG.toDxf(f,p=>{const q=p.n?Math.min(1,p.k/p.n):0;
@@ -1788,7 +1788,7 @@ async function openSpecial(f){
         else if(p.st==='send')G.set(75,'넘겨받는 중',79)});
       log(`DWG(AutoCAD ${MuccaDWG.NAMES[r.ver]||r.ver} 형식) 변환 완료 (${((performance.now()-t0)/1000).toFixed(1)}초) — 가져오는 중…`,'ok');
       await openFile(new File([r.dxf],f.name.replace(/\.dwg$/i,'.dxf')),G);
-      if(first)log('DWG 변환: 오픈소스 acad-ts(MIT) 사용. 다중 지시선·표·3D 객체 등 일부는 빠질 수 있습니다. (오픈소스 고지: cowsdelete.com/oss/)','');
+      if(first)log((MuccaDWG.lastEngine==='acadrust'?'DWG 변환: 오픈소스 acadrust(MPL-2.0) 사용.':'DWG 변환: 오픈소스 acad-ts(MIT) 사용.')+' 다중 지시선·표·3D 객체 등 일부는 빠질 수 있습니다. (오픈소스 고지: cowsdelete.com/oss/)','');
       window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_OK_'+MB})}
     catch(e){if(e&&e.cancel){G.done(false,'다른 파일을 열거나 다시 [열기]를 누르세요','열기를 취소했습니다');log(`${f.name}: DWG 열기를 취소했습니다`,'');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_CANCEL_'+MB});return true}
       G.done(false,String(e&&e.message||e).slice(0,80));log(`${f.name}: DWG 변환 실패 (${String(e&&e.message||e).slice(0,120)}). ${FALLBACK}`,'err');let hv='X';try{const h=new TextDecoder().decode(new Uint8Array(await f.slice(0,6).arrayBuffer()));hv=/^AC\d{4}$/.test(h)?h:'NOTDWG'}catch(_){}window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_FAIL_'+hv+'_'+MB})}
@@ -4990,7 +4990,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.10.7';
+const APP_VER='v1.10.8';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5101,7 +5101,7 @@ function infoDialog(){
   <ul style="margin:0 0 8px;padding-left:18px"><li>IBM Plex Sans KR · IBM Plex Mono — Copyright © 2017 IBM Corp. (Reserved Font Name "Plex"), SIL Open Font License 1.1. 화면 글꼴과 PDF·도면 문자 윤곽선에 씁니다. 글꼴 이름을 바꾸거나 글꼴만 따로 판매하지 않습니다.</li>
 </ul>
   <p style="margin:0 0 4px"><b>사용한 오픈소스</b></p>
-  <ul style="margin:0 0 8px;padding-left:18px"><li>DWG 열기·저장: acad-ts (MIT, ACadSharp 이식) · PDF 첨부: PDF.js (Apache-2.0) · 로그인·저장: supabase-js (MIT)</li>
+  <ul style="margin:0 0 8px;padding-left:18px"><li>DWG 열기: acadrust (MPL-2.0) · DWG 저장·예비 열기: acad-ts (MIT, ACadSharp 이식) · PDF 첨부: PDF.js (Apache-2.0) · 로그인·저장: supabase-js (MIT)</li>
   <li>저작권 표시와 라이선스 전문: <a href="/oss/" target="_blank" rel="noopener">오픈소스 고지</a></li></ul>`;
   const d=document.createElement('details');const s=document.createElement('summary');s.textContent='SIL Open Font License 1.1 전문 보기';s.style.cursor='pointer';
   const pre=document.createElement('pre');pre.id='oflText';pre.textContent=OFL_TEXT;pre.style.cssText='margin-top:8px;max-height:220px;overflow:auto;background:var(--ground);border:1px solid var(--rule);border-radius:6px;padding:8px';
@@ -5241,7 +5241,19 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     if(!AIC.busy&&!sampleFn)aiSt.textContent=s==='on'?(outdated()?'연결 프로그램 업데이트가 필요합니다 (설치됨 v'+AIC.ver+' → 최신 v'+MUCCA_MCP_VER+'). 아래 [새 연결 파일 받기]를 누르세요.':engList()?'연결됨 · 쓸 수 있는 AI: '+engList()+' · 요청을 쓰고 [그리기]를 누르세요.':'연결됨 · 이 PC에 Claude Code·Codex·Gemini CLI가 없어 입력칸은 쓸 수 없습니다. Claude 앱 대화로 그려 보세요.'):'상단 [AI 연결]을 하면 내 Claude·GPT·Gemini로 그릴 수 있습니다.'}
   /* v1.9.0: 입력칸 AI 고르기 (Claude · GPT(Codex CLI) · Gemini(Gemini CLI)) — 연결 프로그램 v1.0.6 이상 */
   const ENG={claude:'Claude',codex:'GPT',gemini:'Gemini'};
-  const ENG_INSTALL={claude:'Claude Code: [AI 연결] 창 ③ 참고',codex:'터미널에서 npm i -g @openai/codex 실행 후 codex login (ChatGPT 계정)',gemini:'터미널에서 npm i -g @google/gemini-cli 실행 후 gemini 를 한 번 실행해 구글 계정 로그인'};
+  const ENG_INSTALL={claude:'Claude Code: [AI 연결] 창 ③ 참고',codex:'터미널에서 npm i -g @openai/codex 실행 후 codex login (ChatGPT 계정)',gemini:'터미널에서 npm i -g @google/gemini-cli 설치 후 유료 Gemini API 키 등록 (구글 계정 로그인은 2026-06-18부터 막힘)'};
+  /* 2026-11-03: 구글이 2026-06-18부터 개인 계정(무료·Google AI Pro·Ultra)의 Gemini CLI 를 막음 → Antigravity CLI 로 옮기라는 IneligibleTierError.
+     유료 Gemini API 키·기업용(Code Assist Standard·Enterprise)은 그대로 됨 */
+  const GEM_POLICY='구글이 2026년 6월 18일부터 개인 구글 계정(무료·Google AI Pro·Ultra)으로는 Gemini CLI를 쓸 수 없게 바꿨습니다. 무카 CAD 문제가 아니라 구글 정책입니다. GPT(ChatGPT 계정)나 Claude로 그리거나, Gemini로 계속 쓰려면 유료 Gemini API 키를 등록하세요.';
+  const GEM_TIER_RE=/IneligibleTier|no longer supported for Gemini Code Assist|migrate to the Antigravity|not eligible for Gemini Code Assist|410 Gone/i;
+  let gemNoted=false;
+  function geminiPolicyHelp(t){aiSt.textContent='Gemini: 구글 정책으로 개인 계정 로그인은 더 이상 안 됩니다';log('AI(Gemini): '+GEM_POLICY,'err');
+    try{window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_GEMINI_TIER'})}catch(_){}
+    const box=helpBox('aiLoginHelp');const bs=[];
+    if(engOk('codex')){const b=document.createElement('button');b.className='tbtn primary';b.textContent='GPT로 바꿔 그리기';b.onclick=()=>{const sel=document.getElementById('aiEngine');if(sel){sel.value='codex';sel.onchange()}box.hidden=true};bs.push(b)}
+    if(engOk('claude')){const b=document.createElement('button');b.className='tbtn'+(bs.length?'':' primary');b.textContent='Claude로 바꿔 그리기';b.onclick=()=>{const sel=document.getElementById('aiEngine');if(sel){sel.value='claude';sel.onchange()}box.hidden=true};bs.push(b)}
+    const h=document.createElement('button');h.className='tbtn';h.textContent='연결 방법 보기 (GPT · Claude · Gemini API 키)';h.onclick=()=>openAic(engOk('codex')?'codex':'gemini');bs.push(h);
+    box.replaceChildren(...bs,tipEl('구글이 6월 18일부터 개인 계정의 Gemini CLI를 막고 Antigravity로 옮기라고 안내하고 있습니다. 무료로 그리려면 GPT(ChatGPT 계정) 또는 Claude를 쓰세요. Gemini는 유료 API 키를 등록하면 계속 쓸 수 있습니다.'))}
   const engOk=k=>k==='claude'?!!AIC.claude:!!(AIC.engines&&AIC.engines[k]);
   const engList=()=>Object.keys(ENG).filter(engOk).map(k=>ENG[k]).join(', ');
   /* v1.9.19: GPT·Gemini '설치 필요'일 때 연결 프로그램에 다시 찾게 함(/diag refresh — v1.0.6 에도 있음).
@@ -5267,7 +5279,8 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
       sel.onchange=()=>{const v=sel.value;AIC.engine=v;AIC.tab=v;try{localStorage.setItem(LSE,v)}catch(_){}
         if(AIC.state!=='on'){aiSt.textContent=ENG[v]+'로 그리려면 먼저 연결하세요. 상단 [AI 연결] 창에서 '+ENG[v]+' 순서를 따르면 됩니다.';engHelp(v);return}
         if(!engOk(v)){engHelp(v);engRecheck(v)}
-        else{engHelp(null);setState(AIC.state)}};
+        else{engHelp(null);setState(AIC.state)}
+        if(v==='gemini'&&!gemNoted){gemNoted=true;log('알림: '+GEM_POLICY,'err')}};
       bAi.before(sel)}
     let want=AIC.engine;try{want=localStorage.getItem(LSE)||want}catch(_){}
     sel.replaceChildren(...Object.keys(ENG).map(k=>{const o=document.createElement('option');o.value=k;o.textContent=ENG[k]+(known&&!engOk(k)?' (설치 필요)':'');return o}));
@@ -5368,7 +5381,10 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     else if(d.kind==='tool'){aiSt.textContent=LB+' · '+(TOOLKO[d.name]||d.name)+'…'}
     else if(d.kind==='text'){aiSt.textContent=d.text.slice(0,300)}
     else if(d.kind==='done'||d.kind==='error'){window.AIREF&&AIREF.done();AIC.busy=false;bAi.textContent='그리기';
-      const t=(d.text||'').trim().slice(0,400)||(d.kind==='done'&&d.ok?'완료':'실패');aiSt.textContent=t;log((d.kind==='done'&&d.ok?LB+': ':'AI 실패: ')+t,d.kind==='done'&&d.ok?'ok':'err');
+      const t=(d.text||'').trim().slice(0,400)||(d.kind==='done'&&d.ok?'완료':'실패');
+      /* Gemini CLI 가 구글 정책 오류를 '답'으로 내고 끝나는 경우도 있어서(done·ok) 글자로 먼저 거름 */
+      if(GEM_TIER_RE.test(String(d.text||''))){geminiPolicyHelp(t);return}
+      aiSt.textContent=t;log((d.kind==='done'&&d.ok?LB+': ':'AI 실패: ')+t,d.kind==='done'&&d.ok?'ok':'err');
       if(d.kind==='done'&&d.ok)return;
       if(d.engine&&d.engine!=='claude'){if(d.code==='login')loginHelp(t,d.engine);return}
       if(d.code==='plan')planHelp(t);
@@ -5402,7 +5418,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     if(eng!=='claude'){const L=ENG[eng];aiSt.textContent=t||(L+' CLI 로그인이 필요합니다.');
       const box=helpBox('aiLoginHelp');const lb=document.createElement('button');lb.className='tbtn primary';lb.textContent=L+' 로그인 창 열기';
       lb.onclick=async()=>{lb.disabled=true;const r=await post('/login',{engine:eng});lb.disabled=false;aiSt.textContent=r&&r.ok?'로그인 창을 열었습니다. 검은 창의 안내대로 로그인하고, 끝나면 [그리기]를 다시 누르세요.':((r&&r.error)||'로그인 창을 열지 못했습니다.')};
-      box.replaceChildren(lb,tipEl(eng==='codex'?'ChatGPT 계정(Plus·Pro 등)으로 로그인합니다. 사용량은 내 ChatGPT 요금제에서 나갑니다.':'구글 계정으로 로그인합니다(무료 사용량 있음). 처음 실행하면 로그인 방법을 묻는데 "Login with Google"을 고르세요.'));return}
+      box.replaceChildren(lb,tipEl(eng==='codex'?'ChatGPT 계정(Plus·Pro 등)으로 로그인합니다. 사용량은 내 ChatGPT 요금제에서 나갑니다.':'주의: 구글 정책으로 2026-06-18부터 개인 구글 계정 로그인(Login with Google)으로는 Gemini CLI를 쓸 수 없습니다. 처음 실행하면 나오는 로그인 방법에서 "Use Gemini API Key"를 고르고 유료 Gemini API 키를 넣으세요. 무료로 그리려면 GPT나 Claude를 쓰세요.'));return}
     if(outdated()){aiSt.textContent='이 PC의 Claude Code가 로그인되어 있지 않거나 거절됐습니다. 연결 프로그램을 최신(v'+MUCCA_MCP_VER+')으로 바꾸면 원인(로그인·요금제·API 키)을 정확히 알려 주고 로그인 창도 열 수 있습니다 — 아래 [새 연결 파일 받기]를 누르세요.';updateHelp();return}
     aiSt.textContent=t?t.split('\n')[0]:'이 PC의 Claude Code가 로그인되어 있지 않습니다. 아래 [Claude Code 로그인 창 열기]를 눌러 로그인한 뒤 [그리기]를 다시 누르세요.';
     log('AI: '+(t||'Claude Code 로그인이 필요합니다')+' — 오른쪽 [Claude Code 로그인 창 열기]를 누르세요. 그동안 Claude 앱 대화창에서 "무카 CAD에 ○○ 그려줘"라고 써도 됩니다.','err');
@@ -5512,9 +5528,10 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
       s2.append(cmdRow('설치','npm i -g @openai/codex'));s2.append(cmdRow('로그인','codex login'));
       s2.append(el('p','sub','<code>codex login</code>을 실행하면 브라우저가 열립니다. <b>Sign in with ChatGPT</b>로 로그인하면 끝납니다. Codex를 쓸 수 있는 요금제인지는 ChatGPT 설정에서 확인하세요.'));
     }else{
-      s2.append(el('p','sub','Gemini는 구글의 <b>Gemini CLI</b>로 그립니다. 로그인은 <b>구글 계정</b>으로 하고, 무료 사용량이 있습니다. API 키는 필요 없습니다.'));
-      s2.append(cmdRow('설치','npm i -g @google/gemini-cli'));s2.append(cmdRow('로그인','gemini'));
-      s2.append(el('p','sub','<code>gemini</code>를 처음 실행하면 로그인 방법을 묻습니다. <b>Login with Google</b>을 고르고 브라우저에서 로그인하세요. 끝나면 <code>/quit</code>를 쳐서 닫으면 됩니다.'));
+      const warn=el('p','sub','<b>먼저 확인하세요.</b> 구글이 <b>2026년 6월 18일</b>부터 개인 구글 계정(무료·Google AI Pro·Ultra)으로는 Gemini CLI를 쓸 수 없게 바꿨습니다(Antigravity로 옮기라는 안내가 뜸). <b>Login with Google</b>로는 그릴 수 없습니다. 무료로 그리려면 위 <b>GPT</b>나 <b>Claude</b> 탭을 쓰세요.');warn.style.cssText+=';border:1px solid var(--danger,#d14);border-radius:6px;padding:8px 10px';s2.append(warn);
+      s2.append(el('p','sub','Gemini로 계속 쓰려면 <b>유료 Gemini API 키</b>가 필요합니다(구글 AI Studio에서 결제를 연결한 키). 사용 요금은 그 키의 구글 결제에서 나갑니다.'));
+      s2.append(cmdRow('설치','npm i -g @google/gemini-cli'));s2.append(cmdRow('키 등록','gemini'));
+      s2.append(el('p','sub','<code>gemini</code>를 처음 실행하면 로그인 방법을 묻습니다. <b>Use Gemini API Key</b>를 고르고 키를 붙여 넣으세요. 또는 내 사용자 폴더의 <code>.gemini</code> 폴더에 <code>.env</code> 파일을 만들고 <code>GEMINI_API_KEY=내 키</code> 한 줄을 넣어도 됩니다. 끝나면 <code>/quit</code>를 쳐서 닫으세요.'));
     }
     s2.append(el('p','sub','설치 중 <b>권한 오류</b>가 나면 Mac은 명령 앞에 <code>sudo </code>를 붙이세요. Windows PowerShell에서 "스크립트를 실행할 수 없으므로" 오류가 나면 명령 프롬프트(cmd)에서 다시 실행하세요.'));
     out.push(s2);
@@ -6119,13 +6136,13 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261103b"></script>
+<script src="../assets/config.js?v=20261103c"></script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
 <script src="cloud.js?v=20261102b"></script>
 <!-- v1.10.0 (2026-11-01, 3화): 테스트 서버에서 검증한 3D 기능 본체 반영 — 2D|3D 보기·사진→3D·2D 대조·영업 에셋·3D→도면·3MF·가공 전 점검 -->
 <script src="lab3d.js?v=19"></script>
-<script src="labphoto.js?v=8"></script>
+<script src="labphoto.js?v=9"></script>
 <script src="lab2dcheck.js?v=7"></script>
 <script src="labasset.js?v=2"></script>
 <script src="labmake.js?v=5"></script>
@@ -6136,6 +6153,9 @@ window.cad=Object.freeze({
 <script src="labsave.js?v=2"></script>
 <script src="airef.js?v=2"></script>
 <script src="dwg.js?v=10"></script>
+<!-- v1.10.8 (11-03): DWG 열기 새 변환기(acadrust · MPL-2.0 · wasm, 실패하면 acad-ts) · 3D 5면 자가검사 · 3D 정답 비교 시험 -->
+<script src="labdwgrs.js?v=2"></script>
+<script src="labcheck3d.js?v=4"></script>
 <script src="parts.js?v=3"></script>
 <script src="multi.js?v=1"></script>
 </body>

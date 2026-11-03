@@ -34,13 +34,8 @@ assert s.count('lab3d.js') == 1 and s.count('labcases.js') == 1 and s.count('lab
 # [테스트 서버] 명령줄 = AI 입력창 (cad-lab/labcmdai.js): 명령이 아닌 한글은 전부 LABCMDAI.route 로
 s=rep(s,"    log('입력: '+t,'me');\n    logLink(","    if(window.LABCMDAI)return LABCMDAI.route(t,'KO_'+en.replace(/[^A-Z0-9_.-]/g,'').slice(0,21));\n    log('입력: '+t,'me');\n    logLink(")
 s=rep(s,"function routeToAI(t){","function routeToAI(t){if(window.LABCMDAI)return LABCMDAI.route(t,'AI_ROUTE');")
-# [테스트 서버] DWG 열기 엔진 시험 (11-03): acadrust(MPL-2.0, wasm) 먼저 → 실패하면 acad-ts. 저장은 그대로 acad-ts
-_m = re.search(r'<script src="\.\./cad/dwg\.js\?v=[^"]+"></script>', s); assert _m, 'dwg tag'
-s = s[:_m.end()] + '\n<script src="labdwgrs.js?v=2"></script>\n<script src="labcheck3d.js?v=4"></script>' + s[_m.end():]
-s=rep(s,"(처음 한 번은 변환 도구 약 250KB를 받습니다. 파일은","(처음 한 번은 변환 도구 약 1.5MB를 받습니다. 파일은")
-s=rep(s,"log('DWG 변환: 오픈소스 acad-ts(MIT) 사용.","log((MuccaDWG.lastEngine==='acadrust'?'DWG 변환: 오픈소스 acadrust(MPL-2.0) 사용 [테스트 서버 새 변환기].':'DWG 변환: 오픈소스 acad-ts(MIT) 사용.')+'")
-# 11-03: 테스트판 labphoto.js 에 아랫면(bottom) 시점 추가 → 캐시 번호를 테스트판 전용으로
-s = re.sub(r'labphoto\.js\?v=([0-9a-z]+)"', r'labphoto.js?v=\1-lab1103"', s, count=1)
+# 11-03: DWG 새 변환기(labdwgrs)·3D 자가검사(labcheck3d)·아랫면 시점은 v1.10.8 에서 본체로 → 테스트판은 cad-lab/ 의 같은 이름 파일을 씀
+assert s.count('labdwgrs.js') == 1 and s.count('labcheck3d.js') == 1, 'v1.10.8 scripts'
 pathlib.Path('cad-lab').mkdir(exist_ok=True)
 pathlib.Path('cad-lab/index.html').write_text(s, encoding='utf-8')
 print('ok', len(s))

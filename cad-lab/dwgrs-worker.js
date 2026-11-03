@@ -1,4 +1,4 @@
-/* 무카 CAD 테스트 서버 — DWG 열기 변환 작업 공간 (acadrust 0.6.8 · MPL-2.0 · WebAssembly)
+/* 무카 CAD — DWG 열기 변환 작업 공간 (acadrust 0.6.8 · MPL-2.0 · WebAssembly)
    DWG 바이트 → acadrust 로 읽기 → DXF 글자(파일과 같은 버전) → Blob 으로 넘김
    acad-ts(현재 본체)보다 큰 파일에서 약 4배 빠르고 메모리를 약 1/3 만 씀 (2026-11-03 시험) */
 let W = null;
