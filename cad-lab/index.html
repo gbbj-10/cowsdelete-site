@@ -5376,7 +5376,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
 
   /* --- 4) 오른쪽 AI 입력칸: 연결되면 내 Claude Code 로 --- */
   const TOOLKO={WebSearch:'공개 도면 검색',WebFetch:'공개 자료 읽기',mucca_guide:'명령표 확인',mucca_draw:'그리는 중',mucca_state:'도면 확인',mucca_list:'도형 읽기',mucca_snapshot:'화면 확인',mucca_undo:'되돌리기'};
-  function aiEvent(d){
+  function aiEvent(d){try{window.__aiEvtHook&&window.__aiEvtHook(d)}catch(_){}
     const LB=ENG[d.engine||AIC.engine]||'Claude';
     if(d.kind==='start'){for(const x of ['aiLoginHelp','aiPlanHelp']){const b=document.getElementById(x);if(b)b.hidden=true}AIC.busy=true;bAi.textContent='중지';aiSt.textContent=LB+'가 도면을 설계하는 중…'}
     else if(d.kind==='tool'){aiSt.textContent=LB+' · '+(TOOLKO[d.name]||d.name)+'…'}
@@ -6152,6 +6152,10 @@ window.cad=Object.freeze({
 <script src="labcases.js?v=1"></script>
 <script src="labparts.js?v=1"></script>
 <script src="labcmdai.js?v=1"></script>
+<script src="labpartforms.js?v=2"></script>
+<script src="labaisteps.js?v=2"></script>
+<script src="labspec.js?v=1"></script>
+<script src="labpdfform.js?v=1"></script>
 <!-- v1.10.5 (11-02 문의 21·22번): BOM 표 → 엑셀 · 평면도 → 입면도 바탕 -->
 <script src="../cad/labbom.js?v=1"></script>
 <script src="../cad/labelev.js?v=1"></script>
