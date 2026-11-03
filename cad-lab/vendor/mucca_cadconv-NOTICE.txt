@@ -1,0 +1,7 @@
+mucca_cadconv-0.6.7.wasm.gz (풀면 .wasm) — 무카 CAD 외부 CAD → STEP 변환기 (테스트 서버)
+
+이 파일은 cadmpeg 0.6.7 (Apache-2.0, https://github.com/cadmpeg/cadmpeg) 의 라이브러리
+crate 들(cadmpeg-core · ir · registry · codec-sldprt · f3d · inventor · catia · rhino · freecad · iges · sat · step)을
+고치지 않고 WebAssembly 로 빌드한 것입니다. 무카 CAD 쪽 코드는 입출력 연결 함수뿐입니다(mucca_cadconv-src/).
+Apache-2.0 전문: cadmpeg-LICENSE.txt
+cadmpeg 의 형식 지식은 공개 문서와 합법적으로 가진 파일에서 나왔다고 밝히고 있습니다(원본 LEGAL.md).
