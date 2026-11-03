@@ -7,7 +7,7 @@ s = re.sub(r'<script src="cloud\.js\?v=([^"]+)"></script>', r'<script src="../ca
 # v1.10.0 (11-01): 3D 기능(lab3d·labphoto·lab2dcheck·labasset·labmake)은 본체에 들어감 → 본체의 <script src="lab3d.js…"> 는 테스트판에선 cad-lab/ 의 같은 이름 파일을 씀(새 기능은 여기서 먼저 고쳐 시험 → 확인 뒤 cad/ 로 복사)
 # 아직 시험 중인 기능만 테스트판에 더함: 시험 도면 · 탱크 부품 · 명령줄 = AI 입력창 (저장 위치 고르기 labsave.js·AI별 연결 안내는 v1.10.1 에서 본체로)
 _m = re.search(r'<script src="labmake\.js\?v=[^"]+"></script>', s); assert _m, 'labmake tag'
-s = s[:_m.end()] + '\n<script src="labcases.js?v=1"></script>\n<script src="labparts.js?v=1"></script>\n<script src="labcmdai.js?v=1"></script>' + s[_m.end():]
+s = s[:_m.end()] + '\n<script src="labcases.js?v=1"></script>\n<script src="labparts.js?v=1"></script>\n<script src="labcmdai.js?v=1"></script>\n<script src="labcmds.js?v=1"></script>\n<script src="labjudge.js?v=2"></script>' + s[_m.end():]
 s = re.sub(r'(<script src="\.\./assets/config\.js[^"]*"></script>)', r'\1\n<script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>', s, count=1)
 # AI 채팅 참고 이미지(📎)는 본 캐드(cad/airef.js)에 들어감 → 테스트판은 경로만 맞춤
 s = s.replace('<script src="airef.js', '<script src="../cad/airef.js', 1)
@@ -36,6 +36,11 @@ s=rep(s,"    log('입력: '+t,'me');\n    logLink(","    if(window.LABCMDAI)retu
 s=rep(s,"function routeToAI(t){","function routeToAI(t){if(window.LABCMDAI)return LABCMDAI.route(t,'AI_ROUTE');")
 # 11-03: DWG 새 변환기(labdwgrs)·3D 자가검사(labcheck3d)·아랫면 시점은 v1.10.8 에서 본체로 → 테스트판은 cad-lab/ 의 같은 이름 파일을 씀
 assert s.count('labdwgrs.js') == 1 and s.count('labcheck3d.js') == 1, 'v1.10.8 scripts'
+# 11-03 오후: 부품 하나씩 더하기(model3d_add)·판정 AI 시험 — labphoto·labcheck3d 테스트판이 본체보다 앞섬 → 캐시 번호 따로
+s = re.sub(r'labphoto\.js\?v=([0-9a-z]+)"', r'labphoto.js?v=\1-l1103b"', s, count=1)
+s = re.sub(r'labcheck3d\.js\?v=([0-9a-z]+)"', r'labcheck3d.js?v=\1-l1103b"', s, count=1)
+# 판정 AI(labjudge.js)가 연결 프로그램에 요청을 보낼 수 있게 post 를 꺼내 둠
+s = rep(s, "window.__aicEngineSel=engineSel;", "window.__aicEngineSel=engineSel;window.__aicPost=post;")
 pathlib.Path('cad-lab').mkdir(exist_ok=True)
 pathlib.Path('cad-lab/index.html').write_text(s, encoding='utf-8')
 print('ok', len(s))

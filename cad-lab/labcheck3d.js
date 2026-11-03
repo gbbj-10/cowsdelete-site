@@ -22,19 +22,20 @@
     const R = await occ(), PH = ph();
     if (!PH.model) throw new Error('먼저 model3d 로 3D 모델을 만드세요');
     const P = PH.model.parts, n = P.length, t0 = performance.now();
+    const ONLY = Array.isArray(c.only) && c.only.length ? new Set(c.only.map(String)) : null, mine = i => !ONLY || ONLY.has(P[i].no);   // 11-03: model3d_add 가 더한 부품만
     const B = P.map(boxOf), V = P.map(p => volOf(R, p.shape));
     let mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
     for (const b of B) for (let i = 0; i < 3; i++) { mn[i] = Math.min(mn[i], b.min[i]); mx[i] = Math.max(mx[i], b.max[i]); }
     const diag = Math.hypot(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]) || 1;
     const touch = c.touch_mm != null ? +c.touch_mm : Math.max(0.05, diag * 0.0005);   // 이 거리 안이면 닿은 것으로 봄
     const empty = [], overlap = [], floating = [];
-    P.forEach((p, i) => { if (!(V[i] > 1e-6)) empty.push({ part: p.no, name: p.name }); });
+    P.forEach((p, i) => { if (mine(i) && !(V[i] > 1e-6)) empty.push({ part: p.no, name: p.name }); });
     const MAXPAIR = c.max_pairs || 400, BUDGET = c.budget_ms || 20000; let pairs = 0, skipped = 0;
     const near = P.map(() => []);
     for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
       const g = boxGap(B[i], B[j]); if (g > touch) continue;
       near[i].push(j); near[j].push(i);
-      if (g > 0 || !(V[i] > 0) || !(V[j] > 0)) continue;
+      if (g > 0 || !(V[i] > 0) || !(V[j] > 0) || !(mine(i) || mine(j))) continue;
       if (pairs >= MAXPAIR || performance.now() - t0 > BUDGET) { skipped++; continue; } pairs++;
       let iv = 0;
       try { const x = P[i].shape.clone().intersect(P[j].shape.clone()); iv = volOf(R, x) || 0; try { x.delete(); } catch (_) { } } catch (_) { iv = 0; }
@@ -43,6 +44,7 @@
     }
     if (n > 1) {
       for (let i = 0; i < n; i++) {
+        if (!mine(i)) continue;
         if (!near[i].length) { let g = Infinity; for (let j = 0; j < n; j++) if (j !== i) g = Math.min(g, boxGap(B[i], B[j])); floating.push({ part: P[i].no, name: P[i].name, gap_mm: r2(g), how: '상자 간격' }); continue; }
         let best = Infinity;
         for (const j of near[i].slice(0, 6)) { try { const d = R.measureDistanceBetween(P[i].shape, P[j].shape); best = Math.min(best, d); if (best <= touch) break; } catch (_) { best = Math.min(best, 0); } }
@@ -55,7 +57,7 @@
     /* 작은 부품 부피의 5% 이상 = 큰 겹침(고칠 것), 그보다 작으면 '살짝 박힘'(볼트·용접처럼 일부러일 수 있음) */
     const big = overlap.filter(o => o.pct_of_smaller >= 5), small = overlap.filter(o => o.pct_of_smaller < 5);
     const ov = uniq(big, x => x.a + '|' + x.b), sm = uniq(small, x => x.a + '|' + x.b), fl = uniq(floating, x => x.part), em = uniq(empty, x => x.part);
-    return { parts: n, size_mm: mx.map((x, i) => r2(x - mn[i])), touch_mm: r2(touch), overlap: ov.slice(0, 30), overlap_small: sm.slice(0, 30), floating: fl.slice(0, 30), empty: em.slice(0, 30), pairs_checked: pairs, pairs_skipped: skipped, ms: Math.round(performance.now() - t0), ok: !ov.length && !fl.length && !em.length };
+    return { parts: n, size_mm: mx.map((x, i) => r2(x - mn[i])), touch_mm: r2(touch), overlap: ov.slice(0, 30), overlap_small: sm.slice(0, 30), floating: fl.slice(0, 30), empty: em.slice(0, 30), pairs_checked: pairs, pairs_skipped: skipped, only: ONLY ? [...ONLY] : undefined, ms: Math.round(performance.now() - t0), ok: !ov.length && !fl.length && !em.length };
   }
 
   /* ---------- 5면 그림 ---------- */

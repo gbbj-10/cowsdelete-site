@@ -5295,7 +5295,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
   function engHelp(k){let b=document.getElementById('aiEngHelp');if(!k){if(b)b.hidden=true;return}
     if(!b){b=document.createElement('button');b.id='aiEngHelp';b.type='button';b.className='tbtn';b.style.cssText='margin:6px 0 2px;border:1px solid var(--rule);border-radius:6px';aiSt.after(b)}
     b.textContent=ENG[k]+' 연결 방법 보기';b.onclick=()=>openAic(k);b.hidden=false}
-  window.__aicEngineSel=engineSel;
+  window.__aicEngineSel=engineSel;window.__aicPost=post;
 
   /* --- 2) 연결 --- */
   async function connect(code,{silent=false}={}){
@@ -6145,13 +6145,15 @@ window.cad=Object.freeze({
 <script src="../cad/cloud.js?v=20261102b"></script>
 <!-- v1.10.0 (2026-11-01, 3화): 테스트 서버에서 검증한 3D 기능 본체 반영 — 2D|3D 보기·사진→3D·2D 대조·영업 에셋·3D→도면·3MF·가공 전 점검 -->
 <script src="lab3d.js?v=19"></script>
-<script src="labphoto.js?v=9"></script>
+<script src="labphoto.js?v=9-l1103b"></script>
 <script src="lab2dcheck.js?v=7"></script>
 <script src="labasset.js?v=2"></script>
 <script src="labmake.js?v=5"></script>
 <script src="labcases.js?v=1"></script>
 <script src="labparts.js?v=1"></script>
 <script src="labcmdai.js?v=1"></script>
+<script src="labcmds.js?v=1"></script>
+<script src="labjudge.js?v=2"></script>
 <!-- v1.10.5 (11-02 문의 21·22번): BOM 표 → 엑셀 · 평면도 → 입면도 바탕 -->
 <script src="../cad/labbom.js?v=1"></script>
 <script src="../cad/labelev.js?v=1"></script>
@@ -6161,7 +6163,7 @@ window.cad=Object.freeze({
 <script src="../cad/dwg.js?v=10"></script>
 <!-- v1.10.8 (11-03): DWG 열기 새 변환기(acadrust · MPL-2.0 · wasm, 실패하면 acad-ts) · 3D 5면 자가검사 · 3D 정답 비교 시험 -->
 <script src="labdwgrs.js?v=2"></script>
-<script src="labcheck3d.js?v=4"></script>
+<script src="labcheck3d.js?v=4-l1103b"></script>
 <script src="../cad/parts.js?v=3"></script>
 <script src="../cad/multi.js?v=1"></script>
 </body>
