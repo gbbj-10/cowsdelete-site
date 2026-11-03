@@ -305,8 +305,23 @@
     try { await sb.from('events').insert({ kind, payload, app_ver: APP_VER, page: 'cad' }); } catch (_) {}
   }
   window.__muccaEvt = evt;
-  window.addEventListener('error', e => evt('error', { msg: String(e.message || '').slice(0, 200), at: `${String(e.filename || '').split('/').pop()}:${e.lineno || 0}` }));
-  window.addEventListener('unhandledrejection', e => evt('error', { msg: String((e.reason && e.reason.message) || e.reason || '').slice(0, 200), at: 'promise' }));
+  /* v1.10.11 (11-04): 파일 읽기 오류(NotReadableError — OneDrive 클라우드 전용 파일·다른 프로그램이 잠근 파일 등)
+     → 영어 오류 대신 한국어 안내 + 어느 동작이었는지 기록 이름(FILE_NOTREADABLE_OPEN/DROP/PASTE)으로 남김 */
+  let lastFileAct = 'X', lastFileAt = 0;
+  document.addEventListener('change', e => { const t = e.target; if (t && t.type === 'file') { lastFileAct = 'OPEN'; lastFileAt = Date.now(); } }, true);
+  document.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) { lastFileAct = 'DROP'; lastFileAt = Date.now(); } }, true);
+  document.addEventListener('paste', e => { if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length) { lastFileAct = 'PASTE'; lastFileAt = Date.now(); } }, true);
+  const isNotReadable = r => !!r && (r.name === 'NotReadableError' || /could not be read|NotReadable/i.test(String(r.message || r)));
+  let nrShown = 0;
+  function fileNotReadable() {
+    const act = Date.now() - lastFileAt < 120000 ? lastFileAct : 'X';
+    const ko = (typeof FILE_NR_KO === 'string') ? FILE_NR_KO : '파일을 읽지 못했습니다. OneDrive 등 클라우드에만 있는 파일이면 내 PC로 내려받은 뒤, 다른 프로그램에서 열려 있으면 닫고 다시 열어 주세요.';
+    if (Date.now() - nrShown > 3000) { nrShown = Date.now(); try { typeof log === 'function' && log(ko, 'err'); } catch (_) {} try { typeof toast === 'function' && toast('파일을 읽지 못했습니다 — 명령창 안내를 확인해 주세요'); } catch (_) {} }
+    evt('unknown_cmd', { cmd: 'FILE_NOTREADABLE_' + act });
+  }
+  window.__muccaFileNotReadable = fileNotReadable;
+  window.addEventListener('error', e => { if (isNotReadable(e.error) || isNotReadable(e.message)) { fileNotReadable(); return; } evt('error', { msg: String(e.message || '').slice(0, 200), at: `${String(e.filename || '').split('/').pop()}:${e.lineno || 0}` }); });
+  window.addEventListener('unhandledrejection', e => { if (isNotReadable(e.reason)) { fileNotReadable(); e.preventDefault(); return; } evt('error', { msg: String((e.reason && e.reason.message) || e.reason || '').slice(0, 200), at: 'promise' }); });
 
   /* 문의 → 문의 게시판 목록부터 (내 문의 확인 + [문의 쓰기]), 새 탭: 그리던 도면은 그대로 */
   bFeedback.onclick = () => { window.open('/qna/?from=cad', '_blank', 'noopener'); };
