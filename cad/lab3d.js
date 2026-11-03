@@ -98,7 +98,7 @@
     <label>시험 도면 <select id="l3case"><option value="">불러오기…</option></select></label>
     <span class="sp"></span>
     <button class="btn" id="l3stl" title="3D 모양을 STL 파일로 저장">STL</button>
-    <button class="btn go" id="l3step" title="편집 가능한 3D 파일(STEP). 처음 한 번 엔진(약 7MB)을 받습니다">STEP 저장</button>
+    <button class="btn go" id="l3step" title="편집 가능한 3D 파일(STEP). 처음 한 번 엔진(약 7MB)을 받습니다">STEP 저장</button><select id="l3stepExt" title="STEP 파일 확장자 — .step 과 .stp 는 같은 형식(이름만 다름). 고른 것을 기억합니다" aria-label="STEP 확장자"><option value="step">.step</option><option value="stp">.stp</option></select>
   </div><div class="v3c"><canvas id="l3cv"></canvas><div class="v3v" role="group" aria-label="시점"><button data-v="iso" title="등각">등각</button><button data-v="front" title="도면 정면 그대로">정면</button><button data-v="top" title="위에서">윗면</button><button data-v="right" title="오른쪽에서">측면</button><button data-v="fit" title="화면에 맞춤 (더블클릭)">맞춤</button><button data-v="spin" id="l3spin" aria-pressed="false" title="천천히 돌려 보기">돌려보기</button></div><div class="v3hint">드래그: 돌리기 · 오른쪽/가운데 드래그: 이동 · 휠: 확대 · 더블클릭: 맞춤</div><div class="v3e" id="l3empty">2D에 닫힌 윤곽(원·사각형·폴리선)을 그리면 3D가 생깁니다.<br>정면도 오른쪽(또는 위)에 측면도를 그리면 두께·회전체를 알아서 읽습니다.</div><div class="v3s" id="l3st"></div></div>`;
   viewEl.after(pane);
   const side = work.querySelector('.side');
@@ -1114,6 +1114,11 @@
     return occP;
   }
   const stepBtn = pane.querySelector('#l3step');
+  /* 11-03: STEP 파일 확장자 고르기 (.step / .stp — 같은 ISO 10303-21 형식, 이름만 다름). 고른 것을 기억 */
+  const extSel = pane.querySelector('#l3stepExt'), EXT_KEY = 'mucca.stepExt';
+  const stepExt = () => (extSel && extSel.value === 'stp') ? '.stp' : '.step';
+  if (extSel) { try { if (localStorage.getItem(EXT_KEY) === 'stp') extSel.value = 'stp'; } catch (_) { } extSel.onchange = () => { try { localStorage.setItem(EXT_KEY, extSel.value); } catch (_) { } stepBtn.textContent = extSel.value === 'stp' ? 'STP 저장' : 'STEP 저장'; }; extSel.onchange(); }
+  LAB.saveStep = ext => { if (ext && extSel) { extSel.value = ext === 'stp' ? 'stp' : 'step'; extSel.onchange(); } stepBtn.click(); };
   stepBtn.addEventListener('pointerenter', () => { ensureOCC().catch(() => { }); }, { once: true });
   // 닫힌 꼭짓점 목록 → 그림: 꺾이는 곳(20° 넘게)은 직선 꼭짓점, 그 사이 완만한 점들은 매끈한 곡선 하나로
   //  (점으로 쪼갠 곡선을 그대로 돌출하면 작은 평면 수십 개가 생겨 2D로 다시 뽑을 때 없는 선이 잔뜩 생김)
@@ -1330,7 +1335,7 @@
   }
   stepBtn.onclick = async () => {
     if (LAB.ext && LAB.ext.step) { const old = stepBtn.textContent; stepBtn.disabled = true; stepBtn.textContent = 'STEP 만드는 중…';
-      try { const t0 = performance.now(); const blob = await LAB.ext.step(); LAB.stepMs = Math.round(performance.now() - t0); LAB.stepBytes = blob.size; LAB.lastStep = blob; if (!LAB.noDownload) download(blob, baseName() + '.step'); log(`STEP 저장 (${(blob.size / 1024).toFixed(0)}KB)`, 'ok'); }
+      try { const t0 = performance.now(); const blob = await LAB.ext.step(); LAB.stepMs = Math.round(performance.now() - t0); LAB.stepBytes = blob.size; LAB.lastStep = blob; if (!LAB.noDownload) download(blob, baseName() + stepExt()); log(`${stepExt() === '.stp' ? 'STP' : 'STEP'} 저장 (${(blob.size / 1024).toFixed(0)}KB)`, 'ok'); }
       catch (err) { log('STEP을 만들지 못했습니다: ' + (err && err.message || err), 'err'); LAB.stepErr = String(err && err.message || err); }
       finally { stepBtn.disabled = false; stepBtn.textContent = old; } return; }
     if (!lastPlan) { log('3D로 만들 윤곽이 없습니다', 'err'); return; }
@@ -1339,8 +1344,8 @@
       const t0 = performance.now(); const R = await ensureOCC(); stepBtn.textContent = lastPlan.holes && lastPlan.holes.length > 200 ? `STEP 만드는 중… (구멍 ${lastPlan.holes.length}개, 몇 초 걸립니다)` : 'STEP 만드는 중…'; await new Promise(r => setTimeout(r, 60));
       const solid = await makeSolid(R, lastPlan); const blob = solid.blobSTEP();
       LAB.stepMs = Math.round(performance.now() - t0); LAB.stepBytes = blob.size; LAB.lastStep = blob;
-      if (!LAB.noDownload) download(blob, baseName() + '.step');
-      log(`STEP 저장 (${(blob.size / 1024).toFixed(0)}KB, ${(LAB.stepMs / 1000).toFixed(1)}초)`, 'ok');
+      if (!LAB.noDownload) download(blob, baseName() + stepExt());
+      log(`${stepExt() === '.stp' ? 'STP' : 'STEP'} 저장 (${(blob.size / 1024).toFixed(0)}KB, ${(LAB.stepMs / 1000).toFixed(1)}초)`, 'ok');
     } catch (err) { log('STEP을 만들지 못했습니다: ' + (err && err.message || err), 'err'); LAB.stepErr = String(err && err.message || err); }
     finally { stepBtn.disabled = false; stepBtn.textContent = old; }
   };
@@ -1348,6 +1353,15 @@
   // 2D 대조용: 지금 도면으로 규칙 엔진 3D 형상(replicad)을 만들어 돌려줌 (부르는 쪽이 delete)
   LAB.ruleSolid = async () => { const R = await ensureOCC(); const pl = plan(); if (!pl || pl.empty) throw new Error('규칙 엔진이 3D로 만들 윤곽이 없습니다'); return makeSolid(R, pl); };
   LAB._v = () => ({ T, root, scene, cam, renderer, draw3, fit3, setView: v => { if (pivot) setView(v); }, setMode, mode: () => mode, ensure3D, ensureOCC, stEl, emptyEl, pane, download, baseName });
+  /* 명령줄: STPOUT·'STP저장' / STEPOUT·'STEP저장' — 3D 를 열고 그 확장자로 저장 (11-03) */
+  try {
+    const saveAs = ext => () => { (async () => { try { await ensure3D(); if (mode === '2d') setMode('split'); await new Promise(r => setTimeout(r, 400)); LAB.saveStep(ext); } catch (e) { log('3D 를 열지 못했습니다: ' + (e && e.message || e), 'err'); } })(); return null; };
+    TOOLS.stpout = saveAs('stp'); TOOLS.stepout = saveAs('step');
+    Object.assign(ALIAS, { STPOUT: 'stpout', STP: 'stpout', STEPOUT: 'stepout', STEP: 'stepout' });
+    Object.assign(CMD_KO, { stpout: 'STP 저장', stepout: 'STEP 저장' });
+    for (const k of ['스텝저장', 'STEP저장', '스텝']) KO_CMD[k] = 'stepout';
+    for (const k of ['STP저장', '에스티피저장']) KO_CMD[k] = 'stpout';
+  } catch (_) { }
   /* ---------------- 시작 ---------------- */
   if (isLab) checkAdmin().then(ok => { if (ok && mode !== '2d') setMode(mode); });
   if (mode !== '2d') setMode(mode);
