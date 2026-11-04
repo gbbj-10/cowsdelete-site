@@ -259,7 +259,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.12</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.13</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -2287,6 +2287,10 @@ COMMANDS.array_polar=(c,ctx)=>{const ids=resolveIds(c.ids,ctx),n=Math.max(2,Math
   if(n>2000)throw new Error('항목이 너무 많습니다');const step=Math.abs(fill)>=360?fill/n:fill/(n-1);
   for(let k=1;k<n;k++){const a=step*k;for(const id of ids){const e=structuredClone(byId(id));const L=e.layer;delete e.id;
     if(rotItems)transformEnt(e,p=>rotPt(p,ctr,a),t=>t+a);else{const b=bbox([e]),bc=b?{x:(b.minX+b.maxX)/2,y:(b.minY+b.maxY)/2}:ctr,nc=rotPt(bc,ctr,a);transformEnt(e,p=>add(p,sub(nc,bc)))}out.push(newEnt(e,{layer:L}))}}return {ids:out}};
+/* 11-04 BREAK 오류 수정: 끊을 수 없는 객체(글자·블록·해치·치수 등)를 고르면 안내만 하고 오류 없이 넘어감 */
+const BRK_TYPES=new Set(['line','circle','arc','polyline','spline','ellipse']);
+function brkOK(e){return !!e&&BRK_TYPES.has(e.type)}
+function brkWarn(e){toast(e&&e.type==='insert'?'블록은 바로 끊을 수 없습니다 — 먼저 분해(X) 하세요':'끊을 수 없는 객체입니다 (선·원·호·폴리선·타원·스플라인만 끊기 가능)')}
 function breakEnt(e,p1,p2){const L=e.layer,st=styleOf(e);
   if(e.type==='line'){const ab=sub(e.b,e.a),ll=dot(ab,ab)||1,par=q=>Math.max(0,Math.min(1,dot(sub(q,e.a),ab)/ll));let t1=par(p1),t2=par(p2);if(t1>t2)[t1,t2]=[t2,t1];const P_=t=>add(e.a,mul(ab,t)),B={...e.b};
     if(t2-t1<1e-9){if(t1<=1e-9||t1>=1-1e-9)return;e.b=P_(t1);newEnt({type:'line',a:P_(t1),b:B,...st},{layer:L});return}
@@ -2357,11 +2361,11 @@ Object.assign(TOOLS,{
     if(!T.selecting)T.init();return T},
   break(){const T={name:'break',wantsPoint:false,
     get prompt(){if(!T.ent)return '객체 선택:';return T.askFirst?'첫 번째 끊기점 지정:':'두 번째 끊기점 지정 또는 [첫 번째 점(F)] (@ = 같은 점에서 끊기):'},set prompt(v){},
-    onPoint(p){if(!T.ent){const e=pick(rawW,9);if(!e){toast('객체를 선택하세요');return}T.ent=e;T.p1=nearestOn(e,rawW);sel=new Set([e.id]);T.wantsPoint=true;changed();return}
-      if(T.askFirst){T.p1=nearestOn(T.ent,p);T.askFirst=false;return}T.go(p)},
+    onPoint(p){if(!T.ent){const e=pick(rawW,9);if(!e){toast('객체를 선택하세요');return}const q=brkOK(e)?nearestOn(e,rawW):null;if(!q){brkWarn(e);return}T.ent=e;T.p1=q;sel=new Set([e.id]);T.wantsPoint=true;changed();return}
+      if(T.askFirst){const q=nearestOn(T.ent,p);if(q){T.p1=q;T.askFirst=false}return}T.go(p)},
     onInput(s){const t=s.trim().toUpperCase();if(T.ent&&t==='F'){T.askFirst=true;return true}if(T.ent&&t==='@'){T.go(T.p1);return true}return false},
-    go(p2){const p=nearestOn(T.ent,p2);commit({cmd:'break',id:T.ent.id,p1:[T.p1.x,T.p1.y],p2:[p.x,p.y]},dist(p,T.p1)<1e-9?'점에서 끊기':'끊기');sel.clear();endTool()},
-    preview(c,cur){if(T.ent&&!T.askFirst){const q=nearestOn(T.ent,cur);c.save();c.fillStyle='#ff6b5e';for(const pp of [T.p1,q]){const s=S(pp);c.fillRect(s.x-3,s.y-3,6,6)}c.restore()}}};return T},
+    go(p2){const p=p2&&nearestOn(T.ent,p2);if(!p||!T.p1){brkWarn(T.ent);return}commit({cmd:'break',id:T.ent.id,p1:[T.p1.x,T.p1.y],p2:[p.x,p.y]},dist(p,T.p1)<1e-9?'점에서 끊기':'끊기');sel.clear();endTool()},
+    preview(c,cur){if(T.ent&&!T.askFirst&&T.p1&&cur){const q=nearestOn(T.ent,cur);if(!q)return;c.save();c.fillStyle='#ff6b5e';for(const pp of [T.p1,q]){const s=S(pp);c.fillRect(s.x-3,s.y-3,6,6)}c.restore()}}};return T},
   join(){const T=withSel({name:'join',prompt:'결합할 객체 선택:'});T.afterSelect=()=>{const r=runBatch({cmd:'join',ids:[...sel]});if(r.ok)log(`결합 완료 (${r.results[0].merged}개 합침)`,'ok');else{undoStack.pop();log(r.errors[0].replace(/^#\d+ \w+: /,''),'err')}sel.clear();endTool()};
     if(!T.selecting)setTimeout(()=>T.afterSelect());return T},
   lengthen(){const T={name:'lengthen',wantsPoint:false,ask:null,
@@ -4233,7 +4237,7 @@ const _brk31=breakEnt;breakEnt=function(e,p1,p2){const L=e.layer,st=styleOf(e);
   return _brk31(e,p1,p2)};
 const _no31=nearestOn;nearestOn=function(e,p){if(e.type==='spline'||e.type==='ellipse'||(e.type==='polyline'&&hasBulge(e))){const pa=pathOf(e);return pathAt(pa,pathParam(pa,p)).p}return _no31(e,p)};
 TOOLS.breakatpoint=function(){const T={name:'breakatpoint',get prompt(){return T.e?'끊기점 지정:':'객체 선택:'},set prompt(v){},
-  onPoint(p){if(!T.e){const e=pick(rawW,9);if(!e){toast('객체를 선택하세요');return}T.e=e;sel=new Set([e.id]);changed();return}commit({cmd:'break',id:T.e.id,p1:[p.x,p.y],p2:[p.x,p.y]},'점에서 끊기');sel=new Set();endTool()}};return T};
+  onPoint(p){if(!T.e){const e=pick(rawW,9);if(!e){toast('객체를 선택하세요');return}if(!brkOK(e)){brkWarn(e);return}T.e=e;sel=new Set([e.id]);changed();return}commit({cmd:'break',id:T.e.id,p1:[p.x,p.y],p2:[p.x,p.y]},'점에서 끊기');sel=new Set();endTool()}};return T};
 /* OVERKILL — 중복·겹친 객체 정리 (같은 도면층·색·선종류일 때) */
 COMMANDS.overkill=(c,ctx)=>{const tol=c.tol!=null?num(c.tol,'tol'):1e-6,ids=resolveIds(c.ids??'all',ctx);let ents=ids.map(byId).filter(Boolean);const R=v=>Math.round(v/Math.max(tol,1e-9));
   const prop=e=>[e.layer,e.color??'',e.lt??'',e.lw??''].join('|'),PT=q=>R(q.x)+','+R(q.y);let del=new Set(),merged=0;
@@ -4992,7 +4996,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.10.12';
+const APP_VER='v1.10.13';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -6139,7 +6143,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261104b"></script>
+<script src="../assets/config.js?v=20261104c"></script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
 <script src="cloud.js?v=20261104b"></script>
