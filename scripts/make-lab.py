@@ -40,6 +40,17 @@ assert s.count('labdwgrs.js') == 1 and s.count('labcheck3d.js') == 1, 'v1.10.8 s
 assert s.count('labcmds.js') == 1 and s.count('labjudge.js') == 1 and s.count('labcadimport.js') == 1 and '__aicPost=post' in s, 'v1.10.9 scripts'
 # v1.10.10 (11-03 밤): 부품 양식(labpartforms)·AI 단계 카드(labaisteps)·규격 찾기(labspec)·PDF 양식(labpdfform)과 aiEvent 훅은 본체로 → 테스트판은 cad-lab/ 의 같은 파일
 assert all(s.count(n) == 1 for n in ('labpartforms.js','labaisteps.js','labspec.js','labpdfform.js')) and s.count('window.__aiEvtHook&&') == 1, 'v1.10.10 scripts'
+# 11-04: 연결 프로그램 v1.0.7 (Windows 에서 Codex·Gemini 찾기 — PATH·레지스트리 PATH·.cmd 옆 node_modules·PC node 먼저·되는 후보 기억·30초 뒤 다시 찾기·/diag found)
+#        테스트 서버 먼저 → 확인 뒤 본체 MUCCA_MCP_SRC 로 옮김. 원본: scripts/mucca-mcp-1.0.7.js
+import json as _json
+_mcp = pathlib.Path('scripts/mucca-mcp-1.0.7.js').read_text(encoding='utf-8')
+assert '</script' not in _mcp.lower()
+_m = re.search(r'const MUCCA_MCP_SRC=("(?:[^"\\]|\\.)*");', s); assert _m, 'MUCCA_MCP_SRC'
+s = s[:_m.start(1)] + _json.dumps(_mcp, ensure_ascii=False) + s[_m.end(1):]
+s = rep(s, "const MUCCA_MCP_VER='1.0.6';", "const MUCCA_MCP_VER='1.0.7';")
+s = rep(s, "+' (최신 v'+MUCCA_MCP_VER+')';", "+' (최신 v'+MUCCA_MCP_VER+' — GPT·Gemini 를 이 PC에서 더 잘 찾도록 고친 판)';")
+s = rep(s, "else aiSt.textContent=ENG[k]+'를 이 PC에서 찾지 못했습니다. '+ENG_INSTALL[k]+' · '+ENG_RESTART;",
+  "else{const f=r&&r.found&&r.found[k];aiSt.textContent=ENG[k]+'를 이 PC에서 찾지 못했습니다. '+ENG_INSTALL[k]+' · '+ENG_RESTART+(f?' · 찾아본 곳 '+((f.tried||[]).length)+'곳'+(f.last?' · 마지막 오류: '+String(f.last).slice(0,90):''):'')}")
 pathlib.Path('cad-lab').mkdir(exist_ok=True)
 pathlib.Path('cad-lab/index.html').write_text(s, encoding='utf-8')
 print('ok', len(s))
