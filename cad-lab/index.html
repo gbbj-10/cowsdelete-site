@@ -260,7 +260,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.11</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.12</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -4993,7 +4993,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.10.11';
+const APP_VER='v1.10.12';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5585,6 +5585,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
     box.append(el('div','aicStat','<span class="dot"></span><span class="txt"></span>'));
     const err=el('p','aicErr');err.style.cssText='color:#eb5757;margin:8px 0 0';box.append(err);
     box.append(el('p','sub','무카 CAD는 AI를 직접 부르지 않습니다. 내 PC의 <b>연결 프로그램</b>이 내 AI(Claude · GPT · Gemini)와 이 화면을 이어 주고, 사용량은 <b>내 구독·계정</b>에서 나갑니다. 도면 데이터는 무카 CAD 서버로 보내지 않습니다.'));
+    box.append(el('p','sub aicCorp','⚠ AI 로 그리면 도면 내용이 <b>내 AI 계정의 회사(Anthropic·OpenAI·Google)</b>로 전달되고 그 회사 정책(학습 사용 설정 등)을 따릅니다. <b>회사 도면은 회사가 허용한 AI 계정에서만</b> 쓰세요. <a href="/privacy/" target="_blank" rel="noopener">개인정보처리방침</a>'));
     const tabs=el('div','aicTabs');tabs.setAttribute('role','group');tabs.setAttribute('aria-label','쓸 AI 고르기');
     tabs.append(el('span','sub','어떤 AI를 쓰세요?'));
     const panel=el('div','aicPanel');
@@ -6140,11 +6141,11 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261104a"></script>
+<script src="../assets/config.js?v=20261104b"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261018c"></script>
 <script src="../assets/vendor/supabase.js"></script>
-<script src="../cad/cloud.js?v=20261104a"></script>
+<script src="../cad/cloud.js?v=20261104b"></script>
 <!-- v1.10.0 (2026-11-01, 3화): 테스트 서버에서 검증한 3D 기능 본체 반영 — 2D|3D 보기·사진→3D·2D 대조·영업 에셋·3D→도면·3MF·가공 전 점검 -->
 <script src="lab3d.js?v=19"></script>
 <script src="labphoto.js?v=10"></script>

@@ -14,6 +14,8 @@
   const RESERVED = ['관리자', '운영자', 'admin', 'administrator', '카우스소거법', '카우스', '무카캐드', '무카', 'cowsdelete', 'mucca', 'muccacad'];
   const MAX_BYTES = 3 * 1000 * 1000;
   const SYNC_SKIP = ['muccacad.ai.code'];
+  /* v1.10.12 (11-04): 'muccacad.local.' 로 시작하는 값은 브라우저에만 둠(서버 설정 동기화에서 뺌) — 도면에서 익힌 습관 등 */
+  const SYNC_SKIP_PREFIX = 'muccacad.local.';
 
   const sb = READY ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' }
@@ -285,7 +287,7 @@
   }
 
   /* ---------- 설정 동기화 (단축키·플롯 스타일 등 브라우저 설정) ---------- */
-  function localSettings() { const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('muccacad.') && !SYNC_SKIP.includes(k)) o[k] = localStorage.getItem(k); } } catch (_) {} return o; }
+  function localSettings() { const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('muccacad.') && !k.startsWith(SYNC_SKIP_PREFIX) && !SYNC_SKIP.includes(k)) o[k] = localStorage.getItem(k); } } catch (_) {} return o; }
   async function pushSettings() { if (!user || !profile) return; const value = localSettings(); await sb.from('user_settings').upsert({ owner: user.id, key: 'local', value }, { onConflict: 'owner,key' }); }
   async function pullSettings() {
     const { data } = await sb.from('user_settings').select('value').eq('key', 'local').maybeSingle();
@@ -297,10 +299,16 @@
 
   /* ---------- 사용 기록 · 의견 ---------- */
   const sent = { unknown_cmd: new Set(), n: 0, err: 0 };
+  /* v1.10.12 (11-04): 오류 메시지에서 파일 이름·폴더 경로·전자우편을 지우고 보냄 (회사 도면 이름이 기록에 남지 않게) */
+  const scrub = m => String(m || '')
+    .replace(/(?:[A-Za-z]:)?[\\/](?:[^\\/\s"'<>|:*?]+[\\/])+[^\\/\s"'<>|:*?]*/g, '[경로]')
+    .replace(/[^\s"'<>|\\/:*?]+\.(?:dwg|dxf|pdf|dwf|step|stp|igs|iges|ipt|iam|sldprt|sldasm|x_t|3dm|stl|3mf|obj|glb|gltf|png|jpe?g|webp|bmp|tiff?|heic|xlsx?|csv|docx?|pptx?|txt|zip|json)\b/gi, '[파일]')
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[메일]');
   async function evt(kind, payload) {
     if (!sb) return;
     if (kind === 'unknown_cmd') { const c = String(payload.cmd || '').toUpperCase(); if (!/^[A-Z0-9_.\-]{1,24}$/.test(c) || sent.unknown_cmd.has(c)) return; sent.unknown_cmd.add(c); payload = { cmd: c }; }
     if (kind === 'error' && ++sent.err > 5) return;
+    if (kind === 'error' && payload) payload = { ...payload, msg: scrub(payload.msg).slice(0, 200) };
     if (++sent.n > 40) return;
     try { await sb.from('events').insert({ kind, payload, app_ver: APP_VER, page: 'cad' }); } catch (_) {}
   }
