@@ -1090,8 +1090,28 @@
     if (!force && !first && lastKey && key !== lastKey && prevKind !== kindKo(pl)) { note = `도면이 바뀌어 3D 를 다시 만들었습니다: ${prevKind} → ${kindKo(pl)}`; try { log(note); } catch (_) { } }
     lastPlan = pl; status(pl, note);
     if (key === lastKey && !force) return; lastKey = key;
-    const b = build(pl); if (b && b.waiting) { lastKey = ''; draw3(); return; } if (first || force) fit3(); else centerModel(); draw3();
+    let b;
+    try { b = build(pl); }
+    catch (err) { fail3D(pl, err, key); return; }
+    if (b && b.waiting) { lastKey = ''; draw3(); return; } if (first || force) fit3(); else centerModel(); draw3();
   }
+  /* 11-05 (운영보고 요청): 정밀 엔진(replicad_single.wasm) 안에서 난 오류(remainder by zero · null function 등)가
+     자동 다시 그리기(타이머)에서 그대로 터져 'Uncaught RuntimeError' 로 쌓이던 것 → 잡아서 안내로 바꾸고,
+     어떤 3D 형상(교차·회전·돌출 …)에서 났는지만 기록 이름으로 남김(도면 내용은 안 보냄).
+     엔진이 한 번 깨지면 다음 호출도 'null function' 이 나므로 엔진을 버리고 다음 번에 새로 받게 함 */
+  let failSig = '';
+  function fail3D(pl, err, key) {
+    const msg = String((err && err.message) || err || ''), wasm = (typeof WebAssembly !== 'undefined' && err instanceof WebAssembly.RuntimeError) || /RuntimeError|remainder by zero|null function|unreachable|memory access out of bounds/i.test(msg);
+    while (root.children.length) root.children.pop();
+    if (wasm) { occP = null; occR = null; }
+    const kind = String(pl && pl.kind || 'x').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) || 'X';
+    stEl.innerHTML = `<span class="e">3D 계산 실패 (형상 확인) — ${esc3(kindKo(pl))} 모양을 정밀 엔진이 계산하지 못했습니다. 겹친 선·끊긴 윤곽·아주 작은 틈을 확인하거나 [형상] 을 바꿔 보세요.</span>`;
+    draw3();
+    const sig = kind + '|' + key; if (sig === failSig) return; failSig = sig;
+    try { log(`3D 계산 실패 (${kindKo(pl)}): ${msg.slice(0, 80)}`, 'err'); } catch (_) { }
+    try { window.__muccaEvt && window.__muccaEvt('unknown_cmd', { cmd: 'L3D_FAIL_' + kind + (wasm ? '_W' : '') }); } catch (_) { }
+  }
+  function esc3(t) { return String(t || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   LAB.rebuild = rebuild; LAB.plan = () => plan();
   LAB.modelKey = () => LAB.ext || lastKey;   // 11-05: 지금 보이는 3D 표시 (2D 대조 결과가 이 3D 것인지 확인)
   let selSig = ''; setInterval(() => { if (mode === '2d' || !T) return; let sg = ''; try { sg = sel.size + ':' + [...sel].slice(0, 50).join(','); } catch (_) { } if (sg !== selSig) { selSig = sg; rebuild(true); } }, 600);
