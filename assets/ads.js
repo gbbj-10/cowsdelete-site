@@ -12,7 +12,7 @@
     var id=C.banners[size]; if(!id)return;
     var wh=size.split('x'), f=document.createElement('iframe');
     f.src=src(id,wh[0],wh[1]); f.width=wh[0]; f.height=wh[1];
-    f.setAttribute('frameborder','0'); f.setAttribute('scrolling','no'); f.setAttribute('referrerpolicy','unsafe-url');
+    f.setAttribute('frameborder','0'); f.setAttribute('scrolling','no'); f.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
     f.title='쿠팡 파트너스 광고'; f.style.cssText='border:0;display:block;max-width:100%';
     slot.dataset.size=size; slot.classList.add('filled'); slot.replaceChildren(f);
   }

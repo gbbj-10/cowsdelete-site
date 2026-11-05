@@ -222,7 +222,10 @@
       const rows = [`도면명: ${name}`, `3각법 · 단위 mm · 척도 1:1 · ${ds}`, `원본: ${src === 'model' ? 'AI 3D 모델(model3d)' : '규칙 엔진 3D'} → 2D 자동 도면`, '무카 CAD · 치수는 확인 후 사용'];
       rows.forEach((t, i) => cmds.push({ cmd: 'text', at: [rnd(tx0 + TH), rnd(ty1 - rowH * (i + 1) + (rowH - TH) / 2)], text: t, h: rnd(i ? TH * 0.9 : TH * 1.1), layer: '문자' }));
     }
+    const before = new Set(doc.entities);
     const r = runBatch(cmds.concat(dims), { label: '3D → 도면' });
+    // 11-05: 만든 도면 도형에 표시 → 3D 재료(LAB3D.srcEnts)에서 빠져 3D 가 말없이 바뀌지 않음 (P2 시험: 둥근 보스가 네모로). 실행 취소·저장에도 따라감
+    for (const e of doc.entities) if (!before.has(e)) e.from3d = 1;
     const errs = (r.errors || []).concat((r.results || []).filter(x => x && x.ok === false).map(x => x.error));
     try { zoomBox(fx0, fy0, fx1, fy1); } catch (_) { }
     const res = { ok: !errs.length, source: src, views: VIEWS.map(v => ({ name: v.name, w: +fmtN(B[v.k].w), h: +fmtN(B[v.k].h) })), lines: stat.lines, circles: stat.circles, arcs: stat.arcs, polylines: stat.polys, holes: stat.holes, pcd: stat.pcd, dims: dims.length, frame: [rnd(fx0), rnd(fy0), rnd(fx1), rnd(fy1)], ms: Math.round(performance.now() - t0) };

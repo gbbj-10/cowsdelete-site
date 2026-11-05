@@ -289,10 +289,39 @@
     if (opt.section) { res.mode = 'section'; res.excluded = excluded; if (C2.prunedLeaders) res.leaders_removed = C2.prunedLeaders; }
     if (cl.emptyViews && cl.emptyViews.length) res.warn = `도형이 없어 뺀 뷰 상자: ${cl.emptyViews.join(' · ')}`;
     try { res.key = keyCheck(views, opt); } catch (e) { res.key = { error: String(e && e.message || e) }; }
-    C2.last = { res, views, allbb, tol };
+    try { const h = gapHints(allbb); if (h.length) res.gap_hint = h; } catch (_) { }
+    C2.last = { res, views, allbb, tol, sig: modelSig() };
     return res;
   }
   C2.compare = compare;
+  /* 11-05: 지금 3D 가 대조한 그 3D 인지 알아보는 표시 (STEP 저장 때 '대조 미달' 확인에 씀) */
+  function modelSig() { const L = lab(); try { return L && L.modelKey ? L.modelKey() : ''; } catch (_) { return ''; } }
+  C2.isCurrent = () => !!(C2.last && C2.last.sig && C2.last.sig === modelSig());
+  /* 11-05: 선 대조가 97% 아래인 이유를 도면에 근거가 있을 때만 적음 (P2: 로고·주물이 없는 플랜지에도 '로고 글자·주물 곡면 차이')
+     · 아주 작은 닫힌 윤곽이 12개 이상 → 글자·로고 윤곽   · 점이 40개 이상인 꺾은선 → 자유 곡선(주물 곡면 등) */
+  function gapHints(allbb) {
+    const big = Math.max(allbb.w, allbb.h) || 1; let tiny = 0, free = 0;
+    for (const e of lab().srcEnts()) {
+      if (IGN_LAYERS.has(e.layer) || e.type !== 'polyline' || !e.pts || !e.pts.length) continue;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const q of e.pts) { if (q.x < x0) x0 = q.x; if (q.x > x1) x1 = q.x; if (q.y < y0) y0 = q.y; if (q.y > y1) y1 = q.y; }
+      const d = Math.max(x1 - x0, y1 - y0);
+      if (e.closed && d < big * 0.02) tiny++; else if (e.pts.length >= 40) free++;
+    }
+    const o = []; if (tiny >= 12) o.push('글자·로고 윤곽'); if (free) o.push('자유 곡선(주물 곡면 등)'); return o;
+  }
+  /* 11-05: 핵심 치수 글자 — 확인한 항목이 0개면 '모두 맞음'이라 쓰지 않고, 비교할 구멍이 0개면 '0/0 일치' 대신 '비교할 구멍 없음' */
+  function keyText(K) {
+    const nSize = (K.size || []).length, nC = K.circles || 0;
+    const circ = nC ? `플랜지·고정 구멍 원 ${K.circles_ok}/${nC} 일치` : '비교할 구멍 없음';
+    const size = nSize ? `전체 크기 ${K.size_ok ? '맞음' : '다름'}` : '전체 크기 비교 못 함';
+    let label, c;
+    if (!nSize && !nC) { label = '확인한 항목 없음'; c = 'w'; }
+    else if (!K.pass) { label = '확인 필요'; c = 'f'; }
+    else if (!nC) { label = '전체 크기만 맞음'; c = 'w'; }
+    else { label = '모두 맞음'; c = 'p'; }
+    return { label, c, col: { p: '#0f7a3d', w: '#b26a00', f: '#b3261e' }[c], size, circ };
+  }
+  C2.keyText = keyText;
 
   /* ---------- 4-2) 핵심 치수 점검 (2026-10-25 조미료님: "모양이 완벽하지 않아도 전체 크기, 플랜지 크기·PCD·홀 크기,
      받침(다리) 고정 홀만 맞으면 3D 모델로 쓸 수 있다") ----------
@@ -410,7 +439,7 @@
     }
     const vd = verdict(res); g.fillStyle = vd.col; g.font = 'bold 18px sans-serif';
     g.fillText(`2D 대조 (${res.source === 'rule' ? '규칙 엔진' : 'AI 모델'}) — 재현 ${(res.recall * 100).toFixed(1)}% · 정확 ${(res.precision * 100).toFixed(1)}% · ${vd.t}`, 12, 24);
-    if (res.key && !res.key.error) { g.font = 'bold 14px sans-serif'; g.fillStyle = res.key.pass ? '#0f7a3d' : '#b3261e'; g.fillText(`핵심 치수 ${res.key.pass ? '모두 맞음' : '확인 필요'} · 전체 크기 ${res.key.size_ok ? '맞음' : '다름'} · 플랜지·고정 구멍 원 ${res.key.circles_ok}/${res.key.circles} 일치`, W - 520, vd.c === 'w' ? 46 : 24); }
+    if (res.key && !res.key.error) { const kt = keyText(res.key); g.font = 'bold 14px sans-serif'; g.fillStyle = kt.col; g.fillText(`핵심 치수 ${kt.label} · ${kt.size} · ${kt.circ}`, W - 520, vd.c === 'w' ? 46 : 24); }
     g.font = '13px sans-serif'; g.fillStyle = '#e0242b'; g.fillText('■ 빠진 선 (도면에 있는데 3D에 없음)', 12, 46); g.fillStyle = '#1e6fd9'; g.fillText('■ 남는 선 (3D에만 있음)', 260, 46); g.fillStyle = '#9aa1aa'; g.fillText('■ 맞은 선', 430, 46);
     return cv;
   }
@@ -418,7 +447,7 @@
   /* 판정 글자: pass(재현·정확 둘 다 97%↑)는 그대로 두고, 핵심 치수가 모두 맞고 선 대조가 90%↑이면 '핵심 치수 통과'로 따로 보여 준다 (10-28 유튜브팀 요청 — 로고 글자·주물 곡면 때문에 97%가 어려운 실제 제품 도면) */
   function verdict(res) {
     if (res.pass) return { t: '통과', c: 'p', col: '#0f7a3d' };
-    if (res.key && !res.key.error && res.key.pass && res.recall >= 0.9 && res.precision >= 0.9) return { t: '핵심 치수 통과 · 선 대조는 기준 97% 아래 (로고 글자·주물 곡면 차이)', c: 'w', col: '#b26a00' };
+    if (res.key && !res.key.error && res.key.pass && res.key.circles > 0 && res.recall >= 0.9 && res.precision >= 0.9) return { t: '핵심 치수 통과 · ' + (res.gap_hint && res.gap_hint.length ? `선 대조는 기준 97% 아래 (도면에 ${res.gap_hint.join('·')}이 있어 차이가 날 수 있음)` : '선 대조가 기준보다 낮음 — 빠진 선(빨강)·남는 선(파랑)을 확인하세요'), c: 'w', col: '#b26a00' };
     return { t: '미달 (기준 97%)', c: 'f', col: '#b3261e' };
   }
   C2.verdict = verdict;
@@ -467,7 +496,7 @@
     if (K && !K.error) {
       const k = document.createElement('div'); k.className = 'key';
       const fails = K.holes.filter(x => x.n_match < x.n_drawing), sz = K.size.filter(x => !x.ok);
-      k.innerHTML = `<b>핵심 치수</b> <span class="${K.pass ? 'p' : 'f'}">${K.pass ? '모두 맞음' : '확인 필요'}</span> · 전체 크기 ${K.size_ok ? '맞음' : '다름'} · 플랜지·고정 구멍 원 ${K.circles_ok}/${K.circles} 일치`;
+      const kt = keyText(K); k.innerHTML = `<b>핵심 치수</b> <span class="${kt.c}">${kt.label}</span> · ${kt.size} · ${kt.circ}`;
       const ul = document.createElement('ul');
       for (const x of sz) { const li = document.createElement('li'); li.textContent = `뷰${x.view} 크기: 도면 ${x.drawing_mm.join('×')} / 3D ${x.model_mm.join('×')} (차이 ${x.diff_mm.join(', ')} mm)`; ul.append(li); }
       for (const x of K.holes) { if (!x.key || x.n_match === x.n_drawing && !(x.pcd_drawing && x.pcd_model && Math.abs(x.pcd_drawing - x.pcd_model) > 0.5)) continue; const li = document.createElement('li'); li.textContent = `뷰${x.view} Ø${x.dia} ${x.kind} ${x.n_match}/${x.n_drawing}${x.pcd_drawing ? ` · PCD 도면 ${x.pcd_drawing} / 3D ${x.pcd_model ?? '—'}` : ''}`; ul.append(li); }

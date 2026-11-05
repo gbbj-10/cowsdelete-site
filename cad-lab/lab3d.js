@@ -308,7 +308,9 @@
   // 3D로 바꿀 도형: CAD에서 선택한 것이 있으면 그것만 (부품도에서 부품 하나 고르기)
   function srcEnts() {
     try { if (typeof sel !== 'undefined' && sel.size) { const L = doc.entities.filter(e => sel.has(e.id)); if (L.length) return flatEnts(L); } } catch (_) { }
-    try { return flatEnts(visibleEnts()); } catch (_) { return doc.entities.slice(); }
+    // 11-05: [도면 만들기]로 생긴 도형(from3d 표시)은 3D 재료에서 뺌 — 원본과 섞여 3D 가 저절로 바뀌던 문제. 선택하면 그 도형으로도 만들 수 있고, 만든 도면만 남았으면 그대로 씀
+    const noGen = L => { const o = L.filter(e => !e.from3d); return o.length ? o : L; };
+    try { return flatEnts(noGen(visibleEnts())); } catch (_) { return noGen(doc.entities.slice()); }
   }
   LAB.srcEnts = srcEnts;
   LAB._dbg = () => ({ rowHull, collectLoops, solid: pl => solidFor(occR, pl), ensureOCC });
@@ -1021,7 +1023,7 @@
     if (pl.kind === 'intersect' || pl.kind === 'tri' || pl.kind === 'extrev') {
       if (!occR) {
         stEl.innerHTML += '<br><span class="i">정밀 계산 엔진을 받는 중입니다 (처음 한 번, 약 6MB)…</span>';
-        ensureOCC().then(() => rebuild(true)).catch(e => { stEl.innerHTML += '<br><span class="e">정밀 엔진을 받지 못했습니다: ' + e.message + '</span>'; });
+        ensureOCC().then(() => { occFail = ''; rebuild(true); }).catch(e => { occFail = (e && e.message) || String(e); try { if (lastPlan === pl) status(pl); } catch (_) { } stEl.innerHTML += '<br><span class="e">정밀 엔진을 받지 못했습니다: ' + occFail + '</span>'; });
         return { waiting: true };
       }
       const m = solidFor(occR, pl).mesh({ tolerance: 0.05, angularTolerance: 0.25 });
@@ -1049,15 +1051,26 @@
     }
     return { o };
   }
-  function status(pl) {
-    const L = [];
-    if (pl.kind === 'extrude') L.push(`<span class="ok">돌출</span> <span class="i">· 두께 ${fmt3(pl.t)} (${pl.tSrc}) · 구멍 ${pl.holes.length}개</span>`);
-    else if (pl.kind === 'stack') L.push(`<span class="ok">단면 쌓기</span> <span class="i">· 길이 ${fmt3(pl.total)} · 구간 ${pl.segs.length}개 (${pl.desc}) · 구멍 ${pl.holes.length}개</span>`);
-    else if (pl.kind === 'parts') { L.push(`<span class="ok">단면도 → 회전체 ${pl.parts.length}개</span>`); pl.parts.forEach((pt, i) => L.push(`<span class="i">· 부품 ${i + 1}: Ø${fmt3(pt.D)} × ${fmt3(pt.L)} (${pt.src}${pt.regs ? ' ' + pt.regs.length + '곳' : ''})</span>`)); }
-    else if (pl.kind === 'extrev') L.push(`<span class="ok">돌출 ∩ 회전 (정밀)</span> <span class="i">· 두께 ${fmt3(pl.t)} · 구멍 ${pl.holes.length}개</span>`);
-    else if (pl.kind === 'tri') L.push(`<span class="ok">3면 교차 (정밀)</span> <span class="i">· 너비 ${fmt3(pl.front.bb.w)} · 높이 ${fmt3(pl.front.bb.h)} · 깊이 ${fmt3(pl.t)}${pl.zones ? ' · 단면도 사용' : ''} · 구멍 ${pl.sideHoles.length + pl.topHoles.length}개</span>`);
-    else if (pl.kind === 'intersect') L.push(`<span class="ok">2면 교차 (정밀)</span> <span class="i">· 너비 ${fmt3(pl.front.bb.w)} · 높이 ${fmt3(pl.front.bb.h)} · 깊이 ${fmt3(pl.t)} · 정면 구멍 ${pl.holes.length}개${pl.sideHoles.length ? ' · 측면 구멍 ' + pl.sideHoles.length + '개' : ''}</span>`);
-    else L.push(`<span class="ok">회전체</span> <span class="i">· 외경 Ø${fmt3(pl.front.circle.r * 2)} · 길이 ${fmt3(pl.total)} · 구간 ${pl.segs.length}개${pl.bore ? ' · 보어 Ø' + fmt3(pl.bore * 2) : ''} · 구멍 ${pl.holes.length}개</span>`);
+  /* 11-05 P2·P7 가상 사용자 시험: 형상은 규칙 엔진의 자동 추정이므로 '(정밀)' 딱지를 떼고, 정밀 엔진(OCC)으로 실제 계산했을 때만 '정밀 엔진 계산'이라고 적는다.
+     엔진을 못 받았으면 '간이(정밀 엔진 없음)'. 경고가 있으면 형상 이름도 초록이 아니라 노랑 */
+  let occFail = '';
+  const KIND_KO = { extrude: '돌출', stack: '단면 쌓기', parts: '단면도 회전체', extrev: '돌출 ∩ 회전', tri: '3면 교차', intersect: '2면 교차' };
+  const kindKo = pl => KIND_KO[pl.kind] || '회전체';
+  function occTag() {
+    if (occR) return ' <span class="i">(자동 추정 · 정밀 엔진 계산)</span>';
+    if (occFail) return ' <span class="w">· 3D 못 만듦(정밀 엔진을 받지 못함 — 회사망이면 jsdelivr 차단 여부 확인)</span>';
+    return ' <span class="i">(자동 추정 · 정밀 엔진 받는 중)</span>';
+  }
+  function status(pl, note) {
+    const L = [], ck = pl.warn && pl.warn.length ? 'w' : 'ok';
+    if (pl.kind === 'extrude') L.push(`<span class="${ck}">돌출</span> <span class="i">· 두께 ${fmt3(pl.t)} (${pl.tSrc}) · 구멍 ${pl.holes.length}개</span>`);
+    else if (pl.kind === 'stack') L.push(`<span class="${ck}">단면 쌓기</span> <span class="i">· 길이 ${fmt3(pl.total)} · 구간 ${pl.segs.length}개 (${pl.desc}) · 구멍 ${pl.holes.length}개</span>`);
+    else if (pl.kind === 'parts') { L.push(`<span class="${ck}">단면도 → 회전체 ${pl.parts.length}개</span>`); pl.parts.forEach((pt, i) => L.push(`<span class="i">· 부품 ${i + 1}: Ø${fmt3(pt.D)} × ${fmt3(pt.L)} (${pt.src}${pt.regs ? ' ' + pt.regs.length + '곳' : ''})</span>`)); }
+    else if (pl.kind === 'extrev') L.push(`<span class="${ck}">돌출 ∩ 회전</span>${occTag()} <span class="i">· 두께 ${fmt3(pl.t)} · 구멍 ${pl.holes.length}개</span>`);
+    else if (pl.kind === 'tri') L.push(`<span class="${ck}">3면 교차</span>${occTag()} <span class="i">· 너비 ${fmt3(pl.front.bb.w)} · 높이 ${fmt3(pl.front.bb.h)} · 깊이 ${fmt3(pl.t)}${pl.zones ? ' · 단면도 사용' : ''} · 구멍 ${pl.sideHoles.length + pl.topHoles.length}개</span>`);
+    else if (pl.kind === 'intersect') L.push(`<span class="${ck}">2면 교차</span>${occTag()} <span class="i">· 너비 ${fmt3(pl.front.bb.w)} · 높이 ${fmt3(pl.front.bb.h)} · 깊이 ${fmt3(pl.t)} · 정면 구멍 ${pl.holes.length}개${pl.sideHoles.length ? ' · 측면 구멍 ' + pl.sideHoles.length + '개' : ''}</span>`);
+    else L.push(`<span class="${ck}">회전체</span> <span class="i">· 외경 Ø${fmt3(pl.front.circle.r * 2)} · 길이 ${fmt3(pl.total)} · 구간 ${pl.segs.length}개${pl.bore ? ' · 보어 Ø' + fmt3(pl.bore * 2) : ''} · 구멍 ${pl.holes.length}개</span>`);
+    if (note) L.push(`<span class="w">⚠ ${note}</span>`);
     try { if (sel.size) L.push(`<span class="i">· 선택한 도형 ${sel.size}개만으로 만들었습니다 (Esc로 선택 해제하면 전체)</span>`); } catch (_) { }
     for (const w of pl.warn) L.push(`<span class="w">⚠ ${w}</span>`);
     for (const i of pl.info) L.push(`<span class="i">· ${i}</span>`);
@@ -1071,12 +1084,16 @@
     if (pl.empty) { while (root.children.length) root.children.pop(); emptyEl.style.display = ''; stEl.textContent = ''; lastPlan = null; draw3(); return; }
     emptyEl.style.display = 'none';
     const key = pl.kind === 'tri' ? JSON.stringify(['tri', pl.front.bb, pl.side.bb, pl.top.bb, pl.secs.length, pl.zones, !!occR, srcEnts().length]) : pl.kind === 'stack' ? JSON.stringify(['stack', pl.mode, pl.total, pl.segs.map(g => [g.z, g.L, g.cone ? [g.cone.rA, g.cone.rB] : g.loop.bb]), pl.holes.map(h => [h.loop.bb, h.z0, h.z1])]) : pl.kind === 'parts' ? JSON.stringify(['parts', pl.parts.map(p => [p.D, p.L, p.polys.length])]) : JSON.stringify([pl.kind, pl.t, pl.segs, pl.bore, pl.front.pts.length, pl.front.bb, pl.holes.map(h => h.bb), pl.side && pl.side.pts.length, pl.side && pl.side.bb, !!occR]);
-    const first = !lastPlan;
-    lastPlan = pl; status(pl);
+    const first = !lastPlan, prevKind = lastPlan ? kindKo(lastPlan) : '';
+    // 11-05: 도면이 바뀌어 3D 형상 종류가 저절로 바뀌면 말없이 바꾸지 않고 알림 (P2 "3D가 말없이 바뀜")
+    let note = '';
+    if (!force && !first && lastKey && key !== lastKey && prevKind !== kindKo(pl)) { note = `도면이 바뀌어 3D 를 다시 만들었습니다: ${prevKind} → ${kindKo(pl)}`; try { log(note); } catch (_) { } }
+    lastPlan = pl; status(pl, note);
     if (key === lastKey && !force) return; lastKey = key;
     const b = build(pl); if (b && b.waiting) { lastKey = ''; draw3(); return; } if (first || force) fit3(); else centerModel(); draw3();
   }
   LAB.rebuild = rebuild; LAB.plan = () => plan();
+  LAB.modelKey = () => LAB.ext || lastKey;   // 11-05: 지금 보이는 3D 표시 (2D 대조 결과가 이 3D 것인지 확인)
   let selSig = ''; setInterval(() => { if (mode === '2d' || !T) return; let sg = ''; try { sg = sel.size + ':' + [...sel].slice(0, 50).join(','); } catch (_) { } if (sg !== selSig) { selSig = sg; rebuild(true); } }, 600);
 
   // 2D가 바뀌면 3D도 다시 (0.25초 모아서)
@@ -1333,7 +1350,27 @@
     }
     return LAB.tidy ? tidy(s) : s;
   }
-  stepBtn.onclick = async () => {
+  /* 11-05: 2D 대조가 미달(통과 아님)인 3D 를 STEP 으로 저장하려 하면 한 번 확인 (P2 "틀린 3D 옆에 STEP 저장이 바로 열려 있음").
+     사람이 누른 클릭만 묻고(본체 modal 창), AI·자동 실행(LAB.saveStep 등)은 막지 않고 기록에 경고만 남김 */
+  stepBtn.onclick = ev => {
+    let cr = null; try { const C2 = window.LAB2D; if (C2 && C2.last && C2.isCurrent && C2.isCurrent()) cr = C2.last.res; } catch (_) { }
+    if (!cr || cr.pass) return saveStepNow();
+    const msg = `2D 대조 미달 상태입니다 (재현 ${(cr.recall * 100).toFixed(1)}% · 정확 ${(cr.precision * 100).toFixed(1)}%, 기준 97%).`;
+    if (ev && ev.isTrusted && typeof modal === 'function') {
+      try {
+        const p = document.createElement('p'); p.style.margin = '0 0 4px'; p.textContent = msg + ' 그래도 저장할까요?';
+        const p2 = document.createElement('p'); p2.style.cssText = 'margin:0;font-size:12px;opacity:.8'; p2.textContent = '[2D 대조] 차이 그림의 빨강(빠진 선)·파랑(남는 선)을 먼저 확인하는 것을 권합니다.';
+        const no = document.createElement('button'); no.className = 'tbtn'; no.textContent = '취소';
+        const yes = document.createElement('button'); yes.className = 'tbtn'; yes.textContent = '그래도 저장';
+        const m = modal('STEP 저장 확인', [p, p2], [no, yes]);
+        try { document.body.appendChild(m); m.style.position = 'fixed'; m.style.zIndex = '60'; } catch (_) { }
+        no.onclick = () => m.remove(); yes.onclick = () => { m.remove(); log(msg + ' 확인 후 저장합니다', 'err'); saveStepNow(); };
+        return;
+      } catch (_) { }
+    }
+    log(msg + ' 그래도 저장합니다', 'err'); return saveStepNow();
+  };
+  const saveStepNow = async () => {
     if (LAB.ext && LAB.ext.step) { const old = stepBtn.textContent; stepBtn.disabled = true; stepBtn.textContent = 'STEP 만드는 중…';
       try { const t0 = performance.now(); const blob = await LAB.ext.step(); LAB.stepMs = Math.round(performance.now() - t0); LAB.stepBytes = blob.size; LAB.lastStep = blob; if (!LAB.noDownload) download(blob, baseName() + stepExt()); log(`${stepExt() === '.stp' ? 'STP' : 'STEP'} 저장 (${(blob.size / 1024).toFixed(0)}KB)`, 'ok'); }
       catch (err) { log('STEP을 만들지 못했습니다: ' + (err && err.message || err), 'err'); LAB.stepErr = String(err && err.message || err); }

@@ -306,7 +306,7 @@
     .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[메일]');
   async function evt(kind, payload) {
     if (!sb) return;
-    if (kind === 'unknown_cmd') { const c = String(payload.cmd || '').toUpperCase(); if (!/^[A-Z0-9_.\-]{1,24}$/.test(c) || sent.unknown_cmd.has(c)) return; sent.unknown_cmd.add(c); payload = { cmd: c }; }
+    if (kind === 'unknown_cmd') { const c = String(payload.cmd || '').toUpperCase(); if (!/^[A-Z0-9_.\-]{1,24}$/.test(c) || sent.unknown_cmd.has(c)) return; /* v1.10.14: 도면 번호처럼 보이는 글자(숫자 2개 이상·'-'·'.' 섞임, 한글 쪽은 숫자 하나라도)는 보내지 않음 */ { const ko = c.startsWith('KO_'), body = ko ? c.slice(3) : (c.includes('_') ? '' : c); if (body && (/[-.]/.test(body) || (body.match(/\d/g) || []).length >= (ko ? 1 : 2))) return; } sent.unknown_cmd.add(c); payload = { cmd: c }; }
     if (kind === 'error' && ++sent.err > 5) return;
     if (kind === 'error' && payload) payload = { ...payload, msg: scrub(payload.msg).slice(0, 200) };
     if (++sent.n > 40) return;
