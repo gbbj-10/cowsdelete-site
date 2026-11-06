@@ -473,7 +473,7 @@
   function addButtons() {
     const L = lab(); if (!L || !L._v) return false; const v = L._v(); const hd = v.pane && v.pane.querySelector('.v3h'); if (!hd || hd.querySelector('#l2cmp')) return true;
     const b = document.createElement('button'); b.className = 'btn'; b.id = 'l2cmp'; b.textContent = '2D 대조'; b.title = '3D를 다시 2D로 투상해서 지금 도면과 선 단위로 비교 (기준 97%)';
-    const stl = hd.querySelector('#l3stl'); hd.insertBefore(b, stl);
+    const stl = hd.querySelector('#l3savew') || hd.querySelector('#l3stl'); stl.before(b);
     b.onclick = async () => {
       const old = b.textContent; b.disabled = true; b.textContent = '대조 중…';
       try { await v.ensure3D(); if (v.mode() === '2d') v.setMode('split'); const res = await compare({}); showResult(res, diffCanvas().toDataURL('image/png')); }

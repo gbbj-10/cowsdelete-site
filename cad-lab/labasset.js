@@ -282,7 +282,7 @@
 <button data-a="glb">GLB (보기용 3D, 색 포함)</button><button data-a="html">웹 3D 보기 (HTML 파일 1개)</button><button data-a="usdz">아이폰 AR (USDZ)</button><hr>
 <button data-a="loadglb" id="l3aglb">다른 3D 파일(GLB)로 만들기…</button><input type="file" id="l3aglbf" accept=".glb" hidden><hr>
 <button data-a="share" id="l3ashare" disabled>📱 휴대폰으로 보내기 (카톡 등)</button><div class="hint">휴대폰에서 누르면 공유 창 → 카카오톡 → 나와의 채팅. PC 는 받은 파일을 카톡 나와의 채팅에 끌어다 놓으세요</div><div class="p" id="l3ap"></div></div>`;
-    stlBtn.before(w);
+    (v.pane.querySelector('#l3savew') || stlBtn).before(w);
     const menu = w.querySelector('#l3am'), shareBtn = w.querySelector('#l3ashare'); progEl = w.querySelector('#l3ap');
     w.querySelector('#l3asset').onclick = e => { e.stopPropagation(); menu.classList.toggle('on'); shareBtn.disabled = !AS.files.length; };
     document.addEventListener('pointerdown', e => { if (!w.contains(e.target)) menu.classList.remove('on'); });

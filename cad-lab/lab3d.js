@@ -70,6 +70,7 @@
 .v3h .seg{display:inline-flex;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
 .v3h .seg button{background:transparent;color:var(--ink-dim);border:0;padding:3px 9px;font:500 12px var(--sans);cursor:pointer}
 .v3h .seg button[aria-pressed=true]{background:#e0702a;color:#fff}
+.v3h .svw{position:relative;display:inline-block}.v3h .svm{position:absolute;right:0;top:calc(100% + 4px);z-index:60;background:#fff;color:#1f2a37;border:1px solid #d6dbe1;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:6px;min-width:270px;display:none;font-size:13px}.v3h .svm.on{display:block}.v3h .svm button.btn{display:block;width:100%;text-align:left;border:0;background:none;padding:7px 10px;border-radius:6px;font:inherit;color:inherit;cursor:pointer;white-space:nowrap}.v3h .svm button.btn:hover{background:#eef3f8}.v3h .svm button.btn:disabled{opacity:.5;cursor:default}
 .v3h select,.v3h input{background:var(--chrome-2);color:var(--ink);border:1px solid var(--rule);border-radius:5px;font:12px var(--sans);padding:2px 4px}
 .v3h input{width:52px}
 .v3h .sp{flex:1}
@@ -97,8 +98,13 @@
     <label>두께 <input id="l3t" type="number" min="0.1" step="any" value="10" title="측면도가 없을 때 쓰는 두께(mm)"></label>
     <label>시험 도면 <select id="l3case"><option value="">불러오기…</option></select></label>
     <span class="sp"></span>
-    <button class="btn" id="l3stl" title="3D 모양을 STL 파일로 저장">STL</button>
-    <button class="btn go" id="l3step" title="편집 가능한 3D 파일(STEP). 처음 한 번 엔진(약 7MB)을 받습니다">STEP 저장</button><select id="l3stepExt" title="STEP 파일 확장자 — .step 과 .stp 는 같은 형식(이름만 다름). 고른 것을 기억합니다" aria-label="STEP 확장자"><option value="step">.step</option><option value="stp">.stp</option></select>
+    <span class="svw" id="l3savew"><button class="btn go" id="l3save" aria-haspopup="menu" aria-expanded="false" title="3D 파일로 저장 — 확장자를 고르세요">저장 ▾</button><div class="svm" id="l3svm" role="menu">
+      <button class="btn" id="l3step" role="menuitem" title="편집 가능한 3D 파일(STEP). 처음 한 번 엔진(약 7MB)을 받습니다">STEP (.step) — 다른 CAD 에서 고치기</button>
+      <button class="btn" id="l3stp" role="menuitem" title=".stp 는 .step 과 같은 형식(이름만 다름)">STP (.stp) — STEP 과 같은 형식</button>
+      <button class="btn" id="l3stl" role="menuitem" title="3D 모양을 STL 파일로 저장 (mm · Z 위)">STL (.stl) — 3D 프린터</button>
+      <button class="btn" id="l3dwf" role="menuitem" title="3D DWF — Navisworks Freedom·Design Review 같은 무료 뷰어로 보기 (부품별 색, 단위 mm)">DWF (.dwf) — Navisworks Freedom 보기</button>
+      <select id="l3stepExt" hidden aria-hidden="true"><option value="step">.step</option><option value="stp">.stp</option></select>
+    </div></span>
   </div><div class="v3c"><canvas id="l3cv"></canvas><div class="v3v" role="group" aria-label="시점"><button data-v="iso" title="등각">등각</button><button data-v="front" title="도면 정면 그대로">정면</button><button data-v="top" title="위에서">윗면</button><button data-v="right" title="오른쪽에서">측면</button><button data-v="fit" title="화면에 맞춤 (더블클릭)">맞춤</button><button data-v="spin" id="l3spin" aria-pressed="false" title="천천히 돌려 보기">돌려보기</button></div><div class="v3hint">드래그: 돌리기 · 오른쪽/가운데 드래그: 이동 · 휠: 확대 · 더블클릭: 맞춤</div><div class="v3e" id="l3empty">2D에 닫힌 윤곽(원·사각형·폴리선)을 그리면 3D가 생깁니다.<br>정면도 오른쪽(또는 위)에 측면도를 그리면 두께·회전체를 알아서 읽습니다.</div><div class="v3s" id="l3st"></div></div>`;
   viewEl.after(pane);
   const side = work.querySelector('.side');
@@ -1138,6 +1144,93 @@
     LAB.lastStl = buf; if (!LAB.noDownload) download(new Blob([buf], { type: 'model/stl' }), baseName() + '.stl'); log('STL 저장: 삼각형 ' + n + '개 (mm · Z 위)', 'ok');
   };
 
+  /* ---------------- 저장: DWF (3D) — 11-06 ----------------
+     Navisworks Freedom·Design Review 는 NWD 와 3D DWF 만 엶(문의 33번). 공개된 HSF(W3D) 명세대로 직접 씀(오토데스크 코드 안 씀).
+     파일 = '(DWF V06.00)' + ZIP{ TYPEINFO, manifest.xml, <섹션>\descriptor.xml, <섹션>\*.w3d }, ZIP 안 경로는 역슬래시.
+     W3D = 머리 주석 '; HSF V10.00' · I · ';W3D V01.00' · I · Z(zlib 시작){ ( model ( partN U"node" ~색 S셸 ) … ) z } · 0(끝).
+     셸 = 압축 안 한 점(float) + 면 목록(CS_TRIVIAL, 8/16/32비트). 부품(메시)마다 세그먼트·색 하나. 단위 mm, Z 위(STL 과 같음) */
+  const DWF = {};
+  DWF.parts = () => {
+    root.updateMatrixWorld(true); const yUp = !!(LAB.ext && LAB.ext.yUp), inv = new T.Matrix4().copy(root.matrixWorld).invert(), M = new T.Matrix4(), v = new T.Vector3(), parts = [];
+    root.traverse(o => {
+      if (!o.isMesh || !o.visible) return; const g = o.geometry, p = g && g.attributes && g.attributes.position; if (!p || !p.count) return;
+      M.multiplyMatrices(inv, o.matrixWorld); const pts = new Float32Array(p.count * 3);
+      for (let i = 0; i < p.count; i++) { v.set(p.getX(i), p.getY(i), p.getZ(i)).applyMatrix4(M); if (yUp) { pts[i * 3] = v.x; pts[i * 3 + 1] = -v.z; pts[i * 3 + 2] = v.y; } else { pts[i * 3] = v.x; pts[i * 3 + 1] = v.y; pts[i * 3 + 2] = v.z; } }
+      const idx = g.index ? g.index.array : null, nt = idx ? Math.floor(idx.length / 3) : Math.floor(p.count / 3);
+      const m = Array.isArray(o.material) ? o.material[0] : o.material, c = m && m.color ? m.color : null;
+      const rgb = c ? [c.r, c.g, c.b].map(x => Math.max(0, Math.min(255, Math.round(x * 255)))) : [180, 180, 180];
+      if (nt) parts.push({ pts, idx, nt, rgb });
+    });
+    return parts;
+  };
+  DWF.w3d = async parts => {
+    const chunks = []; let tmp = new DataView(new ArrayBuffer(8));
+    const u8 = x => chunks.push(Uint8Array.of(x & 255)), str = t => chunks.push(new TextEncoder().encode(t));
+    const u16 = x => { const b = new Uint8Array(2); new DataView(b.buffer).setUint16(0, x, true); chunks.push(b); };
+    const i32 = x => { const b = new Uint8Array(4); new DataView(b.buffer).setInt32(0, x, true); chunks.push(b); };
+    u8(0x28); u8(5); str('model');
+    parts.forEach((P, k) => {
+      const nm = 'part' + (k + 1); u8(0x28); u8(nm.length); str(nm);
+      u8(0x55); u16(4); str('node');
+      u8(0x7E); u8(0x01); u8(P.rgb[0]); u8(P.rgb[1]); u8(P.rgb[2]);
+      const np = P.pts.length / 3, bps = np > 65535 ? 4 : np > 255 ? 2 : 1, n = P.nt * 4;
+      u8(0x53); u8(0x10); u8(0); i32(np);
+      const pb = new Uint8Array(np * 12), pv = new DataView(pb.buffer); for (let i = 0; i < np * 3; i++) pv.setFloat32(i * 4, P.pts[i], true); chunks.push(pb);
+      u8(1); i32(n * bps + 1); u8(bps * 8);
+      const fb = new Uint8Array(n * bps), fv = new DataView(fb.buffer);
+      const put = (j, x) => bps === 1 ? fv.setUint8(j, x) : bps === 2 ? fv.setUint16(j * 2, x, true) : fv.setInt32(j * 4, x, true);
+      for (let t = 0, j = 0; t < P.nt; t++) { const a = P.idx ? P.idx[t * 3] : t * 3, b = P.idx ? P.idx[t * 3 + 1] : t * 3 + 1, c = P.idx ? P.idx[t * 3 + 2] : t * 3 + 2; put(j++, 3); put(j++, a); put(j++, b); put(j++, c); }
+      chunks.push(fb); u8(0x29);
+    });
+    u8(0x29); u8(0x7A);
+    const body = await new Response(new Blob(chunks).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer();
+    const enc = new TextEncoder(), head = [Uint8Array.of(0x3B), enc.encode('; HSF V10.00 \n'), Uint8Array.of(0x49, 0, 0, 0, 0, 0x3B), enc.encode('W3D V01.00\n'), Uint8Array.of(0x49, 0, 0, 0, 0, 0x5A)];
+    return new Uint8Array(await new Blob([...head, body, Uint8Array.of(0)]).arrayBuffer());
+  };
+  const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  DWF.zip = async files => {
+    const out = [], cen = []; let off = 0; const enc = new TextEncoder();
+    for (const f of files) {
+      const nm = enc.encode(f.name), raw = f.data, c = crc32(raw);
+      const cmp = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+      const L = new DataView(new ArrayBuffer(30)); L.setUint32(0, 0x04034b50, true); L.setUint16(4, 20, true); L.setUint16(8, 8, true); L.setUint16(12, 0x21, true); L.setUint32(14, c, true); L.setUint32(18, cmp.length, true); L.setUint32(22, raw.length, true); L.setUint16(26, nm.length, true);
+      out.push(new Uint8Array(L.buffer), nm, cmp);
+      const C = new DataView(new ArrayBuffer(46)); C.setUint32(0, 0x02014b50, true); C.setUint16(4, 20, true); C.setUint16(6, 20, true); C.setUint16(10, 8, true); C.setUint16(14, 0x21, true); C.setUint32(16, c, true); C.setUint32(20, cmp.length, true); C.setUint32(24, raw.length, true); C.setUint16(28, nm.length, true); C.setUint32(42, off, true);
+      cen.push(new Uint8Array(C.buffer), nm); off += 30 + nm.length + cmp.length;
+    }
+    const cl = cen.reduce((a, b) => a + b.length, 0), E = new DataView(new ArrayBuffer(22)); E.setUint32(0, 0x06054b50, true); E.setUint16(8, files.length, true); E.setUint16(10, files.length, true); E.setUint32(12, cl, true); E.setUint32(16, off, true);
+    return [...out, ...cen, new Uint8Array(E.buffer)];
+  };
+  const oid22 = () => { const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_', r = crypto.getRandomValues(new Uint8Array(22)); let s = ''; for (const x of r) s += c[x & 63]; return s; };
+  const xmlE = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  DWF.build = async (title) => {
+    const parts = DWF.parts(); if (!parts.length) throw new Error('3D 모양이 없습니다');
+    const g = await DWF.w3d(parts), sec = 'com.autodesk.dwf.eModel_' + oid22(), gid = oid22(), wn = sec + '\\' + gid + '.w3d', dn = sec + '\\descriptor.xml';
+    const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+    for (const P of parts) for (let i = 0; i < P.pts.length; i += 3) for (let k = 0; k < 3; k++) { const q = P.pts[i + k]; if (q < mn[k]) mn[k] = q; if (q > mx[k]) mx[k] = q; }
+    const tt = xmlE(title || 'Mucca CAD 3D');
+    const desc = `<eModel:Space xmlns:eModel="DWF-eModel:1.0" version="1.0" name="${tt}" plotOrder="1"><eModel:Units type="mm"/><eModel:Resources><eModel:GraphicResource role="3d streaming graphics" mime="application/x-w3d" href="${xmlE(wn)}" title="${tt}" size="${g.length}" objectId="${gid}" extents="${[...mn, ...mx].map(x => +x.toFixed(4)).join(' ')}" transform="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"><eModel:Properties id="${oid22()}"><eModel:Property name="_PolygonHandedness" value="none" category="hidden"/><eModel:Property name="_UseDefaultLighting" value="1" category="hidden"/><eModel:Property name="_UseSilhouetteEdges" value="1" category="hidden"/></eModel:Properties></eModel:GraphicResource></eModel:Resources></eModel:Space>`;
+    const man = `<dwf:Manifest xmlns:dwf="DWF-Manifest:6.0" version="6.0" objectId="${oid22()}"><dwf:Interfaces><dwf:Interface objectId="75E513A9-6C41-4C91-BAA6-81E593FAAC10" name="eModel" href="http://www.autodesk.com/viewers"/></dwf:Interfaces><dwf:Properties><dwf:Property name="SourceProductName" value="Mucca CAD"/></dwf:Properties><dwf:Sections><dwf:Section type="com.autodesk.dwf.eModel" name="${sec}" title="${tt}"><dwf:Source provider="Mucca CAD"/><dwf:Toc><dwf:Resource role="3d streaming graphics" mime="application/x-w3d" href="${xmlE(wn)}"/><dwf:Resource role="descriptor" mime="text/xml" href="${xmlE(dn)}"/></dwf:Toc></dwf:Section></dwf:Sections></dwf:Manifest>`;
+    const te = new TextEncoder(), z = await DWF.zip([{ name: '75E513A9-6C41-4C91-BAA6-81E593FAAC10.TYPEINFO', data: new Uint8Array(0) }, { name: 'manifest.xml', data: te.encode(man) }, { name: wn, data: g }, { name: dn, data: te.encode(desc) }]);
+    const tris = parts.reduce((a, P) => a + P.nt, 0);
+    return { blob: new Blob([te.encode('(DWF V06.00)'), ...z], { type: 'model/vnd.dwf' }), parts: parts.length, tris };
+  };
+  LAB.dwf = DWF;
+  pane.querySelector('#l3dwf').onclick = async () => {
+    const b = pane.querySelector('#l3dwf'), old = b.textContent;
+    try {
+      await ensure3D(); if (!lastPlan && !LAB.ext) { log('3D로 만들 윤곽이 없습니다', 'err'); return; }
+      if (typeof CompressionStream === 'undefined') { log('이 브라우저는 DWF 저장을 지원하지 않습니다 (Chrome·Edge·최신 Safari·Firefox 에서 됩니다)', 'err'); return; }
+      b.disabled = true; b.textContent = 'DWF 만드는 중…';
+      const r = await DWF.build(baseName()); LAB.lastDwf = r.blob;
+      if (!LAB.noDownload) download(r.blob, baseName() + '.dwf');
+      log(`DWF 저장: 부품 ${r.parts}개 · 삼각형 ${r.tris.toLocaleString('ko-KR')}개 (${(r.blob.size / 1024).toFixed(0)}KB · mm) — Navisworks Freedom·Design Review 로 열 수 있습니다`, 'ok');
+      try { window.__muccaEvt && window.__muccaEvt('unknown_cmd', { cmd: 'DWF3D_SAVE' }); } catch (_) { }
+    } catch (e) { log('DWF를 만들지 못했습니다: ' + ((e && e.message) || e), 'err'); }
+    finally { b.disabled = false; b.textContent = old; }
+  };
+
   /* ---------------- 저장: STEP (OpenCascade는 이때만 받음) ---------------- */
   let occP = null, occR = null;
   function ensureOCC() {
@@ -1154,9 +1247,27 @@
   /* 11-03: STEP 파일 확장자 고르기 (.step / .stp — 같은 ISO 10303-21 형식, 이름만 다름). 고른 것을 기억 */
   const extSel = pane.querySelector('#l3stepExt'), EXT_KEY = 'mucca.stepExt';
   const stepExt = () => (extSel && extSel.value === 'stp') ? '.stp' : '.step';
-  if (extSel) { try { if (localStorage.getItem(EXT_KEY) === 'stp') extSel.value = 'stp'; } catch (_) { } extSel.onchange = () => { try { localStorage.setItem(EXT_KEY, extSel.value); } catch (_) { } stepBtn.textContent = extSel.value === 'stp' ? 'STP 저장' : 'STEP 저장'; }; extSel.onchange(); }
+  if (extSel) { try { if (localStorage.getItem(EXT_KEY) === 'stp') extSel.value = 'stp'; } catch (_) { } extSel.onchange = () => { try { localStorage.setItem(EXT_KEY, extSel.value); } catch (_) { } }; }
   LAB.saveStep = ext => { if (ext && extSel) { extSel.value = ext === 'stp' ? 'stp' : 'step'; extSel.onchange(); } stepBtn.click(); };
   stepBtn.addEventListener('pointerenter', () => { ensureOCC().catch(() => { }); }, { once: true });
+  /* 11-06 조미료님: 저장 버튼을 [저장 ▾] 하나로 묶고 목록에 확장자별로 (STEP·STP·STL·3MF·DWF).
+     버튼 id(#l3step·#l3stl·#l33mf)는 그대로 — 다른 기능·시험이 .click() 으로 부름 */
+  {
+    const sw = pane.querySelector('#l3savew'), sb = pane.querySelector('#l3save'), sm = pane.querySelector('#l3svm');
+    const setOpen = on => { sm.classList.toggle('on', on); sb.setAttribute('aria-expanded', on ? 'true' : 'false'); };
+    sb.onclick = e => { e.stopPropagation(); setOpen(!sm.classList.contains('on')); if (sm.classList.contains('on')) ensureOCC().catch(() => { }); };
+    document.addEventListener('pointerdown', e => { if (!sw.contains(e.target)) setOpen(false); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && sm.classList.contains('on')) { setOpen(false); e.stopPropagation(); } }, true);
+    sm.addEventListener('click', e => {
+      const b = e.target.closest && e.target.closest('button'); if (!b) return;
+      setOpen(false);
+      if (b.id === 'l3step' && e.isTrusted && extSel) extSel.value = 'step';   // 사람이 STEP 을 고르면 .step
+      if (b.id === 'l3stp') { e.stopPropagation(); LAB.saveStep('stp'); }
+    }, true);
+    /* 만드는 중이면 [저장 ▾] 자리에 진행 글자를 보여 줌 (목록은 닫혀 있으므로) */
+    const sync = () => { const busy = [...sm.querySelectorAll('button')].find(b => b.disabled); sb.textContent = busy ? busy.textContent.replace(/\s—.*$/, '') : '저장 ▾'; sb.disabled = !!busy; };
+    new MutationObserver(sync).observe(sm, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['disabled'] });
+  }
   // 닫힌 꼭짓점 목록 → 그림: 꺾이는 곳(20° 넘게)은 직선 꼭짓점, 그 사이 완만한 점들은 매끈한 곡선 하나로
   //  (점으로 쪼갠 곡선을 그대로 돌출하면 작은 평면 수십 개가 생겨 2D로 다시 뽑을 때 없는 선이 잔뜩 생김)
   function polyDraw(R, pp, opt) {

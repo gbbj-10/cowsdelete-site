@@ -282,12 +282,13 @@
       catch (e) { log('도면을 만들지 못했습니다: ' + ((e && e.message) || e), 'err'); }
       finally { b.disabled = false; b.textContent = old; }
     };
-    const m = document.createElement('button'); m.className = 'btn'; m.id = 'l33mf'; m.textContent = '3MF'; m.title = '3D 프린터 슬라이서용 3MF 파일 (단위 mm)';
+    const m = document.createElement('button'); m.className = 'btn'; m.id = 'l33mf'; m.textContent = '3MF (.3mf) — 3D 프린터(슬라이서)'; m.title = '3D 프린터 슬라이서용 3MF 파일 (단위 mm)'; m.setAttribute('role', 'menuitem');
     m.onclick = async () => {
       try { await v.ensure3D(); const vv = V(), r = make3MF(vv.root, vv.T); MK.last3MF = r; if (!lab().noDownload) v.download(r.blob, v.baseName() + '.3mf'); log(`3MF 저장: 꼭짓점 ${r.verts.toLocaleString('ko-KR')}개 · 삼각형 ${r.tris.toLocaleString('ko-KR')}개 (${(r.blob.size / 1024).toFixed(0)}KB)`, 'ok'); }
       catch (e) { log('3MF를 만들지 못했습니다: ' + ((e && e.message) || e), 'err'); }
     };
-    if (stl) { stl.before(b); stl.after(m); } else hd.append(b, m);
+    const sw = hd.querySelector('#l3savew');   // 11-06: 저장은 [저장 ▾] 목록 안, [도면 만들기] 는 그 앞
+    if (stl) { (sw || stl).before(b); stl.after(m); } else hd.append(b, m);
     return true;
   }
   if (!addButtons()) { let n = 0; const t = setInterval(() => { if (addButtons() || ++n > 60) clearInterval(t); }, 500); }
