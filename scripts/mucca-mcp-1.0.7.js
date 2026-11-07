@@ -455,8 +455,9 @@ function openEngineLogin(kind) {
   hub[kind] = null;
 }
 const DRAW_SYSTEM_ANY = DRAW_SYSTEM.replace(/WebSearch·WebFetch/g, '웹 검색·웹 읽기 도구') +
-  '\n- 너는 무카 CAD 전용으로 실행됐다. 셸 명령 실행·파일 읽기/쓰기는 하지 않는다. 쓸 수 있는 도구는 mucca_* 도구와 웹 검색·웹 읽기뿐이다.';
-const toolName = n => { n = String(n || ''); const m = n.match(/(mucca_[a-z_]+)$/); if (m) return m[1]; if (/web_?search/i.test(n)) return 'WebSearch'; if (/web_?fetch|fetch/i.test(n)) return 'WebFetch'; return n; };
+  '\n- 너는 무카 CAD 전용으로 실행됐다. 셸 명령 실행·파일 읽기/쓰기는 하지 않는다. 쓸 수 있는 도구는 mucca_* 도구와 웹 검색·웹 읽기뿐이다.' +
+  '\n- 도구 이름 앞에 접두어가 붙어 보일 수 있다(예: mcp_mucca_mucca_draw, mucca.mucca_draw = mucca_draw). 같은 도구다.';
+const toolName = n => { n = String(n || '').replace(/^mcp_[A-Za-z0-9-]+?_(?=mucca_)/, '').replace(/^.*[.:]/, ''); const m = n.match(/^(mucca_[a-z_]+)$/) || n.match(/(mucca_[a-z]+(?:_code)?)$/); if (m) return m[1]; if (/web_?search/i.test(n)) return 'WebSearch'; if (/web_?fetch|fetch/i.test(n)) return 'WebFetch'; return n; };
 const ENGINE_AUTH_RE = /not logged in|log ?in|unauthori[sz]ed|\b401\b|auth method|GEMINI_API_KEY|oauth|credential|api key/i;
 function killTree(p) {
   if (process.platform === 'win32' && p.pid) { try { spawn('taskkill', ['/pid', String(p.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' }); return; } catch (_) {} }
@@ -487,7 +488,11 @@ async function runEngine(kind, text, newChat) {
     fs.mkdirSync(path.join(work, '.gemini'), { recursive: true });
     fs.writeFileSync(path.join(work, '.gemini', 'settings.json'), JSON.stringify({
       mcpServers: { mucca: { command: process.execPath, args: [__filename, '--proxy'], env: mcpEnv, trust: true, timeout: 600000 } },
-      tools: { core: ['google_web_search', 'web_fetch'] }
+      /* 11-07 (문의 34번): Gemini CLI 0.41+ 는 tools.core 에 값이 있으면 '*' 금지 규칙(우선순위 core-0.01)을 만들어
+         MCP 도구까지 전부 뺌(trust:true 의 허용 규칙은 그보다 낮음). → 무카 도구를 core·allowed 에 직접 허용.
+         MCP 도구 실제 이름 = mcp_<서버>_<도구> = mcp_mucca_mucca_draw. 0.41 이전 판에서는 이 항목이 아무 영향 없음 */
+      tools: { core: ['google_web_search', 'web_fetch', 'mcp_mucca_*'], allowed: ['mcp_mucca_*'] },
+      mcp: { allowed: ['mucca'] }
     }, null, 2));
     fs.writeFileSync(path.join(work, 'GEMINI.md'), DRAW_SYSTEM_ANY);
     args = ['-p', '위 요청을 무카 CAD 도구로 처리하라.', '-o', 'stream-json', '--skip-trust', '--approval-mode', 'yolo', '--allowed-mcp-server-names', 'mucca', '-e', 'none'];
@@ -499,7 +504,8 @@ async function runEngine(kind, text, newChat) {
   const run = hub.run = { p, stopped: false, kill: () => killTree(p) };
   toBrowser('ai', { kind: 'start', engine: kind });
   p.stdin.end(text);
-  let buf = '', err = '', raw = '', done = false, lastText = '', delta = '';
+  let buf = '', err = '', raw = '', done = false, lastText = '', delta = '', usedTool = false;
+  const noToolHint = () => { if (!usedTool && /mucca_|무카 ?CAD ?도구|tool/i.test(lastText) && /연결되어 ?있지 ?않|연결이 ?안|사용할 ?수 ?없|없습니다|not (connected|available)|unavailable/i.test(lastText)) toBrowser('ai', { kind: 'text', text: '⚠ ' + label + ' 가 무카 그리기 도구를 받지 못했습니다. 무카 CAD [AI 연결] 창에서 연결 프로그램을 새로 받아(v1.0.7 이상) 다시 실행해 주세요. 그래도 같으면 문의 게시판에 이 화면을 남겨 주세요.' }); };
   const finish = () => { done = true; if (hub.run === run) hub.run = null; }; /* 결과를 보내는 순간 다음 요청을 받을 수 있게 */
   const flush = () => { const t = delta.trim(); if (t) { lastText = t; toBrowser('ai', { kind: 'text', text: t.slice(-600) }); } delta = ''; };
   p.stdout.on('data', d => {
@@ -510,7 +516,7 @@ async function runEngine(kind, text, newChat) {
       if (kind === 'codex') {
         const it = m.item || {};
         if (m.type === 'thread.started' && m.thread_id) hub.sess.codex = m.thread_id;
-        else if (m.type === 'item.started' && (it.type === 'mcp_tool_call' || it.type === 'web_search')) toBrowser('ai', { kind: 'tool', engine: kind, name: it.type === 'web_search' ? 'WebSearch' : toolName(it.tool) });
+        else if (m.type === 'item.started' && (it.type === 'mcp_tool_call' || it.type === 'web_search') && (it.type !== 'mcp_tool_call' || (usedTool = true))) toBrowser('ai', { kind: 'tool', engine: kind, name: it.type === 'web_search' ? 'WebSearch' : toolName(it.tool) });
         else if (m.type === 'item.completed' && it.type === 'agent_message' && it.text) { lastText = String(it.text).trim(); toBrowser('ai', { kind: 'text', text: lastText.slice(0, 600) }); }
         else if (m.type === 'turn.completed') { finish(); toBrowser('ai', { kind: 'done', ok: true, engine: kind, text: lastText }); }
         else if (m.type === 'turn.failed') { finish(); const t = (m.error && m.error.message) || '실패'; toBrowser('ai', { kind: 'error', engine: kind, code: ENGINE_AUTH_RE.test(t) ? 'login' : undefined, text: label + ': ' + t }); }
@@ -518,10 +524,10 @@ async function runEngine(kind, text, newChat) {
       } else {
         if (m.type === 'init') hub.sess.gemini = m.session_id || true;
         else if (m.type === 'message' && m.role === 'assistant') { if (m.delta) delta += m.content || ''; else { delta = m.content || ''; } if (delta.length > 400) flush(); }
-        else if (m.type === 'tool_use') { flush(); toBrowser('ai', { kind: 'tool', engine: kind, name: toolName(m.tool_name) }); }
+        else if (m.type === 'tool_use') { flush(); if (/mucca_/.test(String(m.tool_name || ''))) usedTool = true; toBrowser('ai', { kind: 'tool', engine: kind, name: toolName(m.tool_name) }); }
         else if (m.type === 'result') {
           flush(); finish();
-          if (m.status === 'success') toBrowser('ai', { kind: 'done', ok: true, engine: kind, text: lastText });
+          if (m.status === 'success') { noToolHint(); toBrowser('ai', { kind: 'done', ok: true, engine: kind, text: lastText }); }
           else { const t = (m.error && m.error.message) || '실패'; toBrowser('ai', { kind: 'error', engine: kind, code: ENGINE_AUTH_RE.test(t) ? 'login' : undefined, text: label + ': ' + t }); }
         }
       }
