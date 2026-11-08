@@ -263,7 +263,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.17</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.18</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -5031,7 +5031,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.10.17';
+const APP_VER='v1.10.18';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5534,7 +5534,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
   function renderDlg(){const d=AIC.dlg;if(!d||!d.isConnected)return;const tab=curTab(),L=ENG[tab],V='연결됨 · 연결 프로그램 v'+(AIC.ver||'?');
     const s=d.querySelector('.aicStat');s.dataset.st=AIC.state;let txt;
     if(AIC.state==='on'){
-      if(outdated())txt=V+' — 예전 버전입니다. '+(tab==='claude'?'아래 ①로 새 파일을 받아 ②처럼 다시 설치하세요':'아래 ③에서 새 파일을 받아 다시 실행하세요')+' (최신 v'+MUCCA_MCP_VER+' — GPT·Gemini 를 이 PC에서 더 잘 찾도록 고친 판)';
+      if(outdated())txt=V+' — 예전 버전입니다. '+(tab==='claude'?'아래 ①로 새 파일을 받아 ②처럼 다시 설치하세요':'아래 ③에서 새 파일을 받아 다시 실행하세요')+' (최신 v'+MUCCA_MCP_VER+' — 최신 Gemini CLI 에서 그리기가 안 되던 문제를 고치고, GPT·Gemini 를 이 PC에서 더 잘 찾는 판)';
       else if(tab==='claude')txt=V+(AIC.claude?' · Claude Code 사용 가능 — 오른쪽 입력칸으로 그릴 수 있습니다':' · Claude Code 없음 — Claude 앱 대화로 그릴 수 있습니다 (오른쪽 입력칸은 아래 Claude Code 필요)');
       else txt=V+(engOk(tab)?' · '+L+' 사용 가능 — 입력칸 왼쪽에서 '+L+'를 고르고 [그리기]를 누르세요':' · 이 PC에서 '+ENG_CLI[tab]+'를 못 찾았습니다 — 아래 ②를 마친 뒤 무카 CAD를 새로고침하세요');
     }else txt=AIC.state==='connecting'?'연결하는 중…':'연결 안 됨 — 아래 순서대로 연결하세요';
@@ -5570,7 +5570,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
       s2.append(el('p','sub','<code>codex login</code>을 실행하면 브라우저가 열립니다. <b>Sign in with ChatGPT</b>로 로그인하면 끝납니다. Codex를 쓸 수 있는 요금제인지는 ChatGPT 설정에서 확인하세요.'));
     }else{
       const warn=el('p','sub','<b>먼저 확인하세요.</b> 구글이 <b>2026년 6월 18일</b>부터 개인 구글 계정(무료·Google AI Pro·Ultra)으로는 Gemini CLI를 쓸 수 없게 바꿨습니다(Antigravity로 옮기라는 안내가 뜸). <b>Login with Google</b>로는 그릴 수 없습니다. 무료로 그리려면 위 <b>GPT</b>나 <b>Claude</b> 탭을 쓰세요.');warn.style.cssText+=';border:1px solid var(--danger,#d14);border-radius:6px;padding:8px 10px';s2.append(warn);
-      s2.append(el('p','sub','Gemini로 계속 쓰려면 <b>유료 Gemini API 키</b>가 필요합니다(구글 AI Studio에서 결제를 연결한 키). 사용 요금은 그 키의 구글 결제에서 나갑니다.'));
+      s2.append(el('p','sub','Gemini로 계속 쓰려면 <b>유료 Gemini API 키</b>가 필요합니다(구글 AI Studio에서 결제를 연결한 키). 사용 요금은 그 키의 구글 결제에서 나갑니다. <a href="/guide/ai-connect/#gemini" target="_blank" rel="noopener" style="color:#f1c232;text-decoration:underline">Gemini 연결 순서를 그림으로 보기 →</a>'));
       s2.append(cmdRow('설치','npm i -g @google/gemini-cli'));s2.append(cmdRow('키 등록','gemini'));
       s2.append(el('p','sub','<code>gemini</code>를 처음 실행하면 로그인 방법을 묻습니다. <b>Use Gemini API Key</b>를 고르고 키를 붙여 넣으세요. 또는 내 사용자 폴더의 <code>.gemini</code> 폴더에 <code>.env</code> 파일을 만들고 <code>GEMINI_API_KEY=내 키</code> 한 줄을 넣어도 됩니다. 끝나면 <code>/quit</code>를 쳐서 닫으세요.'));
     }
@@ -6179,7 +6179,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261106a"></script>
+<script src="../assets/config.js?v=20261108a"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261105a"></script>
 <script src="../assets/vendor/supabase.js"></script>

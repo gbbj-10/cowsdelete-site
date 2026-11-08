@@ -44,15 +44,12 @@ assert s.count('labcmds.js') == 1 and s.count('labjudge.js') == 1 and s.count('l
 assert all(s.count(n) == 1 for n in ('labpartforms.js','labaisteps.js','labspec.js','labpdfform.js')) and s.count('window.__aiEvtHook&&') == 1, 'v1.10.10 scripts'
 # 11-04: 연결 프로그램 v1.0.7 (Windows 에서 Codex·Gemini 찾기 — PATH·레지스트리 PATH·.cmd 옆 node_modules·PC node 먼저·되는 후보 기억·30초 뒤 다시 찾기·/diag found)
 #        테스트 서버 먼저 → 확인 뒤 본체 MUCCA_MCP_SRC 로 옮김. 원본: scripts/mucca-mcp-1.0.7.js
+# 11-08: v1.0.7 본체 반영(문의 34번 Gemini 고침 포함) — 본체 MUCCA_MCP_SRC 가 곧 원본과 같아야 함
 import json as _json
 _mcp = pathlib.Path('scripts/mucca-mcp-1.0.7.js').read_text(encoding='utf-8')
-assert '</script' not in _mcp.lower()
 _m = re.search(r'const MUCCA_MCP_SRC=("(?:[^"\\]|\\.)*");', s); assert _m, 'MUCCA_MCP_SRC'
-s = s[:_m.start(1)] + _json.dumps(_mcp, ensure_ascii=False) + s[_m.end(1):]
-s = rep(s, "const MUCCA_MCP_VER='1.0.6';", "const MUCCA_MCP_VER='1.0.7';")
-s = rep(s, "+' (최신 v'+MUCCA_MCP_VER+')';", "+' (최신 v'+MUCCA_MCP_VER+' — GPT·Gemini 를 이 PC에서 더 잘 찾도록 고친 판)';")
-s = rep(s, "else aiSt.textContent=ENG[k]+'를 이 PC에서 찾지 못했습니다. '+ENG_INSTALL[k]+' · '+ENG_RESTART;",
-  "else{const f=r&&r.found&&r.found[k];aiSt.textContent=ENG[k]+'를 이 PC에서 찾지 못했습니다. '+ENG_INSTALL[k]+' · '+ENG_RESTART+(f?' · 찾아본 곳 '+((f.tried||[]).length)+'곳'+(f.last?' · 마지막 오류: '+String(f.last).slice(0,90):''):'')}")
+assert _json.loads(_m.group(1)) == _mcp, '본체 MUCCA_MCP_SRC 가 scripts/mucca-mcp-1.0.7.js 와 다름'
+assert "const MUCCA_MCP_VER='1.0.7';" in s, 'MUCCA_MCP_VER'
 pathlib.Path('cad-lab').mkdir(exist_ok=True)
 pathlib.Path('cad-lab/index.html').write_text(s, encoding='utf-8')
 print('ok', len(s))
