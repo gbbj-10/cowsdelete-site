@@ -264,7 +264,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.18</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.19</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -5032,7 +5032,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.10.18';
+const APP_VER='v1.10.19';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -6180,7 +6180,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261108a"></script>
+<script src="../assets/config.js?v=20261109a"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="aiteam-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261105a"></script>
 <script src="../assets/vendor/supabase.js"></script>
@@ -6216,6 +6216,9 @@ window.cad=Object.freeze({
 <script src="../cad/parts.js?v=3"></script>
 <script src="../cad/multi.js?v=1"></script>
 <script src="../cad/ux14.js?v=1"></script>
+<!-- v1.10.19 (11-09, AI 팀 6회차 본체 반영): 판 문장 바로 그리기 — "가로 300 세로 200 판에 모서리 R10, 구멍 Ø10 네 귀퉁이 20 안쪽" 을 AI 없이 그림 (PLATE·판그리기·구멍판). ux14·labpartforms 보다 바깥에서 preCommand 를 감싸므로 맨 뒤 -->
+<script src="../cad/plate-core.js?v=1"></script>
+<script src="../cad/plate-ui.js?v=1"></script>
 <div id="aiteamBar" style="position:fixed;left:50%;transform:translateX(-50%);bottom:34px;z-index:9000;background:#7048e8;color:#fff;font:600 12px/1.4 var(--sans,sans-serif);padding:4px 12px;border-radius:12px;box-shadow:0 2px 8px #0006;pointer-events:none">🤖 AI 팀 실험판 — AI 팀원들이 회의하고 만든 기능을 시험하는 곳 (본 서버·테스트 서버와 별개)</div>
 <script>try{document.title='무카 CAD AI 팀 실험판';window.MUCCA_AITEAM=true}catch(_){}</script>
 <!-- AI 팀이 만든 스크립트 (cad-lab/ai/team-scripts.html) -->
@@ -6230,7 +6233,6 @@ window.cad=Object.freeze({
 <script src="ai/tlen-ui.js?v=1"></script>
 <script src="ai/btable-core.js?v=2"></script>
 <script src="ai/btable-ui.js?v=2"></script>
-<script src="ai/plate-core.js?v=1"></script>
-<script src="ai/plate-ui.js?v=1"></script>
+<!-- 6회차 판 문장 바로 그리기(plate-core·plate-ui)는 v1.10.19 에서 본체(cad/)로 → 실험판은 본체 사본에 이미 들어 있음, 두 번 넣지 않음 -->
 </body>
 </html>

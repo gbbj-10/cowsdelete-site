@@ -23,6 +23,8 @@ s=s.replace('<script src="parts.js', '<script src="../cad/parts.js', 1)
 s=s.replace('<script src="multi.js', '<script src="../cad/multi.js', 1)
 s=s.replace('<script src="ux14.js', '<script src="../cad/ux14.js', 1)  # v1.10.14 명령창·선택 고침(본체와 같은 파일)
 assert '../cad/ux14.js' in s, 'ux14 path'
+s=s.replace('<script src="plate-core.js', '<script src="../cad/plate-core.js', 1).replace('<script src="plate-ui.js', '<script src="../cad/plate-ui.js', 1)  # v1.10.19 판 문장 바로 그리기(AI 팀 6회차)는 본체 파일을 씀
+assert '../cad/plate-core.js' in s and '../cad/plate-ui.js' in s, 'plate path'
 s=s.replace('<script src="labbom.js', '<script src="../cad/labbom.js', 1)
 s=s.replace('<script src="labelev.js', '<script src="../cad/labelev.js', 1)
 assert '../cad/labbom.js' in s and '../cad/labelev.js' in s, 'bom/elev path'
