@@ -12,6 +12,31 @@
   const IGN_LT = new Set(['center', 'hidden', 'dashed', 'phantom', 'dashdot']);
   const D2R_ = Math.PI / 180;
 
+  /* 11-14 정밀 엔진(replicad_single.wasm) 오류 = WebAssembly.RuntimeError 또는 이 메시지들 (감싼 오류는 메시지로 판단) */
+  const ENG_RE = /remainder by zero|null function|table index is out of bounds|memory access out of bounds|integer divide by zero|(^|: )unreachable$|RuntimeError: unreachable/i;
+  function isEngErr(e) { if (!e) return false; if (typeof WebAssembly !== 'undefined' && e instanceof WebAssembly.RuntimeError) return true; return ENG_RE.test(String(e.message || e)); }
+  let occGen = 0;   // 정밀 엔진을 새로 받을 때마다 +1
+  LAB.act = '';     // 마지막 3D 동작 (기록 이름용 짧은 영문: SEL·CHG·ROT·ZOOM·BLD·MODE·STEP·AI …)
+  /* GC 정리 함수 감싸기: 엔진(emscripten)의 FinalizationRegistry 정리 함수는 wasm 소멸자를 try 없이 부름
+     → 엔진 메모리가 깨진 뒤 GC 가 돌면 'Uncaught RuntimeError'(at=replicad_single.wasm)가 한꺼번에 터짐 (사용자 동작 없이도).
+     엔진 오류만 잡아 안내로 바꾸고, 그 정리 목록은 더 부르지 않음. 다른 오류는 예전처럼 그대로 던짐 */
+  (function safeFR() {
+    const N = globalThis.FinalizationRegistry; if (!N || N.__muccaSafe) return;
+    class SafeFR extends N {
+      constructor(cb) {
+        const gen = occGen, eng = /replicad_single/.test(String(new Error().stack || ''));   // 엔진 안에서 만든 목록 = 그 세대 엔진 전용
+        let dead = false;
+        super(function (held) {
+          if (dead || (eng && deadGen.has(gen))) return;   // 버린(깨진) 엔진의 정리는 엔진을 부르지 않음
+          try { return cb(held); }
+          catch (e) { if (!isEngErr(e)) throw e; dead = true; engineBroke(e, 'GC', eng ? gen : null); }
+        });
+      }
+    }
+    SafeFR.__muccaSafe = true;
+    try { globalThis.FinalizationRegistry = SafeFR; } catch (_) { }
+  })();
+
   /* ---------------- 운영자 전용 게이트 ---------------- */
   const isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const isLab = /\/cad-lab\//.test(location.pathname);   // 테스트 서버(운영자 전용)인가
@@ -83,6 +108,7 @@
 .v3v button:hover{border-color:#6f9fd0}.v3v button[aria-pressed=true]{background:#e0702a;border-color:#e0702a;color:#fff}
 .v3hint{position:absolute;top:40px;right:10px;text-align:right;color:var(--ink-dim);font-size:11.5px;pointer-events:none;opacity:.8}
 .v3s{position:absolute;left:8px;bottom:8px;right:8px;font-size:12px;line-height:1.5;pointer-events:none}
+.v3s .l3retry{pointer-events:auto;margin-left:6px;background:#e0702a;border:1px solid #e0702a;color:#fff;border-radius:5px;padding:2px 9px;font:600 12px var(--sans);cursor:pointer}
 .v3s .i{color:var(--ink-dim)}.v3s .w{color:#f1c232}.v3s .e{color:var(--danger)}.v3s .ok{color:var(--ok)}
 .v3e{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink-dim);font-size:13px;text-align:center;padding:20px;pointer-events:none}
 @media (max-width:900px){.work.l3split,.work.l3only{grid-template-columns:1fr!important;grid-template-rows:1fr 1fr}.work.l3only>.view{display:none}}
@@ -120,7 +146,7 @@
   let mode = '2d';
   try { mode = localStorage.getItem('muccalab.v3mode') || '2d'; } catch (_) { }
   function setMode(m) {
-    mode = m; try { localStorage.setItem('muccalab.v3mode', m); } catch (_) { }
+    mode = m; LAB.act = 'MODE'; try { localStorage.setItem('muccalab.v3mode', m); } catch (_) { }
     work.style.setProperty('--l3side', sideW());
     work.classList.toggle('l3split', m === 'split'); work.classList.toggle('l3only', m === '3d');
     pane.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === m)));
@@ -187,8 +213,8 @@
       else drag = { x: e.clientX, y: e.clientY, pan: e.button === 1 || e.button === 2 || e.shiftKey };
       spin = false; spinBtn && spinBtn.setAttribute('aria-pressed', 'false'); cv3.classList.add('dragging');
     });
-    cv3.addEventListener('pointermove', e => {
-      if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    cv3.addEventListener('pointermove', guard3('ROT', e => {
+      if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); LAB.act = 'ROT';
       const k = vw.dist * 0.0012;
       if (pinch && pts.size === 2) {
         const [a, b] = [...pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
@@ -198,13 +224,14 @@
       if (drag.pan) { vw.tx -= dx * k; vw.tz += dy * k; }
       else { rot(0, 0, 1, dx * 0.009); rot(1, 0, 0, dy * 0.009); }
       draw3();
-    });
+    }));
     const end = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) { drag = null; cv3.classList.remove('dragging'); } };
     cv3.addEventListener('pointerup', end); cv3.addEventListener('pointercancel', end);
-    cv3.addEventListener('wheel', e => { e.preventDefault(); e.stopPropagation(); vw.dist *= Math.exp(e.deltaY * 0.0012); draw3(); }, { passive: false });
-    cv3.addEventListener('dblclick', () => { fit3(); draw3(); });
+    cv3.addEventListener('wheel', guard3('ZOOM', e => { e.preventDefault(); e.stopPropagation(); LAB.act = 'ZOOM'; vw.dist *= Math.exp(e.deltaY * 0.0012); draw3(); }), { passive: false });
+    cv3.addEventListener('dblclick', guard3('FIT', () => { LAB.act = 'FIT'; fit3(); draw3(); }));
     cv3.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); });
-    const loop = () => { if (spin && mode !== '2d') { rot(0, 0, 1, 0.012); draw3(); } requestAnimationFrame(loop); }; requestAnimationFrame(loop);
+    const spinStep = guard3('SPIN', () => { LAB.act = 'SPIN'; rot(0, 0, 1, 0.012); draw3(); });
+    const loop = () => { if (spin && mode !== '2d') spinStep(); requestAnimationFrame(loop); }; requestAnimationFrame(loop);
   }
   // 시점: 정면 = 도면 그대로, 등각 = 오른쪽 위에서 비스듬히
   function setView(v, keepFit) {
@@ -1082,8 +1109,10 @@
     for (const i of pl.info) L.push(`<span class="i">· ${i}</span>`);
     stEl.innerHTML = L.join('<br>');
   }
-  function rebuild(force) {
+  function rebuild(force, auto) {
     if (!T || mode === '2d') return;
+    if (LAB.occBroken) { if (auto) return; LAB.occBroken = false; }   // 11-14: 엔진이 깨진 동안 자동 다시 그리기는 쉼, 사용자가 직접 부르면 새 엔진으로
+    LAB.act = auto || 'BLD';
     if (LAB.ext) { draw3(); return; }
     let pl;
     try { pl = plan(); } catch (err) { stEl.innerHTML = `<span class="e">3D로 바꾸지 못했습니다: ${err.message}</span>`; return; }
@@ -1107,25 +1136,78 @@
      엔진이 한 번 깨지면 다음 호출도 'null function' 이 나므로 엔진을 버리고 다음 번에 새로 받게 함 */
   let failSig = '';
   function fail3D(pl, err, key) {
-    const msg = String((err && err.message) || err || ''), wasm = (typeof WebAssembly !== 'undefined' && err instanceof WebAssembly.RuntimeError) || /RuntimeError|remainder by zero|null function|unreachable|memory access out of bounds/i.test(msg);
+    const msg = String((err && err.message) || err || ''), wasm = isEngErr(err) || /RuntimeError/i.test(msg);
     while (root.children.length) root.children.pop();
-    if (wasm) { occP = null; occR = null; }
     const kind = String(pl && pl.kind || 'x').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 10) || 'X';
+    if (wasm) {   // 11-14: 엔진이 깨짐 → 엔진·옛 형상 참조를 함께 버리고 [3D 다시 만들기] 안내 (기록은 예전 이름 L3D_FAIL_<형상>_W 그대로)
+      const sig = kind + '|' + key, first = sig !== failSig; failSig = sig;
+      if (first) { try { window.__muccaEvt && window.__muccaEvt('unknown_cmd', { cmd: 'L3D_FAIL_' + kind + '_W' }); } catch (_) { } }
+      engineBroke(err, 'BLD', occGen, true); return;
+    }
     stEl.innerHTML = `<span class="e">3D 계산 실패 (형상 확인) — ${esc3(kindKo(pl))} 모양을 정밀 엔진이 계산하지 못했습니다. 겹친 선·끊긴 윤곽·아주 작은 틈을 확인하거나 [형상] 을 바꿔 보세요.</span>`;
     draw3();
     const sig = kind + '|' + key; if (sig === failSig) return; failSig = sig;
     try { log(`3D 계산 실패 (${kindKo(pl)}): ${msg.slice(0, 80)}`, 'err'); } catch (_) { }
-    try { window.__muccaEvt && window.__muccaEvt('unknown_cmd', { cmd: 'L3D_FAIL_' + kind + (wasm ? '_W' : '') }); } catch (_) { }
+    try { window.__muccaEvt && window.__muccaEvt('unknown_cmd', { cmd: 'L3D_FAIL_' + kind }); } catch (_) { }
   }
+
+  /* 11-14 (요청서: 3D 엔진 Uncaught 오류 되풀이) — '깨진 엔진' 상태
+     정밀 엔진(replicad_single.wasm) 메모리가 한 번 깨지면, 사용자가 아무것도 안 해도 브라우저 GC 가 옛 형상을 치울 때
+     엔진의 정리 함수(FinalizationRegistry → wasm 소멸자)가 try 없이 불려 'Uncaught RuntimeError: null function' 등이 한꺼번에 터졌다.
+     → ① GC 정리 함수를 감싸 엔진 오류를 잡고(맨 위 safeFR) ② 엔진·PH.model·LAB.ext·화면 형상 참조를 함께 끊고(delete 안 함)
+       ③ 안내는 1번만 + 기록 1건 ④ [3D 다시 만들기] 전까지 0.6초·0.25초 자동 다시 그리기를 멈춤 (엔진을 안 부름) */
+  const deadGen = new Set(); let brokeN = 0;
+  function engineBroke(err, where, gen, noRec) {
+    brokeN++; LAB.brokeN = brokeN;
+    if (gen == null) gen = occGen;
+    if (deadGen.has(gen)) return;   // 이미 버린 엔진 — 조용히 넘김
+    deadGen.add(gen);
+    if (gen !== occGen) return;     // 예전 세대 엔진의 늦은 정리 오류 — 지금 엔진은 멀쩡하므로 안내 없이 넘김
+    const E = LAB.ext ? (LAB.ext.kind === 'photo' ? 'P' : 'X') : 'N', M = mode === '3d' ? '3' : mode === 'split' ? 'S' : '2', A = String(LAB.act || 'X').replace(/[^A-Z]/g, '').slice(0, 4) || 'X';
+    dropEngine();
+    if (!noRec) { try { window.__muccaEvt && window.__muccaEvt('unknown_cmd', { cmd: 'L3D_FAIL_' + String(where || 'X').replace(/[^A-Z]/g, '').slice(0, 4) + '_' + E + M + '_' + A + '_W' }); } catch (_) { } }
+    showBroke(String((err && err.message) || err || '').slice(0, 60));
+  }
+  function dropEngine() {
+    occP = null; occR = null; LAB.occBroken = true;
+    try { const P = window.LABPHOTO; if (P && P.model) { P.lostCode = P.model.code; P.model = null; } } catch (_) { }   // 옛 엔진 형상 참조 끊기 (delete 는 깨진 엔진을 다시 부르므로 안 함)
+    LAB.ext = null; lastPlan = null; lastKey = ''; failSig = '';
+    try { if (root) while (root.children.length) root.children.pop(); } catch (_) { }
+    try { const C2 = window.LAB2D; if (C2) C2.last = null; } catch (_) { }
+    try { draw3(); } catch (_) { }
+  }
+  function showBroke(msg) {
+    try { emptyEl.style.display = 'none'; } catch (_) { }
+    stEl.innerHTML = '<span class="e">3D 계산 실패 — 정밀 계산 엔진이 멈춰서 3D 를 비웠습니다 (2D 도면은 그대로입니다).</span> <button class="btn l3retry" type="button">3D 다시 만들기</button>';
+    const b = stEl.querySelector('.l3retry'); if (b) b.onclick = () => LAB.retry3D();
+    LAB.brokeShown = (LAB.brokeShown || 0) + 1;
+    try { log('3D 계산 실패 — 정밀 계산 엔진이 멈췄습니다. 3D 창의 [3D 다시 만들기] 를 누르면 새 엔진으로 다시 만듭니다' + (msg ? ' (' + msg + ')' : ''), 'err'); } catch (_) { }
+  }
+  // [3D 다시 만들기]: 새 엔진으로. AI 3D 모델(사진/도면 → 3D)이었으면 그 코드로 다시 만들고, 안 되면 2D 도면으로
+  LAB.retry3D = async () => {
+    LAB.act = 'RTRY'; LAB.occBroken = false; failSig = ''; lastKey = '';
+    const P = window.LABPHOTO, code = P && P.lostCode;
+    if (code && P.cmds) {
+      try { const r = await P.cmds([{ cmd: 'model3d', code }]); if (r && r.ok) { P.lostCode = null; log('3D 를 새 엔진으로 다시 만들었습니다 (AI 3D 모델)', 'ok'); return true; } } catch (_) { }
+      P.lostCode = null; log('AI 3D 모델을 다시 만들지 못해 2D 도면으로 3D 를 만듭니다', 'err');
+    }
+    rebuild(true); return !LAB.occBroken;
+  };
+  LAB.engineErr = (e, where) => { if (!isEngErr(e)) return false; engineBroke(e, where); return true; };   // 다른 3D 모듈(labphoto·labmake·lab2dcheck·labsection·labcheck3d)의 catch 에서 부름
+  // 감싸기: 3D 창의 손 동작·타이머 (지금은 three.js 만 쓰지만, 엔진 오류가 섞여 오면 페이지 오류 대신 안내로)
+  function guard3(where, fn) { return function () { try { return fn.apply(this, arguments); } catch (e) { if (!isEngErr(e)) throw e; engineBroke(e, where); } }; }
+  // 그래도 새어 나온 엔진 오류(페이지 오류)가 있으면 엔진을 버리고 안내 (기록은 cloud.js 의 L3D_UNCAUGHT 가 함)
+  window.addEventListener('error', e => { try { if (/replicad_single\.wasm/.test(String(e.filename || '')) || (isEngErr(e.error) && /\.wasm/.test(String(e.error && e.error.stack || '')))) engineBroke(e.error || e.message, 'UNC', occGen, true); } catch (_) { } });
   function esc3(t) { return String(t || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   LAB.rebuild = rebuild; LAB.plan = () => plan();
   LAB.modelKey = () => LAB.ext || lastKey;   // 11-05: 지금 보이는 3D 표시 (2D 대조 결과가 이 3D 것인지 확인)
-  let selSig = ''; setInterval(() => { if (mode === '2d' || !T) return; let sg = ''; try { sg = sel.size + ':' + [...sel].slice(0, 50).join(','); } catch (_) { } if (sg !== selSig) { selSig = sg; rebuild(true); } }, 600);
+  let selSig = ''; setInterval(guard3('SEL', () => { if (mode === '2d' || !T || LAB.occBroken) return; let sg = ''; try { sg = sel.size + ':' + [...sel].slice(0, 50).join(','); } catch (_) { } if (sg !== selSig) { selSig = sg; rebuild(true, 'SEL'); } }), 600);
 
-  // 2D가 바뀌면 3D도 다시 (0.25초 모아서)
+  // 2D가 바뀌면 3D도 다시 (0.25초 모아서) — 11-14: 엔진이 깨진 동안은 쉼
   let tmr = 0;
   const _changed = changed;
-  changed = function () { const r = _changed.apply(this, arguments); if (mode !== '2d') { clearTimeout(tmr); tmr = setTimeout(() => rebuild(false), 250); } return r; };
+  const chgRun = guard3('CHG', () => rebuild(false, 'CHG'));
+  changed = function () { const r = _changed.apply(this, arguments); if (mode !== '2d' && !LAB.occBroken) { clearTimeout(tmr); tmr = setTimeout(chgRun, 250); } return r; };
 
   /* ---------------- 저장: STL ---------------- */
   function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
@@ -1235,9 +1317,9 @@
   let occP = null, occR = null;
   function ensureOCC() {
     if (!occP) {
-      const t0 = performance.now();
+      const t0 = performance.now(), gen = ++occGen;   // 11-14: 엔진 세대 번호 (깨진 엔진의 GC 정리를 새 엔진과 구분)
       occP = Promise.all([import(new URL('replicad-lab.mjs?v=1', location.href).href), import(OCC_BASE + 'replicad_single.js')]).then(async ([R, M]) => {
-        const oc = await M.default({ locateFile: () => OCC_BASE + 'replicad_single.wasm' }); R.setOC(oc); occR = R; LAB.occMs = Math.round(performance.now() - t0); return R;
+        const oc = await M.default({ locateFile: () => OCC_BASE + 'replicad_single.wasm' }); R.setOC(oc); occR = R; if (gen === occGen) LAB.occBroken = false; LAB.occMs = Math.round(performance.now() - t0); return R;
       });
       occP.catch(() => { occP = null; });
     }
@@ -1504,17 +1586,17 @@
   const saveStepNow = async () => {
     if (LAB.ext && LAB.ext.step) { const old = stepBtn.textContent; stepBtn.disabled = true; stepBtn.textContent = 'STEP 만드는 중…';
       try { const t0 = performance.now(); const blob = await LAB.ext.step(); LAB.stepMs = Math.round(performance.now() - t0); LAB.stepBytes = blob.size; LAB.lastStep = blob; if (!LAB.noDownload) download(blob, baseName() + stepExt()); log(`${stepExt() === '.stp' ? 'STP' : 'STEP'} 저장 (${(blob.size / 1024).toFixed(0)}KB)`, 'ok'); }
-      catch (err) { log('STEP을 만들지 못했습니다: ' + (err && err.message || err), 'err'); LAB.stepErr = String(err && err.message || err); }
+      catch (err) { log('STEP을 만들지 못했습니다: ' + (err && err.message || err), 'err'); LAB.stepErr = String(err && err.message || err); LAB.engineErr(err, 'STEP'); }
       finally { stepBtn.disabled = false; stepBtn.textContent = old; } return; }
     if (!lastPlan) { log('3D로 만들 윤곽이 없습니다', 'err'); return; }
-    const old = stepBtn.textContent; stepBtn.disabled = true; stepBtn.textContent = occP ? 'STEP 만드는 중…' : '엔진 받는 중…';
+    LAB.act = 'STEP'; const old = stepBtn.textContent; stepBtn.disabled = true; stepBtn.textContent = occP ? 'STEP 만드는 중…' : '엔진 받는 중…';
     try {
       const t0 = performance.now(); const R = await ensureOCC(); stepBtn.textContent = lastPlan.holes && lastPlan.holes.length > 200 ? `STEP 만드는 중… (구멍 ${lastPlan.holes.length}개, 몇 초 걸립니다)` : 'STEP 만드는 중…'; await new Promise(r => setTimeout(r, 60));
       const solid = await makeSolid(R, lastPlan); const blob = solid.blobSTEP();
       LAB.stepMs = Math.round(performance.now() - t0); LAB.stepBytes = blob.size; LAB.lastStep = blob;
       if (!LAB.noDownload) download(blob, baseName() + stepExt());
       log(`${stepExt() === '.stp' ? 'STP' : 'STEP'} 저장 (${(blob.size / 1024).toFixed(0)}KB, ${(LAB.stepMs / 1000).toFixed(1)}초)`, 'ok');
-    } catch (err) { log('STEP을 만들지 못했습니다: ' + (err && err.message || err), 'err'); LAB.stepErr = String(err && err.message || err); }
+    } catch (err) { log('STEP을 만들지 못했습니다: ' + (err && err.message || err), 'err'); LAB.stepErr = String(err && err.message || err); LAB.engineErr(err, 'STEP'); }
     finally { stepBtn.disabled = false; stepBtn.textContent = old; }
   };
 

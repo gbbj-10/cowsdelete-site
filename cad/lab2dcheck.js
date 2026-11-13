@@ -477,7 +477,7 @@
     b.onclick = async () => {
       const old = b.textContent; b.disabled = true; b.textContent = '대조 중…';
       try { await v.ensure3D(); if (v.mode() === '2d') v.setMode('split'); const res = await compare({}); showResult(res, diffCanvas().toDataURL('image/png')); }
-      catch (e) { showResult(null, null, (e && e.message) || String(e)); }
+      catch (e) { try { window.LAB3D && LAB3D.engineErr && LAB3D.engineErr(e, 'C2D'); } catch (_) { } showResult(null, null, (e && e.message) || String(e)); }
       finally { b.disabled = false; b.textContent = old; }
     };
     return true;

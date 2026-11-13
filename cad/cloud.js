@@ -328,7 +328,21 @@
     evt('unknown_cmd', { cmd: 'FILE_NOTREADABLE_' + act });
   }
   window.__muccaFileNotReadable = fileNotReadable;
-  window.addEventListener('error', e => { if (isNotReadable(e.error) || isNotReadable(e.message)) { fileNotReadable(); return; } evt('error', { msg: String(e.message || '').slice(0, 200), at: `${String(e.filename || '').split('/').pop()}:${e.lineno || 0}` }); });
+  /* 11-14: 3D 정밀 엔진(replicad_single.wasm)에서 새어 나온 오류는 위 'error' 5건 상한과 따로 횟수만 세어
+     약 1분 뒤 1건으로 보냄: L3D_UNCAUGHT_<횟수>_<3D상태>_<마지막 3D 동작>
+     3D상태 = LAB.ext(P 사진·도면→3D / X 다른 외부 / N 없음) + 보기(2 / S 2D|3D / 3) · 동작 = SEL·CHG·ROT·ZOOM·BLD·AI … (도면 내용 없음) */
+  let l3dUnc = 0, l3dUncT = 0, l3dUncSent = 0, l3dUncSt = '';
+  function l3dState() {   // 처음 터질 때의 3D 상태 (엔진을 버리기 전)
+    let E = 'N', M = '2', A = 'X';
+    try { const L = window.LAB3D; if (L) { E = L.ext ? (L.ext.kind === 'photo' ? 'P' : 'X') : (L.occBroken ? 'B' : 'N'); const m = L._v ? L._v().mode() : '2d'; M = m === '3d' ? '3' : m === 'split' ? 'S' : '2'; A = String(L.act || 'X').replace(/[^A-Z]/g, '').slice(0, 4) || 'X'; } } catch (_) {}
+    return `${E}${M}_${A}`;
+  }
+  function l3dUncSend() {
+    l3dUncT = 0; const n = Math.min(999, l3dUnc); l3dUnc = 0; if (!n || ++l3dUncSent > 3) return;
+    evt('unknown_cmd', { cmd: `L3D_UNCAUGHT_${n}_${l3dUncSt}` });
+  }
+  window.addEventListener('error', e => { try { if (/replicad_single\.wasm/.test(String(e.filename || ''))) { l3dUnc++; if (!l3dUncT) { l3dUncSt = l3dState(); l3dUncT = setTimeout(l3dUncSend, window.__muccaUncDelay || 60000); } } } catch (_) {} });
+  window.addEventListener('error', e => { if (isNotReadable(e.error) || isNotReadable(e.message)) { fileNotReadable(); return; } evt('error',{ msg: String(e.message || '').slice(0, 200), at: `${String(e.filename || '').split('/').pop()}:${e.lineno || 0}` }); });
   window.addEventListener('unhandledrejection', e => { if (isNotReadable(e.reason)) { fileNotReadable(); e.preventDefault(); return; } evt('error', { msg: String((e.reason && e.reason.message) || e.reason || '').slice(0, 200), at: 'promise' }); });
 
   /* 문의 → 문의 게시판 목록부터 (내 문의 확인 + [문의 쓰기]), 새 탭: 그리던 도면은 그대로 */

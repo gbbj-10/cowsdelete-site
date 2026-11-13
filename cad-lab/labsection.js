@@ -205,7 +205,7 @@
 
   /* ---------- 명령줄 ---------- */
   try {
-    TOOLS.revsection = () => { (async () => { try { const v = lab()._v(); await v.ensure3D(); if (v.mode() === '2d') v.setMode('split'); const r = await cmdRevolve({}); log(`회전체 3D: 길이 ${r.length_mm} · 최대 지름 ${r.max_dia_mm} mm · 단면 ${r.regions}개${r.holes ? ' · 빈 곳 ' + r.holes : ''} (축 ${r.axis.found}) — 단면만 선택하면 그 도형만 씀`, 'ok'); } catch (e) { log('회전체를 만들지 못했습니다: ' + (e.message || e), 'err'); } })(); return null; };
+    TOOLS.revsection = () => { (async () => { try { const v = lab()._v(); await v.ensure3D(); if (v.mode() === '2d') v.setMode('split'); const r = await cmdRevolve({}); log(`회전체 3D: 길이 ${r.length_mm} · 최대 지름 ${r.max_dia_mm} mm · 단면 ${r.regions}개${r.holes ? ' · 빈 곳 ' + r.holes : ''} (축 ${r.axis.found}) — 단면만 선택하면 그 도형만 씀`, 'ok'); } catch (e) { try { window.LAB3D && LAB3D.engineErr && LAB3D.engineErr(e, 'SEC'); } catch (_) { } log('회전체를 만들지 못했습니다: ' + (e.message || e), 'err'); } })(); return null; };
     TOOLS.forgesplit = () => { try { const r = splitOutline({}); if (!r.pairs.length) { log('겹친 두 윤곽(간격 0.2~6mm)을 찾지 못했습니다', 'err'); return null; } const n = applySplit(r); log(`단조/가공 외형 나눔: 겹친 윤곽 ${r.pairs.length}쌍 → 바깥 ${r.outer.length}개 '${FORGE}'(자홍) · 안쪽 ${r.inner.length}개 '${MACH}'(하늘)${r.amb ? ` · 판단 못 한 쌍 ${r.amb}` : ''} (되돌리기 Ctrl+Z)`, 'ok'); } catch (e) { log('나누지 못했습니다: ' + (e.message || e), 'err'); } return null; };
     Object.assign(ALIAS, { REVSECTION: 'revsection', REVOLVESECTION: 'revsection', FORGESPLIT: 'forgesplit', OUTLINESPLIT: 'forgesplit' });
     Object.assign(CMD_KO, { revsection: '단면 → 회전체', forgesplit: '단조·가공 외형 나누기' });

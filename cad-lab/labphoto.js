@@ -480,9 +480,9 @@
     if (PH.pending) await PH.pending;
     const out = [];
     for (const c of cmds) {
-      const k = String(c && c.cmd || '');
+      const k = String(c && c.cmd || ''); try { if (window.LAB3D && /^model3d/.test(k)) LAB3D.act = 'AI'; } catch (_) { }
       try { const f = CMD[k]; if (!f) throw new Error('사진·3D 명령은 ' + Object.keys(CMD).join(' · ') + ' 입니다 (다른 그리기 명령과 섞지 말고 따로 보내세요)'); out.push(Object.assign({ cmd: k, ok: true }, await f(c))); }
-      catch (e) { out.push({ cmd: k, ok: false, error: (e && e.message) || String(e) }); }
+      catch (e) { try { window.LAB3D && LAB3D.engineErr && LAB3D.engineErr(e, 'AI'); } catch (_) { } out.push({ cmd: k, ok: false, error: (e && e.message) || String(e) }); }   // 11-14: 엔진 오류면 엔진·옛 형상 버리고 안내
     }
     return { ok: out.every(x => x.ok !== false), results: out };
   };

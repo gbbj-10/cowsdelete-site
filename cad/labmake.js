@@ -279,7 +279,7 @@
     b.onclick = async () => {
       const old = b.textContent; b.disabled = true; b.textContent = '도면 만드는 중…';
       try { await v.ensure3D(); const res = await makeDrawing({}); log(summary(res), res.ok ? 'ok' : 'err'); if (res.errors) log('일부 명령 오류: ' + res.errors.join(' / '), 'err'); if (v.mode() === '3d') v.setMode('split'); }
-      catch (e) { log('도면을 만들지 못했습니다: ' + ((e && e.message) || e), 'err'); }
+      catch (e) { try { window.LAB3D && LAB3D.engineErr && LAB3D.engineErr(e, 'MAKE'); } catch (_) { } log('도면을 만들지 못했습니다: ' + ((e && e.message) || e), 'err'); }
       finally { b.disabled = false; b.textContent = old; }
     };
     const m = document.createElement('button'); m.className = 'btn'; m.id = 'l33mf'; m.textContent = '3MF (.3mf) — 3D 프린터(슬라이서)'; m.title = '3D 프린터 슬라이서용 3MF 파일 (단위 mm)'; m.setAttribute('role', 'menuitem');
