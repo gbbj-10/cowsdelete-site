@@ -12,6 +12,10 @@ window.COWS_CONFIG = {
     coupang: {
       trackingCode: 'AF2513653',
       banners: { '728x90': 1040632, '468x60': 1040633, '320x100': 1040634 }
-    }
+    },
+    /* 구글 애드센스 — 게시자 ID(ca-pub-…)를 넣기 전까지는 아무것도 불러오지 않음.
+       값 넣기: python3 scripts/set-adsense.py ca-pub-XXXXXXXXXXXXXXXX [article=광고단위ID] [list=광고단위ID]
+       광고는 내용 있는 페이지(/s/ /p/ /r/ 글, 커뮤니티 목록, 무카 CAD 소개, AI 연결 안내)에만. 편집기(/cad/)·테스트 서버·안내 페이지에는 넣지 않음 */
+    adsense: { client: '', slots: { article: '', list: '' } }
   }
 };

@@ -82,6 +82,7 @@ ${body}
 <script src="/assets/config.js?v=20261018c"></script>
 <script src="/assets/vendor/supabase.js"></script>
 <script src="/assets/site.js?v=20261102b"></script>
+<script src="/assets/adsense.js?v=20261114a"></script>
 ${tail}
 </body>
 </html>
@@ -118,6 +119,7 @@ for (const p of posts) {
   <div class="pb">${linkify(p.body)}</div>
 </article>
 <section class="cmts" aria-label="댓글"><h2>댓글 ${cs.length}</h2><div id="clist">${cs.map(c => `<div class="cmt"><span class="ca">${gi(c.author_grade, 16)}${esc(c.author_nick)}</span><div class="cb">${linkify(c.body)}</div><span class="cd">${kst(c.created_at)}</span></div>`).join('')}</div></section>
+<div class="gad" data-gad="article" hidden></div>
 <div class="backrow"><a class="btn line sm" href="/board/?g=${p.gallery}">${esc(g)} 목록</a></div></div>`;
   const ld = jsonld({ '@context': 'https://schema.org', '@type': 'DiscussionForumPosting', headline: p.title, text: snip(p.body, 500), url, datePublished: p.created_at, dateModified: p.updated_at,
     author: { '@type': 'Person', name: p.author_nick }, interactionStatistic: [{ '@type': 'InteractionCounter', interactionType: 'https://schema.org/LikeAction', userInteractionCount: p.likes },
@@ -137,7 +139,7 @@ for (const it of items) {
   ${thumbOk(it.thumb) ? `<div style="background:#111418;padding:16px;text-align:center"><img src="${it.thumb}" alt="${esc(it.title)} 미리보기" style="max-width:100%;height:auto;max-height:420px"></div>` : ''}
   <div class="pb">${it.description ? linkify(it.description) : `무카 CAD 사용자가 공유한 ${kind}입니다.`}${tags ? `\n\n${tags}` : ''}</div>
   <div class="pact"><a class="btn primary" href="/community/?id=${it.id}">무카 CAD로 가져오기</a></div>
-</article><div class="backrow"><a class="btn line sm" href="/community/">공유 블록·도면 목록</a></div></div>`;
+</article><div class="gad" data-gad="article" hidden></div><div class="backrow"><a class="btn line sm" href="/community/">공유 블록·도면 목록</a></div></div>`;
   const ld = jsonld({ '@context': 'https://schema.org', '@type': 'CreativeWork', name: it.title, description: snip(it.description || `${kind} — 무카 CAD 공유`, 300), url, dateCreated: it.created_at, author: { '@type': 'Person', name: it.author_nick }, keywords: (it.tags || []).join(', ') });
   if (write(`s/${it.id}/index.html`, page({ title: `${it.title} (${kind}) — 무카 CAD 공유 | 카우스 소거법`, desc: snip(it.description || `${it.title} ${kind}. 무카 CAD에서 바로 가져와 쓸 수 있습니다. ${(it.tags || []).join(' ')}`), canonical: url, body, head: ld }))) changed++;
 }
@@ -150,7 +152,7 @@ for (const q of reqs) {
     <div class="pm"><span class="au">${gi(q.author_grade)}${esc(q.author_nick)}</span><time datetime="${q.created_at}">${kst(q.created_at)}</time><span>${q.status === 'filled' ? '채워짐' : q.status === 'open' ? '찾는 중' : '닫힘'}</span><span>답 ${q.answers}</span>${q.bounty ? `<span>현상금 ${q.bounty} 크레딧</span>` : ''}</div></header>
   <div class="pb">${q.body ? linkify(q.body) : '이 블록·도면을 찾고 있습니다.'}${(q.tags || []).length ? '\n\n' + q.tags.map(t => `<span>#${esc(t)}</span>`).join(' ') : ''}</div>
   <div class="pact"><a class="btn primary" href="/requests/?id=${q.id}">답하러 가기</a></div>
-</article><div class="backrow"><a class="btn line sm" href="/requests/">요청 목록</a></div></div>`;
+</article><div class="gad" data-gad="article" hidden></div><div class="backrow"><a class="btn line sm" href="/requests/">요청 목록</a></div></div>`;
   if (write(`r/${q.id}/index.html`, page({ title: `${q.title} — 요청 게시판 | 카우스 소거법`, desc: snip(q.body || `${q.title} 블록·도면을 찾습니다.`), canonical: url, body }))) changed++;
 }
 
