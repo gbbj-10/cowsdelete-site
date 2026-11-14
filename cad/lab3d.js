@@ -131,7 +131,7 @@
       <button class="btn" id="l3dwf" role="menuitem" title="3D DWF — Navisworks Freedom·Design Review 같은 무료 뷰어로 보기 (부품별 색, 단위 mm)">DWF (.dwf) — Navisworks Freedom 보기</button>
       <select id="l3stepExt" hidden aria-hidden="true"><option value="step">.step</option><option value="stp">.stp</option></select>
     </div></span>
-  </div><div class="v3c"><canvas id="l3cv"></canvas><div class="v3v" role="group" aria-label="시점"><button data-v="iso" title="등각">등각</button><button data-v="front" title="도면 정면 그대로">정면</button><button data-v="top" title="위에서">윗면</button><button data-v="right" title="오른쪽에서">측면</button><button data-v="fit" title="화면에 맞춤 (더블클릭)">맞춤</button><button data-v="spin" id="l3spin" aria-pressed="false" title="천천히 돌려 보기">돌려보기</button></div><div class="v3hint">드래그: 돌리기 · 오른쪽/가운데 드래그: 이동 · 휠: 확대 · 더블클릭: 맞춤</div><div class="v3e" id="l3empty">2D에 닫힌 윤곽(원·사각형·폴리선)을 그리면 3D가 생깁니다.<br>정면도 오른쪽(또는 위)에 측면도를 그리면 두께·회전체를 알아서 읽습니다.</div><div class="v3s" id="l3st"></div></div>`;
+  </div><div class="v3c"><canvas id="l3cv"></canvas><div class="v3v" role="group" aria-label="시점"><button data-v="iso" title="등각">등각</button><button data-v="front" title="도면 정면 그대로">정면</button><button data-v="top" title="위에서">윗면</button><button data-v="right" title="오른쪽에서">측면</button><button data-v="fit" title="화면에 맞춤 (더블클릭)">맞춤</button><button data-v="edge" id="l3edge" aria-pressed="true" title="외곽선 켜기·끄기 (모서리 선)">외곽선</button><button data-v="spin" id="l3spin" aria-pressed="false" title="천천히 돌려 보기">돌려보기</button></div><div class="v3hint">드래그: 돌리기 · 오른쪽/가운데 드래그: 이동 · 휠: 확대 · 더블클릭: 맞춤</div><div class="v3e" id="l3empty">2D에 닫힌 윤곽(원·사각형·폴리선)을 그리면 3D가 생깁니다.<br>정면도 오른쪽(또는 위)에 측면도를 그리면 두께·회전체를 알아서 읽습니다.</div><div class="v3s" id="l3st"></div></div>`;
   viewEl.after(pane);
   const side = work.querySelector('.side');
   function sideW() { const w = side ? side.getBoundingClientRect().width : 252; return Math.round(w || 252) + 'px'; }
@@ -170,8 +170,13 @@
     if (doc.entities.length && !confirm('지금 도면을 지우고 시험 도면을 불러올까요? (Ctrl+Z로 되돌릴 수 있습니다)')) return;
     LAB.loadCase(id); if (mode === '2d') setMode('split'); else rebuild(true); };
   const spinBtn = pane.querySelector('#l3spin');
+  /* 11-14 (조미료님: 3D 모델 외곽선 켜고 끄기) — 모서리 선(LineSegments) 보이기/숨기기, 브라우저에 기억 (기본 켜짐) */
+  let edgeOn = true; try { edgeOn = localStorage.getItem('muccalab.v3edge') !== '0'; } catch (_) { }
+  const edgeBtn = pane.querySelector('#l3edge'); edgeBtn && edgeBtn.setAttribute('aria-pressed', String(edgeOn));
+  function setEdges(on) { edgeOn = !!on; LAB.act = 'EDGE'; try { localStorage.setItem('muccalab.v3edge', edgeOn ? '1' : '0'); } catch (_) { } edgeBtn && edgeBtn.setAttribute('aria-pressed', String(edgeOn)); draw3(); }
+  LAB.setEdges = setEdges; LAB.edgesOn = () => edgeOn;
   pane.querySelector('.v3v').onclick = e => { const b = e.target.closest('button'); if (!b || !T) return; const v = b.dataset.v;
-    if (v === 'fit') { fit3(); draw3(); } else if (v === 'spin') { spin = !spin; b.setAttribute('aria-pressed', String(spin)); } else setView(v === 'front' ? 'front' : v); };
+    if (v === 'fit') { fit3(); draw3(); } else if (v === 'spin') { spin = !spin; b.setAttribute('aria-pressed', String(spin)); } else if (v === 'edge') setEdges(!edgeOn); else setView(v === 'front' ? 'front' : v); };
   tIn.addEventListener('keydown', e => e.stopPropagation()); kindSel.addEventListener('keydown', e => e.stopPropagation());
 
   /* ---------------- 3D 엔진 (three.js) 지연 로딩 ---------------- */
@@ -190,6 +195,7 @@
      왼쪽 드래그: 드래그한 방향으로 모델이 굴러감 · 오른쪽/가운데 드래그(또는 Shift): 이동
      휠: 확대·축소 · 더블클릭: 화면에 맞춤 · 두 손가락: 확대·이동 */
   let renderer, scene, cam, pivot, base, root, cv3, ro3, spin = false;
+  let hullG = null, HMAT = null; const HULL = new Map();   // 11-14: 테두리(실루엣) 외곽선 — root 밖 따로 묶음이라 STL·3MF·DWF·GLB 저장에는 안 들어감
   const vw = { dist: 300, tx: 0, tz: 0 };
   function init3() {
     cv3 = pane.querySelector('#l3cv');
@@ -203,6 +209,7 @@
     // pivot(사용자 회전) → base(도면 XY를 정면으로 세움) → root(모델 중심을 원점으로)
     pivot = new T.Group(); base = new T.Group(); root = new T.Group();
     base.rotation.x = Math.PI / 2; pivot.add(base); base.add(root); scene.add(pivot);
+    hullG = new T.Group(); hullG.name = 'l3outline'; base.add(hullG);
     setView('iso', true);
     ro3 = new ResizeObserver(resize3); ro3.observe(pane.querySelector('.v3c'));
     const pts = new Map(); let drag = null, pinch = null;
@@ -249,7 +256,39 @@
   }
   function draw3() {
     if (!renderer) return;
+    if (root) { root.traverse(o => { if (o.isLineSegments) o.visible = edgeOn; }); syncOutline(); }   // 외곽선 켜기·끄기
     cam.position.set(vw.tx, -vw.dist, vw.tz); cam.lookAt(vw.tx, 0, vw.tz); renderer.render(scene, cam);
+  }
+  /* 11-14 테두리 외곽선: 모서리 선(EdgesGeometry)은 꺾인 곳만 그려 둥근 면의 옆 테두리가 안 보임
+     → 각 면을 뒤집어(BackSide) 화면에서 1.6px 만큼 바깥으로 민 '껍데기'를 같은 자리에 그려 테두리를 만든다 (확대해도 굵기 그대로) */
+  function hullMat() {   // 이 3D 빌드(three-lab)에는 ShaderMaterial 이 없어 MeshBasicMaterial 에 정점 밀기만 끼워 넣음
+    if (HMAT) return HMAT;
+    const U = { oPx: { value: 1.6 }, oRes: { value: new T.Vector2(1000, 600) } };
+    HMAT = new T.MeshBasicMaterial({ color: 0xe6edf6, side: 1 /* BackSide */ });
+    HMAT.userData.U = U; HMAT.customProgramCacheKey = () => 'l3outline';
+    HMAT.onBeforeCompile = sh => {
+      sh.uniforms.oPx = U.oPx; sh.uniforms.oRes = U.oRes;
+      sh.vertexShader = 'uniform float oPx; uniform vec2 oRes;\n' + sh.vertexShader.replace('#include <project_vertex>',
+        '#include <project_vertex>\n{ vec3 nO = normalize(normalMatrix * normal); vec2 dO = (projectionMatrix * vec4(nO, 0.0)).xy; float lO = length(dO); if (lO > 1e-6) dO /= lO; gl_Position.xy += dO * oPx * 2.0 / oRes * gl_Position.w; }');
+    };
+    return HMAT;
+  }
+  function syncOutline() {
+    if (!hullG || !T) return;
+    hullG.visible = edgeOn; if (!edgeOn) return;
+    try {
+      const m = hullMat(), sz = renderer.getSize(new T.Vector2()); m.userData.U.oRes.value.set(Math.max(1, sz.x), Math.max(1, sz.y));
+      root.updateMatrixWorld(true); const inv = new T.Matrix4().copy(root.matrixWorld).invert();
+      hullG.position.copy(root.position); hullG.quaternion.copy(root.quaternion); hullG.scale.copy(root.scale);
+      const live = new Set();
+      root.traverse(o => {
+        if (!o.isMesh || !o.visible || !o.geometry || !o.geometry.attributes || !o.geometry.attributes.normal) return;
+        live.add(o); let h = HULL.get(o);
+        if (!h) { h = new T.Mesh(o.geometry, m); h.matrixAutoUpdate = false; h.renderOrder = -1; HULL.set(o, h); hullG.add(h); }
+        h.geometry = o.geometry; h.matrix.multiplyMatrices(inv, o.matrixWorld);
+      });
+      for (const [o, h] of HULL) if (!live.has(o)) { hullG.remove(h); HULL.delete(o); }
+    } catch (e) { hullG.visible = false; LAB.outlineErr = String(e && e.message || e).slice(0, 120); }
   }
   // 모델 중심을 회전 중심으로 옮기고 화면에 맞춤
   function centerModel() {
@@ -1007,6 +1046,7 @@
 
   /* ---------------- 3D 만들기 (three.js) ---------------- */
   const MAT = () => new T.MeshStandardMaterial({ color: 0x6f9fd0, metalness: 0.25, roughness: 0.55 });
+  const EDGE_MAT = () => new T.LineBasicMaterial({ color: 0xe6edf6, transparent: true, opacity: 0.85 });   // 11-14: 외곽선 — 어두운 배경·파란 면 둘 다에서 보이게 밝은 선 (예전: 남색 0.55 라 거의 안 보임)
   function shapeFrom(loop, origin, asHole) {
     const S2 = asHole ? new T.Path() : new T.Shape();
     if (loop.circle) { S2.absarc(loop.circle.c.x - origin.x, loop.circle.c.y - origin.y, loop.circle.r, 0, Math.PI * 2, !!asHole); return S2; }
@@ -1014,7 +1054,7 @@
     const ccw = area(p) > 0; if (asHole ? ccw : !ccw) p = p.slice().reverse();
     S2.moveTo(p[0].x, p[0].y); for (let i = 1; i < p.length; i++) S2.lineTo(p[i].x, p[i].y); S2.closePath(); return S2;
   }
-  function addMesh(geo) { const m = new T.Mesh(geo, MAT()); root.add(m); const ed = new T.LineSegments(new T.EdgesGeometry(geo, 25), new T.LineBasicMaterial({ color: 0x0b1a2a, transparent: true, opacity: 0.55 })); root.add(ed); }
+  function addMesh(geo) { const m = new T.Mesh(geo, MAT()); root.add(m); const ed = new T.LineSegments(new T.EdgesGeometry(geo, 25), EDGE_MAT()); root.add(ed); }
   let lastPlan = null, lastKey = '';
   function build(pl) {
     while (root.children.length) { const c = root.children.pop(); c.geometry && c.geometry.dispose(); }
@@ -1049,6 +1089,7 @@
           const v = poly.map(q => new T.Vector2(Math.max(0, q.r), q.u)); v.push(v[0].clone());
           const g = new T.LatheGeometry(v, 96); g.rotateX(Math.PI / 2); g.translate(x, 0, 0);
           const m = new T.Mesh(g, new T.MeshStandardMaterial({ color: 0x6f9fd0, metalness: 0.25, roughness: 0.55, side: T.DoubleSide })); root.add(m);
+          root.add(new T.LineSegments(new T.EdgesGeometry(g, 25), EDGE_MAT()));   // 11-14: 회전체(단면도 → 회전체)에도 외곽선
         }
       });
       return {};

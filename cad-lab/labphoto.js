@@ -257,7 +257,7 @@
       }
       const col = new T.Color(p.color), dark = col.getHSL({}).l < 0.25;
       out.push({ p, mesh: new T.Mesh(p.geo, new T.MeshStandardMaterial({ color: col, roughness: /chrome|silver|metal/.test(p.color) ? 0.3 : 0.62, metalness: 0.05, side: T.DoubleSide })),
-        line: new T.LineSegments(p.edges, new T.LineBasicMaterial({ color: dark ? 0x55606b : 0x1b2633, transparent: true, opacity: dark ? 0.5 : 0.35 })) });
+        line: new T.LineSegments(p.edges, new T.LineBasicMaterial({ color: dark ? 0x6b7682 : 0x1b2633, transparent: true, opacity: dark ? 0.8 : 0.75 })   /* 11-14: 외곽선 진하게 */) });
     }
     return out;
   }
