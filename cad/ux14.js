@@ -164,18 +164,51 @@
       ['치수만', '가로 300 세로 200 → 사각형 · 30파이 → 지름 30 원 (쓰고 놓을 곳 클릭)'],
       ['조작', 'Enter·Space = 확인 / 빈칸이면 직전 명령 다시 · Esc = 그만두기(창 닫기) · Ctrl+Z 되돌리기 · 휠 = 확대·축소 · 가운데 버튼 끌기 = 이동'],
       ['맥', '두 손가락 밀기 = 이동 · 핀치 = 확대 · delete = 지우기 · ⌘Z 되돌리기'],
+      ['등각', 'ISODRAFT(등각) 켜기 · F5 = 평면(왼쪽·위·오른쪽) 바꾸기 · @1000<30 각도 입력 — 배관 ISO 도면'],
       ['막히면', 'Esc 를 두세 번 누르면 처음 상태로 돌아갑니다']
     ];
     const tb = document.createElement('table'); tb.style.cssText = 'border-collapse:collapse;width:100%';
     for (const [a, b] of rows) { const tr = document.createElement('tr'); const th = document.createElement('th'); th.textContent = a; th.style.cssText = 'text-align:left;padding:2px 12px 2px 0;white-space:nowrap;vertical-align:top;color:var(--ink-dim);font-weight:600'; const td = document.createElement('td'); td.textContent = b; td.style.padding = '2px 0'; tr.append(th, td); tb.appendChild(tr); }
     box.appendChild(tb);
+    const b0 = document.createElement('button'); b0.className = 'tbtn'; b0.textContent = '전체 명령 목록'; b0.onclick = () => { m.remove(); cmdList(); };
     const b1 = document.createElement('button'); b1.className = 'tbtn'; b1.textContent = '단축키 바꾸기'; b1.onclick = () => { m.remove(); startTool('aliasedit'); };
     const b2 = document.createElement('button'); b2.className = 'tbtn'; b2.textContent = 'AI 명령표 (개발자용)'; b2.onclick = () => { m.remove(); openApi(); };
-    const m = modal('무카 CAD 도움말', box, [b1, b2]); m.id = 'muccaHelp';
+    const m = modal('무카 CAD 도움말', box, [b0, b1, b2]); m.id = 'muccaHelp';
     window.__muccaEvt && window.__muccaEvt('unknown_cmd', { cmd: 'HELP_OPEN' });
     return m;
   }
   window.__muccaHelp = help;
+  /* ---------- v1.10.22 전체 명령 목록 (CMDLIST · 명령목록) — 코드의 명령표(ALIAS·CMD_KO·KO_CMD)에서 바로 만들어 늘 최신 ---------- */
+  function cmdRows() {
+    const by = {};
+    for (const [al, t] of Object.entries(ALIAS)) { if (!t || /^na_/.test(t)) continue; (by[t] = by[t] || { t, en: [], ko: [] }).en.push(al); }
+    try { for (const [k, t] of Object.entries(KO_CMD)) if (by[t] && by[t].ko.length < 6) by[t].ko.push(k); } catch (_) { }
+    const rows = Object.values(by).map(r => ({ ...r, name: (typeof CMD_KO !== 'undefined' && CMD_KO[r.t]) || r.t, en: r.en.sort((a, b) => a.length - b.length || a.localeCompare(b)) }));
+    return rows.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  }
+  function cmdList() {
+    const rows = cmdRows(), box = document.createElement('div'); box.style.cssText = 'font-size:12.5px;line-height:1.45;width:100%;min-width:min(560px,80vw)';
+    const head = document.createElement('div'); head.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px';
+    const q = document.createElement('input'); q.placeholder = '찾기 — 예: 등각, 해치, TR, 치수'; q.style.cssText = 'flex:1;min-width:0;padding:6px 8px'; q.setAttribute('aria-label', '명령 찾기');
+    const cnt = document.createElement('span'); cnt.style.cssText = 'color:var(--ink-dim);white-space:nowrap';
+    head.append(q, cnt); box.appendChild(head);
+    const wrap = document.createElement('div'); wrap.style.cssText = 'max-height:58vh;overflow:auto;border:1px solid rgba(127,127,127,.25);border-radius:6px';
+    const tb = document.createElement('table'); tb.style.cssText = 'border-collapse:collapse;width:100%;table-layout:fixed';
+    const hr = document.createElement('tr'); for (const [h, w] of [['명령', '28%'], ['영문 이름 (오토캐드 약어)', '42%'], ['한글로 쳐도 되는 말', '30%']]) { const th = document.createElement('th'); th.textContent = h; th.style.width = w; th.style.cssText += ';position:sticky;top:0;background:var(--panel,#1b1f24);text-align:left;padding:5px 8px;font-weight:600;color:var(--ink-dim)'; hr.appendChild(th); } tb.appendChild(hr);
+    const trs = rows.map(r => { const tr = document.createElement('tr'); tr.style.cssText = 'border-top:1px solid rgba(127,127,127,.15);cursor:pointer'; tr.title = '눌러서 바로 시작';
+      for (const [v, st] of [[r.name, 'font-weight:600'], [r.en.join(' · '), 'font-family:var(--mono,monospace)'], [r.ko.join(' · '), '']]) { const td = document.createElement('td'); td.textContent = v; td.style.cssText = 'padding:4px 8px;vertical-align:top;overflow-wrap:anywhere;' + st; tr.appendChild(td); }
+      tr.onclick = () => { m.remove(); try { cmdIn.value = r.en[0] || ''; cmdIn.focus(); cmdIn.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); } catch (_) { } };
+      tr._k = (r.name + ' ' + r.en.join(' ') + ' ' + r.ko.join(' ') + ' ' + r.t).toLowerCase(); tb.appendChild(tr); return tr; });
+    wrap.appendChild(tb); box.appendChild(wrap);
+    const note = document.createElement('p'); note.style.cssText = 'margin:8px 0 0;color:var(--ink-dim)'; note.textContent = '명령줄에 영문 이름이나 한글을 치고 Enter. 틀리게 치면 비슷한 명령을 알려 줍니다. 아직 없는 오토캐드 명령은 치면 안내가 나옵니다.'; box.appendChild(note);
+    const upd = () => { const k = q.value.trim().toLowerCase(); let n = 0; for (const tr of trs) { const ok = !k || tr._k.includes(k); tr.hidden = !ok; if (ok) n++; } cnt.textContent = n + ' / ' + rows.length + '개'; };
+    q.oninput = upd; upd();
+    const m = modal('전체 명령 목록', box, []); m.id = 'muccaCmdList'; setTimeout(() => q.focus(), 30);
+    window.__muccaEvt && window.__muccaEvt('unknown_cmd', { cmd: 'CMDLIST_OPEN' });
+    return m;
+  }
+  window.__muccaCmdList = cmdList;
+  try { TOOLS.cmdlist = () => { cmdList(); return null; }; Object.assign(ALIAS, { CMDLIST: 'cmdlist', COMMANDS: 'cmdlist' }); Object.assign(CMD_KO, { cmdlist: '전체 명령 목록' }); Object.assign(KO_CMD, { 명령목록: 'cmdlist', 명령어목록: 'cmdlist', 명령어: 'cmdlist', 전체명령: 'cmdlist' }); } catch (_) { }
   if (typeof CMD_KO === 'object') CMD_KO.help = '도움말';
 
   /* ---------- ④ Esc 로 맨 위 창 닫기 (입력칸에서 쓰는 Esc·단축키 입력 중은 그대로) ---------- */
