@@ -264,7 +264,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.22</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.23</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -1767,7 +1767,9 @@ function fileStem(){return window.__muccaStem||'mucca-drawing'}
 async function offer(filename,data){if(!dl){openText('파일 저장','이 화면에서는 파일 저장을 쓸 수 없습니다. 아래 내용을 복사해 사용하세요.',typeof data==='string'?data:'(바이너리 파일은 복사할 수 없습니다)');return false}
   try{await dl.save({filename,data});log(filename+' 저장','ok');return true}catch(err){if(err&&err.code==='declined')log('저장을 취소했습니다');else if(err&&err.code==='rate_limited')toast('저장 창이 이미 열려 있습니다');else{log('저장 실패: '+(err&&err.message||err),'err');if(typeof data==='string')openText('파일 내용','저장 대신 아래 내용을 복사하세요.',data)}return false}}
 document.getElementById('bSave').onclick=()=>offer(fileStem()+'.json',JSON.stringify(doc,null,1));
-document.getElementById('bDxf').onclick=()=>{const txt=exportDXF();if(dl)offer(fileStem()+'_dxf.zip',zipStore(fileStem()+'.dxf',new TextEncoder().encode(txt)));else openText('DXF 내보내기','아래 내용을 '+fileStem()+'.dxf 로 저장하세요.',txt)};
+const TOOBIG_SAVE='도면이 너무 커서 한 파일로 만들지 못했습니다(브라우저 글자 한계). 필요한 부분만 골라 WBLOCK(블록 쓰기)으로 나눠 저장하거나, 레이어를 끄고 나눠 저장하세요.';
+function saveTooBig(err,kind){if(!(err&&(err.tooBig||err instanceof RangeError)))return false;log(TOOBIG_SAVE,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:kind+'_TOOBIG'});return true}
+document.getElementById('bDxf').onclick=()=>{let txt;try{txt=exportDXF();if(dl)offer(fileStem()+'_dxf.zip',zipStore(fileStem()+'.dxf',new TextEncoder().encode(txt)));else openText('DXF 내보내기','아래 내용을 '+fileStem()+'.dxf 로 저장하세요.',txt)}catch(err){if(!saveTooBig(err,'DXF'))throw err}};
 /* DWG 저장: DXF 내보내기 결과를 브라우저 안에서 DWG(AutoCAD 2013 형식)로 바꿔 저장 */
 async function saveDwg(){if(!window.MuccaDWG){log('DWG 변환 도구를 불러오지 못했습니다. [출력 ▾] › DXF 내보내기로 저장한 뒤 AutoCAD에서 여세요.','err');return}
   if(!doc.entities.length){log('저장할 도형이 없습니다.','err');return}
@@ -1776,7 +1778,7 @@ async function saveDwg(){if(!window.MuccaDWG){log('DWG 변환 도구를 불러�
     if(!await offer(fileStem()+'.dwg',new Blob([bytes],{type:'application/acad'})))return;
     const LS=MuccaDWG.lastSave;log(`DWG 저장 (AutoCAD 2013 형식 · ${(bytes.length/1024).toFixed(0)}KB · ${((performance.now()-t0)/1000).toFixed(1)}초${LS&&LS.inserts?` · 블록 ${LS.blocks}종 · 블록 삽입 ${LS.inserts.toLocaleString('ko-KR')}개${LS.attribs?` · 속성 ${LS.attribs.toLocaleString('ko-KR')}개`:''} 포함`:''}). 해치·여러 줄 문자·치수는 DXF 내보내기와 같이 선·문자로 풀어서 저장됩니다. AutoCAD 2013 이상에서 열립니다. 안 열리면 [출력 ▾] › DXF 내보내기를 쓰세요(DXF가 더 안정적입니다).`,'ok');
     window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE'})}
-  catch(e){log(`DWG 저장 실패 (${String(e&&e.message||e).slice(0,120)}). [출력 ▾] › DXF 내보내기로 저장해 주세요.`,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE_FAIL'})}}
+  catch(e){if(saveTooBig(e,'DWG'))return;log(`DWG 저장 실패 (${String(e&&e.message||e).slice(0,120)}). [출력 ▾] › DXF 내보내기로 저장해 주세요.`,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE_FAIL'})}}
 document.getElementById('bPng').onclick=()=>{const prev=new Set(sel);sel.clear();render();cv.toBlob(b=>{sel=prev;dirty=true;if(b)offer(fileStem()+'.png',b)},'image/png')};
 document.getElementById('bNew').onclick=()=>{pushUndo();const d=freshDoc();doc=d;sel.clear();window.__muccaStem=null;if(plotSet._auto){plotSet.title='';plotSet._auto=false}changed();zoomExtents();log('새 도면 (취소로 되돌릴 수 있음)','ok')};
 /* PDF·사진은 AI 입력칸 첨부로, DWG는 DXF 변환 안내 */
@@ -1812,7 +1814,7 @@ async function openSpecial(f){
     /* 크기 구간 기록 (2026-10-25): M15 = 10~15MB. TRY 만 있고 OK·FAIL 이 없으면 메모리 부족 등으로 탭이 멈춘 것 */
     const MB=mb<1?'M1':mb<3?'M3':mb<5?'M5':mb<10?'M10':mb<15?'M15':mb<20?'M20':mb<30?'M30':mb<50?'M50':'M99';
     window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_TRY_'+MB});
-    log(`${f.name}: DWG 읽는 중…${mb>=10?` (${mb.toFixed(0)}MB 큰 파일 — ${mb>=30?'2~4분':'1~2분'}쯤 걸립니다${mb>=35?'. 35MB가 넘으면 브라우저 메모리 한계로 탭이 멈출 수 있습니다. 안 열리면 AutoCAD에서 PURGE(소거)로 줄이거나, 필요한 부분만 WBLOCK으로 따로 저장해서 여세요':mb>=30?'. 컴퓨터 메모리가 부족하면 탭이 멈출 수 있습니다':''})`:''}${first?' (처음 한 번은 변환 도구 약 1.5MB를 받습니다. 파일은 서버로 올라가지 않고 이 브라우저 안에서만 바뀝니다)':''}`,'me');
+    log(`${f.name}: DWG 읽는 중…${mb>=10?` (${mb.toFixed(0)}MB 큰 파일 — ${mb>=30?'2~4분':'1~2분'}쯤 걸립니다${mb>=30?'. 30MB가 넘으면 브라우저 메모리 한계로 탭이 멈출 수 있습니다. 안 열리면 AutoCAD에서 PURGE(소거)로 줄이거나, 필요한 부분만 WBLOCK으로 따로 저장해서 여세요':mb>=30?'. 컴퓨터 메모리가 부족하면 탭이 멈출 수 있습니다':''})`:''}${first?' (처음 한 번은 변환 도구 약 1.5MB를 받습니다. 파일은 서버로 올라가지 않고 이 브라우저 안에서만 바뀝니다)':''}`,'me');
     const G=openGauge(f.name,mb,MuccaDWG.cancel?()=>MuccaDWG.cancel():null);G.set(1,'DWG 파일 여는 중',4);
     const fmtN=n=>Number(n).toLocaleString('ko-KR');
     try{const r=await MuccaDWG.toDxf(f,p=>{const q=p.n?Math.min(1,p.k/p.n):0;
@@ -1822,7 +1824,8 @@ async function openSpecial(f){
         else if(p.st==='dxf')G.set(62+13*q,'무카 CAD 형식으로 바꾸는 중',62+13*Math.min(1,q+.1));
         else if(p.st==='send')G.set(75,'넘겨받는 중',79)});
       log(`DWG(AutoCAD ${MuccaDWG.NAMES[r.ver]||r.ver} 형식) 변환 완료 (${((performance.now()-t0)/1000).toFixed(1)}초) — 가져오는 중…`,'ok');
-      window.__muccaSrcName=f.name;try{await openFile(new File([r.dxf],f.name.replace(/\.dwg$/i,'.dxf')),G)}finally{window.__muccaSrcName=null}
+      window.__muccaSrcName=f.name;const df={name:f.name.replace(/\.dwg$/i,'.dxf'),size:r.dxf.size!=null?r.dxf.size:r.dxf.length,_txt:r.dxf};r.dxf=null;   /* v1.10.23: 큰 DWG — 변환 결과를 File 로 다시 감싸지 않고 넘기고 참조를 바로 놓음 */
+      try{await openFile(df,G)}finally{window.__muccaSrcName=null;df._txt=null}
       if(first)log((MuccaDWG.lastEngine==='acadrust'?'DWG 변환: 오픈소스 acadrust(MPL-2.0) 사용.':'DWG 변환: 오픈소스 acad-ts(MIT) 사용.')+' 다중 지시선·표·3D 객체 등 일부는 빠질 수 있습니다. (오픈소스 고지: cowsdelete.com/oss/)','');
       window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_OK_'+MB})}
     catch(e){if(e&&e.cancel){G.done(false,'다른 파일을 열거나 다시 [열기]를 누르세요','열기를 취소했습니다');log(`${f.name}: DWG 열기를 취소했습니다`,'');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_CANCEL_'+MB});return true}
@@ -1848,8 +1851,15 @@ async function openFile(f,G){if(!G&&await openSpecial(f))return;
   const setStem=()=>{const st=nm.replace(/\.[^.]+$/,'').replace(/[\\/:*?"<>|]+/g,'_').trim().slice(0,80);if(!st)return;window.__muccaStem=st;if(!plotSet.title||plotSet._auto){plotSet.title=st;plotSet._auto=true}};if(!G&&/\.dxf$/i.test(f.name)&&f.size>4*1048576)G=openGauge(f.name,f.size/1048576,null);
   const P1=fromDwg?80:8,P2=fromDwg?86:45,PS=fromDwg?12:53;
   if(G){G.set(P1,'도면 해석 중',P2-2);await G.show()}
-  const buf=await f.arrayBuffer();let txt=new TextDecoder('utf-8').decode(buf);
-  if(txt.includes('\uFFFD')){try{txt=new TextDecoder('euc-kr').decode(buf)}catch(_){}}
+  const fmb=(f.size||0)/1048576,FMB=fmb<30?'M30':fmb<100?'M100':fmb<300?'M300':'M999',TOOBIG=`${nm}: 파일이 너무 커서(${fmb.toFixed(0)}MB) 브라우저 메모리 안에서 읽지 못했습니다. AutoCAD에서 PURGE(소거)로 줄이거나, 필요한 부분만 WBLOCK(블록 쓰기)으로 나눠 저장해서 여세요.`;
+  const tooBig=()=>{if(G)G.done(false,'파일이 너무 큽니다 — PURGE·WBLOCK 로 나눠 여세요','도면을 열지 못했습니다');log(TOOBIG,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'FILE_TOOBIG_'+FMB})};
+  let txt;
+  if(f.size>450*1048576){tooBig();return}   /* v1.10.23: 브라우저 글자 한계(약 5억 자)에 가까운 파일은 읽기 전에 안내 */
+  try{let buf=f._txt;f._txt=null;   /* DWG 에서 넘어오면 변환 결과(글자 또는 바이트)를 그대로 — 파일로 다시 감싸지 않아 메모리 절반 */
+    if(typeof buf==='string')txt=buf;
+    else{if(buf==null)buf=await f.arrayBuffer();else if(typeof buf.arrayBuffer==='function')buf=await buf.arrayBuffer();txt=new TextDecoder('utf-8').decode(buf);if(txt.includes('\uFFFD')){try{txt=new TextDecoder('euc-kr').decode(buf)}catch(_){}}}
+    buf=null}
+  catch(err){tooBig();return}
   try{if(/\.json$/i.test(f.name)){const d=JSON.parse(txt);const sc=Array.isArray(d)?d:(d&&Array.isArray(d.cmds)?d.cmds:null);
     if(sc){/* 그리기 명령 파일 → 그리는 과정 재생 */if(!sc.length)throw new Error("명령이 없습니다");for(let i=0;i<600&&replaying;i++)await sleep(100);log(`${f.name}: 명령 ${sc.length}개 그리기 시작`,'me');aiSt.textContent=`${f.name} · 명령 ${sc.length}개`;
       const r=LIVE.on?await replay(sc,Math.max(40,Math.min(160,6000/sc.length))):runBatch(sc);if(!LIVE.on)zoomExtents();else setTimeout(()=>{zoomExtents();dirty=true},300);
@@ -2629,7 +2639,8 @@ exportDXF=function(opt){
     }};
   const names=Object.keys(BL());
   if(names.length){w(0,'SECTION');w(2,'BLOCKS');for(const n of names){const b=BL()[n];w(0,'BLOCK');w(8,'0');w(2,dxfStr(n));w(70,0);w(10,b.base.x);w(20,b.base.y);w(30,0);w(3,dxfStr(n));for(const e of b.ents)writeEnt(e);OV=null;w(0,'ENDBLK');w(8,'0')}w(0,'ENDSEC')}
-  w(0,'SECTION');w(2,'ENTITIES');for(const e of doc.entities)writeEnt(e);w(0,'ENDSEC');w(0,'EOF');return o.join('\r\n')+'\r\n';
+  w(0,'SECTION');w(2,'ENTITIES');for(const e of doc.entities)writeEnt(e);w(0,'ENDSEC');w(0,'EOF');
+  try{return o.join('\r\n')+'\r\n'}catch(err){if(err instanceof RangeError){const e2=new Error('DXF_TOOBIG');e2.tooBig=true;e2.lines=o.length;throw e2}throw err}
 };
 
 /* ----- DXF 가져오기 (블록·삽입·타원·볼록 폴리선·치수 블록) ----- */
@@ -5056,7 +5067,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.10.22';
+const APP_VER='v1.10.23';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5325,11 +5336,20 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
   /* v1.9.19: GPT·Gemini '설치 필요'일 때 연결 프로그램에 다시 찾게 함(/diag refresh — v1.0.6 에도 있음).
      예전엔 연결 프로그램이 켜질 때 한 번만 찾아서, 그 뒤에 Codex 를 설치하면 새로고침해도 계속 '설치 필요'였음 (문의 15번) */
   const ENG_RESTART='설치·로그인 뒤에도 안 보이면 Claude 앱을 완전히 종료(Windows: 작업 표시줄 오른쪽 아래 Claude 아이콘 → 종료)했다가 다시 켜 주세요.';
+  /* v1.10.23: 다시 찾기 실패 원인 종류만 기록(경로·오류 원문은 보내지 않음) — NOHUB 연결 프로그램 응답 없음 · OLD 1.0.6 이하 · NOTFOUND 설치 안 됨/못 찾음 · NODE Node 문제 · PERM 실행 권한 · AUTH 로그인 · TIMEOUT · OTHER */
+  function recheckWhy(r,k){if(!r||!r.ok)return 'NOHUB';const v=String(r.version||'0').split('.').map(Number),old=(v[0]||0)*1e4+(v[1]||0)*100+(v[2]||0)<10007;const f=r.found&&r.found[k];if(old||!f)return 'OLD';
+    const t=String(f.last||'')+' '+(f.tried||[]).map(x=>x&&x.out||'').join(' ');
+    if(/MODULE_NOT_FOUND|Cannot find module|node(\.exe)?['"]? (is not|은|는)|Node\.js|unsupported engine|SyntaxError|requires node/i.test(t))return 'NODE';
+    if(/EACCES|EPERM|permission denied|ExecutionPolicy|UnauthorizedAccess|스크립트를 실행할 수 없|액세스가 거부/i.test(t))return 'PERM';
+    if(/log ?in|auth|401|unauthori[sz]ed|로그인/i.test(t))return 'AUTH';
+    if(/ETIMEDOUT|timed? ?out|시간 초과|코드 null/i.test(t))return 'TIMEOUT';
+    if(/ENOENT|설치된 곳을 찾지|not recognized|인식되지|찾을 수 없|not found|코드 -1|코드 127|코드 9009/i.test(t)||!(f.tried||[]).length)return 'NOTFOUND';
+    return 'OTHER'}
   async function engRecheck(k){if(AIC.state!=='on'||AIC.rechecking||k==='claude'&&engOk(k))return engOk(k);AIC.rechecking=true;AIC.autoRecheck=1;
     aiSt.textContent=ENG[k]+'('+(k==='codex'?'Codex CLI':k==='gemini'?'Gemini CLI':'Claude Code')+')를 이 PC에서 다시 찾는 중…';
     let r=null;try{r=await post('/diag',{refresh:true})}catch(_){}AIC.rechecking=false;
     if(r&&r.ok){if('claudeCode' in r)AIC.claude=r.claudeCode;if(r.engines)AIC.engines=r.engines;window.__aicEngineSel&&window.__aicEngineSel()}
-    const ok=engOk(k);try{window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_RECHECK_'+(k==='codex'?'GPT':k.toUpperCase())+(ok?'_OK':'_NO')})}catch(_){}
+    const ok=engOk(k);try{window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_RECHECK_'+(k==='codex'?'GPT':k.toUpperCase())+(ok?'_OK':'_NO')});if(!ok)window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_RECHECK_'+(k==='codex'?'GPT':k.toUpperCase())+'_NO_'+recheckWhy(r,k)})}catch(_){}
     if(ok){setState(AIC.state);log(ENG[k]+'을(를) 찾았습니다 — 이제 '+ENG[k]+'로 그릴 수 있습니다','ok')}
     else{const f=r&&r.found&&r.found[k];aiSt.textContent=ENG[k]+'를 이 PC에서 찾지 못했습니다. '+ENG_INSTALL[k]+' · '+ENG_RESTART+(f?' · 찾아본 곳 '+((f.tried||[]).length)+'곳'+(f.last?' · 마지막 오류: '+String(f.last).slice(0,90):''):'')}
     return ok}
@@ -5929,6 +5949,7 @@ Object.assign(ALIAS,{PDF:'plot',EXPORTPDF:'plot',PLOTPDF:'plot'});
 /* v1.9.18: 자르기·연장 모드 (표준 ↔ 빠른 작업) */
 Object.assign(ALIAS,{TRIMEXTENDMODE:'trimextendmode',TRIMMODE:'trimextendmode'});Object.assign(CMD_KO,{trimextendmode:'자르기·연장 모드 바꾸기'});
 try{Object.assign(KO_CMD,{자르기모드:'trimextendmode',연장모드:'trimextendmode'})}catch(_){}
+try{Object.assign(ALIAS,{RECT:'rect',RECTANGLE:'rect',DIMRA:'dimrad',DIMRADI:'dimrad',DIMRAD:'dimrad',MATCH:'matchprop'})}catch(_){}   /* 11-17 없는 명령: RECT·RECTANGLE·DIMRA·DIMRADI·MATCH */
 try{Object.assign(ALIAS,{ISODRAFT:'isodraft',ISOPLANE:'isoplane',ISOD:'isodraft'});Object.assign(KO_CMD,{등각:'isodraft',등각모드:'isodraft',등각작도:'isodraft',등각스냅:'isodraft',아이소:'isodraft',등각평면:'isoplane',평면전환:'isoplane'});
   Object.assign(CMD_KO,{isodraft:'등각 작도',isoplane:'등각 평면'});Object.assign(CMD_WORD,{isodraft:['ISODRAFT','등각 작도'],isoplane:['ISOPLANE','등각 평면']})}catch(_){}
 /* v1.9.17 (10-25 패치 v1.9.16 → 번호만 바꿈): 사용 기록 'XH'·'XV'(수평·수직 구성선을 한 번에) · '새파일'(한글로 친 새 도면) */
@@ -6208,7 +6229,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261115a"></script>
+<script src="../assets/config.js?v=20261119a"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="aiteam-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261105a"></script>
 <script src="../assets/vendor/supabase.js"></script>
