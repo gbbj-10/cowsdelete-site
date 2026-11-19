@@ -111,6 +111,8 @@
 .v3s .l3retry{pointer-events:auto;margin-left:6px;background:#e0702a;border:1px solid #e0702a;color:#fff;border-radius:5px;padding:2px 9px;font:600 12px var(--sans);cursor:pointer}
 .v3s .i{color:var(--ink-dim)}.v3s .w{color:#f1c232}.v3s .e{color:var(--danger)}.v3s .ok{color:var(--ok)}
 .v3e{position:absolute;inset:0;display:grid;place-items:center;color:var(--ink-dim);font-size:13px;text-align:center;padding:20px;pointer-events:none}
+.work.l3bar{grid-template-rows:auto minmax(0,1fr)}.work.l3bar>.view{grid-row:2;grid-column:1}.work.l3bar>.side{grid-row:1/3;grid-column:2}
+.work.l3bar>.v3d{display:flex;grid-row:1;grid-column:1;border-left:0;background:transparent}.work.l3bar>.v3d>.v3c{display:none}.work.l3bar .v3h .asw{display:none}
 @media (max-width:900px){.work.l3split,.work.l3only{grid-template-columns:1fr!important;grid-template-rows:1fr 1fr}.work.l3only>.view{display:none}}
 `;
   document.head.appendChild(st);
@@ -138,7 +140,7 @@
 
   const tb = document.getElementById('bAiFocus');
   const b3 = document.createElement('button'); b3.className = 'tbtn'; b3.id = 'b3d'; b3.textContent = '3D'; b3.title = '2D | 3D 나란히 보기 (명령: 3D)';
-  if (tb) tb.before(b3);
+  /* v1.10.24 (조미료님): AI 연결 옆 [3D] 버튼은 없애고, 2D 일 때도 도면 위 [2D | 2D|3D | 3D] 줄을 그대로 보여 줌 (2D 에선 에셋만 숨김). b3 는 화면에 안 붙이고 기존 코드용으로만 둠 */
   const brand = document.querySelector('.brand, .logo, #brand');
   const tag = document.createElement('span'); tag.className = 'labtag'; tag.textContent = 'TEST';
   if (isLab) (brand || b3).after(tag);   // TEST 표시는 테스트 서버에서만
@@ -148,14 +150,15 @@
   function setMode(m) {
     mode = m; LAB.act = 'MODE'; try { localStorage.setItem('muccalab.v3mode', m); } catch (_) { }
     work.style.setProperty('--l3side', sideW());
-    work.classList.toggle('l3split', m === 'split'); work.classList.toggle('l3only', m === '3d');
+    work.classList.toggle('l3split', m === 'split'); work.classList.toggle('l3only', m === '3d'); work.classList.toggle('l3bar', m === '2d');
     pane.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === m)));
     b3.classList.toggle('primary', m !== '2d');
     if (m !== '2d') ensure3D().then(() => { resize3(); rebuild(true); });
   }
   pane.querySelectorAll('.seg button').forEach(b => b.onclick = () => setMode(b.dataset.m));
   b3.onclick = () => setMode(mode === '2d' ? 'split' : '2d');
-  b3.addEventListener('pointerenter', () => { ensure3D().catch(() => { }); }, { once: true });   // 3D 엔진(약 0.6MB)은 3D 버튼에 손이 갈 때 받기 시작
+  b3.addEventListener('pointerenter', () => { ensure3D().catch(() => { }); }, { once: true });
+  pane.querySelectorAll('.seg button[data-m="split"],.seg button[data-m="3d"]').forEach(b => b.addEventListener('pointerenter', () => { ensure3D().catch(() => { }); }, { once: true }));   // 3D 엔진은 3D 쪽 버튼에 손이 갈 때 받기 시작   // 3D 엔진(약 0.6MB)은 3D 버튼에 손이 갈 때 받기 시작
   LAB.toggle = () => setMode(mode === '2d' ? 'split' : '2d');
   LAB.setMode = setMode;
   const kindSel = pane.querySelector('#l3kind'), tIn = pane.querySelector('#l3t'), stEl = pane.querySelector('#l3st'), emptyEl = pane.querySelector('#l3empty');
@@ -1384,6 +1387,12 @@
     sm.addEventListener('click', e => {
       const b = e.target.closest && e.target.closest('button'); if (!b) return;
       setOpen(false);
+      /* v1.10.24: 2D 화면에서도 [저장 ▾] 이 보이므로 — 2D 이면 먼저 2D|3D 로 열어 3D 를 만든 뒤 저장 */
+      if (mode === '2d' && /^l3(step|stp|stl|dwf|3mf)$/.test(b.id)) {
+        e.stopPropagation(); e.preventDefault(); setMode('split');
+        (async () => { try { await ensure3D(); for (let i = 0; i < 50 && !lastPlan && !LAB.ext; i++) await new Promise(r => setTimeout(r, 150)); await new Promise(r => setTimeout(r, 200)); if (b.id === 'l3stp') LAB.saveStep('stp'); else b.click(); } catch (err) { log('3D 를 열지 못했습니다: ' + (err && err.message || err), 'err'); } })();
+        return;
+      }
       if (b.id === 'l3step' && e.isTrusted && extSel) extSel.value = 'step';   // 사람이 STEP 을 고르면 .step
       if (b.id === 'l3stp') { e.stopPropagation(); LAB.saveStep('stp'); }
     }, true);
@@ -1655,5 +1664,5 @@
   } catch (_) { }
   /* ---------------- 시작 ---------------- */
   if (isLab) checkAdmin().then(ok => { if (ok && mode !== '2d') setMode(mode); });
-  if (mode !== '2d') setMode(mode);
+  if (mode !== '2d') setMode(mode); else { work.classList.add('l3bar'); pane.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === '2d'))); }
 })();
