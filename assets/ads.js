@@ -20,7 +20,7 @@
     var row=document.getElementById('adrow');
     if(row){row.hidden=false; var s=document.getElementById('adSlot'); if(s)fill(s, s.clientWidth>=728?'728x90':'320x100')}
     var ra=document.getElementById('ribbonAd');
-    if(ra){ra.hidden=false; if(getComputedStyle(ra).display!=='none')fill(document.getElementById('ribbonAdSlot'), innerWidth>=1800?'728x90':'468x60')}
+    if(ra){ra.hidden=false; if(getComputedStyle(ra).display!=='none'&&!ra.classList.contains('fold'))fill(document.getElementById('ribbonAdSlot'), innerWidth>=1800?'728x90':'468x60')}   /* 접은 동안은 광고를 채우지 않음 (문의 41) */
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
   var t; addEventListener('resize',function(){clearTimeout(t);t=setTimeout(run,200)});

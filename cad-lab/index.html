@@ -89,6 +89,13 @@ button{cursor:pointer}
 @media (min-width:1800px){#ribbonAd{grid-template-columns:118px auto;align-items:end;gap:8px}#ribbonAd .rdisc{order:-1;white-space:normal;word-break:keep-all;text-align:right;max-width:118px}}
 @media (max-width:1799px){#ribbonAd .rslot{width:468px;height:60px}#ribbonAd .rdisc{max-width:468px}}
 @media (max-width:1279px){#ribbonAd{display:none!important}}
+/* v1.10.25 문의 41: 광고 접기 — 이번 접속(탭) 동안만, 새로 열면 다시 보임 */
+#ribbonAd .rfold{position:absolute;right:3px;top:3px;z-index:2;width:20px;height:20px;padding:0;border:0;border-radius:4px;background:rgba(20,26,35,.85);color:#c9d1dc;font:600 13px/20px system-ui;cursor:pointer}
+#ribbonAd .rfold:hover{background:#2b3442;color:#fff}
+#ribbonAd .ropen{display:none;font-size:11px;color:var(--ink-dim);background:none;border:1px solid #3a4452;border-radius:4px;padding:1px 7px;cursor:pointer;justify-self:end}
+#ribbonAd.fold{align-self:start}
+#ribbonAd.fold .rslot,#ribbonAd.fold .rdisc,#ribbonAd.fold .rfold{display:none}
+#ribbonAd.fold .ropen{display:inline-block}
 #rtip{position:fixed;z-index:9999;pointer-events:none;background:#0b0f15;color:#e8edf3;border:1px solid var(--rule);border-radius:5px;padding:4px 8px;font-size:12px;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:0;transition:opacity .08s}
 #rtip.on{opacity:1}
 .tool.on{background:color-mix(in srgb,var(--tag) 16%,transparent);border-color:var(--tag);color:var(--tag)}
@@ -263,7 +270,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.24</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.25</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -1531,6 +1538,17 @@ const RTABS=[['home','홈'],['note','주석'],['block','블록·도구']];
   /* 오른쪽 광고 자리: 광고 코드를 넣기 전에는 숨김 (미리보기 ?ads=1) */
   const ad=document.createElement('div');ad.id='ribbonAd';ad.setAttribute('aria-label','광고');ad.innerHTML='<div class="rslot" id="ribbonAdSlot"><span class="adl">광고</span><span class="slot">쿠팡 파트너스 광고 자리</span></div><p class="rdisc">이 영역은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.</p>';
   ad.hidden=!((window.COWS_CONFIG||{}).ads||/[?&]ads=1\b/.test(location.search));r.appendChild(ad);
+  {const fb=document.createElement('button');fb.type='button';fb.className='rfold';fb.title='광고 접기 (이번 접속 동안)';fb.setAttribute('aria-label','광고 접기');fb.textContent='×';
+   const ob=document.createElement('button');ob.type='button';ob.className='ropen';ob.textContent='광고 펼치기';ob.title='접은 광고 다시 보기';
+   const slot=ad.querySelector('.rslot');ad.appendChild(fb);ad.appendChild(ob);
+   const place=()=>{if(fb.parentNode!==ad)return;const r0=ad.getBoundingClientRect(),r1=slot.getBoundingClientRect();fb.style.right=Math.max(3,r0.right-r1.right+3)+'px';fb.style.top=Math.max(3,r1.top-r0.top+3)+'px'};
+   ad.style.position='relative';
+   const set=(f,log)=>{ad.classList.toggle('fold',f);try{f?sessionStorage.setItem('muccaAdFold','1'):sessionStorage.removeItem('muccaAdFold')}catch(_){}
+     if(!f&&!slot.classList.contains('filled'))window.dispatchEvent(new Event('resize'));   /* 펼치면 광고 다시 채움(ads.js) */
+     if(log)window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:f?'AD_HIDE':'AD_SHOW'});place()};
+   fb.onclick=e=>{e.stopPropagation();set(true,true)};ob.onclick=e=>{e.stopPropagation();set(false,true)};
+   let was=false;try{was=sessionStorage.getItem('muccaAdFold')==='1'}catch(_){}
+   set(was,false);addEventListener('resize',place);setTimeout(place,300);setTimeout(place,2500)}
   showTab('home')})();
 /* 리본 아이콘 이름 말풍선: 마우스를 올리면 바로 표시 (브라우저 기본 말풍선은 늦게 떠서 대신 씀) */
 (function(){const r=document.getElementById('ribbon'),tip=document.createElement('div');tip.id='rtip';tip.setAttribute('role','tooltip');document.body.appendChild(tip);let cur=null;
@@ -5076,7 +5094,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.10.24';
+const APP_VER='v1.10.25';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5972,6 +5990,20 @@ Object.assign(ALIAS,{INCERT:'insert',INSRET:'insert',INSRT:'insert',INSERTT:'ins
 /* v1.9.7: 사용 기록 'PDF파일'(한글로 친 PDF 출력) → 플롯 */
 Object.assign(ALIAS,{PDFVKDLF:'plot',PDFVKDFL:'plot',PDFWJWKD:'plot',PDFCNFFUR:'plot'});
 try{for(const k of ['PDF파일','pdf파일','PDF저장','pdf저장','PDF출력','pdf출력','PDF내보내기','플롯','인쇄'])KO_CMD[k]='plot'}catch(_){}
+/* v1.10.25: 사용 기록 — '단축키'·'연결/연겨'·'모두삭제'·'단선도' (요청함 106) */
+TOOLS.eraseall=()=>{const ids=pickableEnts().map(e=>e.id);if(!ids.length){toast('지울 객체가 없습니다');return null}
+  const m=document.createElement('div');m.className='eamodal';m.style.cssText='position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:rgba(0,0,0,.45)';
+  const bx=document.createElement('div');bx.style.cssText='background:#1b2129;color:#e6ebf1;border:1px solid #3a4452;border-radius:8px;padding:16px 18px;min-width:260px;font:14px system-ui';
+  const q=document.createElement('p');q.style.margin='0 0 12px';q.textContent=`전체 ${ids.length}개를 지울까요? (잠긴·꺼진 도면층은 그대로, Ctrl+Z 로 되돌릴 수 있어요)`;
+  const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;justify-content:flex-end';
+  const yes=document.createElement('button');yes.className='tbtn primary';yes.textContent='모두 지우기';const no=document.createElement('button');no.className='tbtn';no.textContent='취소';
+  const close=()=>{m.remove();removeEventListener('keydown',kd,true)};const kd=e=>{if(e.key==='Escape'){e.stopPropagation();close()}};
+  yes.onclick=()=>{close();sel.clear();commit({cmd:'delete',ids},`전체 ${ids.length}개 지움`);changed()};no.onclick=close;m.onclick=e=>{if(e.target===m)close()};
+  row.append(no,yes);bx.append(q,row);m.append(bx);document.body.append(m);addEventListener('keydown',kd,true);setTimeout(()=>yes.focus());return null};
+CMD_KO.eraseall='모두 지우기';Object.assign(ALIAS,{ERASEALL:'eraseall'});
+TOOLS.sldhint=()=>{logLink('전기 단선도 기호는 공유 블록 「묶음 전기 단선도 기호 18종」(변압기·차단기·단로기·전동기 등)을 열어 쓰시면 됩니다.','/s/bbb9e27a-b9c3-4edf-8ae8-ce8d19c8ef96/','블록 보기');log('그 기호로 단선도를 그리게 하려면 AI 입력칸에 말로 시키세요.');return null};
+try{for(const k of ['단축키','단축키편집','단축키설정','별칭'])KO_CMD[k]='aliasedit';for(const k of ['연결','연겨','AI연결','ai연결','클로드연결'])KO_CMD[k]='aiconnect';
+  for(const k of ['모두삭제','전체삭제','모두지우기','전체지우기','다지우기','다지워'])KO_CMD[k]='eraseall';for(const k of ['단선도','전기단선도','단선결선도','결선도'])KO_CMD[k]='sldhint'}catch(_){}
 /* v1.8.5: 사용 기록에서 자주 나온 없는 명령 */
 TOOLS.dwgout=()=>{saveDwg();return null};CMD_KO.dwgout='DWG 저장';
 Object.assign(ALIAS,{DWGOUT:'dwgout',EXPORTDWG:'dwgout',SAVEDWG:'dwgout',MLEADER:'leader',MLEA:'leader',MLEAD:'leader',DIML:'dimlin',PLI:'polyline',APPLODE:'appload',APLOAD:'appload',ARE:'area',ACISOUT:'acisout',STLOUT:'acisout',EXPORT3D:'acisout'});
@@ -6240,11 +6272,11 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261120a"></script>
+<script src="../assets/config.js?v=20261122a"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="lab-"+COWS_CONFIG.appVer)</script>
-<script src="../assets/ads.js?v=20261105a"></script>
+<script src="../assets/ads.js?v=20261122a"></script>
 <script src="../assets/vendor/supabase.js"></script>
-<script src="../cad/cloud.js?v=20261114a"></script>
+<script src="../cad/cloud.js?v=20261122a"></script>
 <!-- v1.10.0 (2026-11-01, 3화): 테스트 서버에서 검증한 3D 기능 본체 반영 — 2D|3D 보기·사진→3D·2D 대조·영업 에셋·3D→도면·3MF·가공 전 점검 -->
 <script src="lab3d.js?v=25"></script>
 <script src="labphoto.js?v=12"></script>
