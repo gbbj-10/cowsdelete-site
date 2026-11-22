@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>무카의 두뇌 (테스트) — 카우스 소거법</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="description" content="엔지니어의 현장 지식과 AI 작업 지침을 카드로 쌓고, 필요한 카드만 꺼내 쓰는 두뇌. (테스트 페이지)">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+<link rel="stylesheet" href="/assets/site.css?v=20261018c">
+<style>
+/* 무카의 두뇌 테스트 페이지 — 왼쪽 3D 두뇌(카드가 하나씩 모임) · 오른쪽 고른 카드(앞/뒤) · 아래 설치·카드 목록 */
+.mb-lab{background:rgba(241,194,50,.1);border-bottom:1px solid rgba(241,194,50,.35);color:var(--note);font-size:13px;text-align:center;padding:6px 12px}
+.mb-head{padding-top:36px;padding-bottom:14px}
+.mb-head h1{font-size:clamp(28px,4vw,44px);letter-spacing:-.035em;line-height:1.15;margin:0 0 8px}
+.mb-head p{color:var(--ink-2);margin:0;max-width:46em}
+.mb-gate{margin:28px auto 80px;max-width:520px;text-align:center;border:1px solid var(--line);border-radius:14px;background:var(--plate);padding:30px 22px}
+.mb-gate h2{margin:0 0 8px;font-size:22px}
+.mb-gate p{color:var(--ink-2);margin:0 0 18px}
+.mb-main{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:18px;align-items:start;margin:16px 0 18px}
+@media (max-width:920px){.mb-main{grid-template-columns:1fr}}
+.mb-stage{position:relative;height:clamp(360px,62vh,640px);border-radius:14px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#16223a 0%,var(--night,#0a1220) 70%);border:1px solid var(--line)}
+.mb-stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.mb-stage canvas.hot{cursor:pointer}
+.mb-tip{position:absolute;left:12px;top:10px;font-size:12.5px;color:var(--ink-3);pointer-events:none}
+.mb-hud{position:absolute;left:12px;right:12px;bottom:10px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+.mb-hud .n{font-family:var(--cmd);color:var(--ink);font-variant-numeric:tabular-nums}
+.mb-btn{font:500 13px var(--sans);color:var(--ink);background:var(--plate-2);border:1px solid var(--line);border-radius:8px;padding:5px 11px;cursor:pointer}
+.mb-btn:hover{border-color:var(--sky)}
+.mb-btn[aria-pressed="true"]{border-color:var(--sky);color:var(--sky)}
+.mb-side{display:grid;gap:14px;min-width:0}
+.mb-flip{perspective:1400px}
+.mb-card{position:relative;min-height:330px;transition:transform .6s cubic-bezier(.2,.7,.2,1);transform-style:preserve-3d;cursor:pointer}
+.mb-card.back{transform:rotateY(180deg)}
+.mb-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;padding:18px 20px;background:var(--plate);border:1px solid var(--line);display:flex;flex-direction:column;gap:10px;overflow:auto}
+.mb-face.b{transform:rotateY(180deg)}
+.mb-face .top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-3)}
+.mb-face .kind{font-family:var(--cmd);letter-spacing:.04em}
+.mb-q{font-size:clamp(19px,2.2vw,23px);font-weight:600;line-height:1.45;margin:auto 0;word-break:keep-all}
+.mb-hint{font-size:12.5px;color:var(--ink-3)}
+.mb-a{font-size:16px;font-weight:600;margin:0;word-break:keep-all}
+.mb-face dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:14px}
+.mb-face dt{color:var(--ink-3);white-space:nowrap}
+.mb-face dd{margin:0;min-width:0;word-break:break-word}
+.mb-bar{height:4px;border-radius:2px;background:var(--sky)}
+.mb-box{background:var(--plate);border:1px solid var(--line);border-radius:14px;padding:14px 16px;min-width:0}
+.mb-box h2{margin:0 0 10px;font-size:15px;font-weight:600;color:var(--ink-2)}
+.mb-chips{display:flex;flex-wrap:wrap;gap:6px}
+.mb-chip{font:500 12.5px var(--sans);padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--ink-2);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.mb-chip i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.mb-chip[aria-pressed="true"]{border-color:var(--sky);color:var(--ink);background:var(--plate-2)}
+.mb-code{display:flex;gap:8px;align-items:center;background:#0b1424;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;font:13px var(--cmd);color:#cfe3ff;overflow:auto}
+.mb-code code{flex:1;white-space:nowrap}
+.mb-note{font-size:13px;color:var(--ink-3);margin:6px 0 0}
+.mb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:10px}
+.mb-item{text-align:left;background:var(--plate-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;color:var(--ink);font:inherit}
+.mb-item:hover,.mb-item[aria-current="true"]{border-color:var(--sky)}
+.mb-item .k{font-size:12px;color:var(--ink-3);display:flex;gap:6px;align-items:center}
+.mb-item .k i{width:8px;height:8px;border-radius:2px}
+.mb-item b{display:block;margin:4px 0 2px;font-size:15px;word-break:keep-all}
+.mb-item span.d{font-size:13px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.mb-search{width:100%;max-width:340px;background:#0b1424;border:1px solid var(--line);border-radius:8px;color:var(--ink);font:14px var(--sans);padding:8px 10px}
+.mb-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-bottom:18px}
+@media (max-width:820px){.mb-two{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:920px){.mb-main{grid-template-columns:minmax(0,1fr)}}
+#app{min-width:0;max-width:100%}
+.mb-sec{padding-bottom:80px}
+@media (prefers-reduced-motion:reduce){.mb-card{transition:none}}
+</style>
+</head>
+<body>
+<div class="mb-lab">테스트 페이지 — 검색에 나오지 않고, 홈 도구함에는 아직 없습니다.</div>
+<header class="site-top"><div class="wrap">
+  <a class="brand" href="/" aria-label="카우스 소거법 홈"><img src="/assets/logo.jpg" alt=""><span class="bt">카우스 소거법<small>Development Storage</small></span></a>
+  <nav class="site-nav">
+    <a href="/cad/">무카 CAD</a>
+    <a href="/community/">커뮤니티</a>
+    <a href="/qna/">문의</a>
+    <span class="who" data-who></span>
+  </nav>
+</div></header>
+
+<main class="wrap mb-sec">
+  <div class="mb-head">
+    <h1>무카의 두뇌</h1>
+    <p>엔지니어의 현장 지식과 AI 작업 지침을 <b>카드</b>로 쌓고, 필요한 카드만 꺼내 씁니다. 사람은 지식 카드를 읽고, AI(Claude Code)는 지침 카드를 그 일을 할 때만 펼칩니다.</p>
+  </div>
+
+  <div id="gate" class="mb-gate" hidden>
+    <h2>로그인하고 들어오세요</h2>
+    <p>무카 CAD 와 같은 카카오 계정입니다. 이미 로그인돼 있으면 바로 열립니다.</p>
+    <button class="btn kakao" type="button" id="gateLogin">카카오 로그인</button>
+  </div>
+  <p id="loading" class="mb-note">불러오는 중…</p>
+
+  <div id="app" hidden>
+    <div class="mb-chips" id="filters" role="group" aria-label="카드 종류"></div>
+    <div class="mb-main">
+      <div class="mb-stage" id="stage">
+        <div class="mb-tip">드래그 = 돌리기 · 휠/두 손가락 = 확대 · 카드 누르기 = 열기</div>
+        <div class="mb-hud">
+          <span>모인 카드 <span class="n" id="cnt">0</span>장</span>
+          <button class="mb-btn" id="spin" type="button" aria-pressed="true">자동 회전</button>
+          <button class="mb-btn" id="replay" type="button">다시 모으기</button>
+        </div>
+      </div>
+      <div class="mb-side">
+        <div class="mb-flip">
+          <div class="mb-card" id="card" role="button" tabindex="0" aria-label="카드 뒤집기">
+            <div class="mb-face f">
+              <div class="mb-bar" id="fBar"></div>
+              <div class="top"><span class="kind" id="fKind"></span><span id="fCat"></span></div>
+              <p class="mb-q" id="fQ"></p>
+              <div class="mb-hint">눌러서 뒤집기</div>
+            </div>
+            <div class="mb-face b">
+              <div class="mb-bar" id="bBar"></div>
+              <div class="top"><span class="kind" id="bKind"></span><span id="bCat"></span></div>
+              <p class="mb-a" id="bA"></p>
+              <dl id="bDl"></dl>
+            </div>
+          </div>
+        </div>
+        <div class="mb-box">
+          <h2>AI 가 가져가는 모양 (이 카드 1장)</h2>
+          <pre id="json" style="margin:0;font:12px/1.55 var(--cmd);color:#c8d6ea;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow:auto"></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-two">
+      <div class="mb-box">
+        <h2>내 클로드 코드에 설치 (지침 카드)</h2>
+        <div class="mb-code"><code>claude plugin marketplace add gbbj-10/mucca-brain</code><button class="mb-btn" data-copy>복사</button></div>
+        <div class="mb-code"><code>claude plugin install brain@mucca-brain</code><button class="mb-btn" data-copy>복사</button></div>
+        <div class="mb-code"><code>claude plugin install design-team@mucca-brain</code><button class="mb-btn" data-copy>복사</button></div>
+        <div class="mb-code"><code>claude plugin install creator@mucca-brain</code><button class="mb-btn" data-copy>복사</button></div>
+        <p class="mb-note">brain = 공통 지침 · design-team = 기계설계 에이전트 팀 · creator = 영상·글 올리는 사람용. 테스트 기간에는 저장소가 비공개라 운영자 계정에서만 받을 수 있습니다.</p>
+      </div>
+      <div class="mb-box">
+        <h2>왜 카드인가</h2>
+        <p style="margin:0 0 8px;color:var(--ink-2);font-size:14.5px">지침을 통째로 넣으면 매 세션 그만큼 읽습니다. 카드로 나누면 평소엔 카드 이름과 한 줄 설명만 읽고, 그 일을 할 때 카드 한 장만 펼칩니다.</p>
+        <p style="margin:0 0 10px;font-size:14.5px" id="tokLine"></p>
+        <p class="mb-note">토큰 수는 Claude Code 가 보여 주는 추정값입니다. 실제 절감은 시험으로 확인 중입니다 [가설].</p>
+        <p style="margin:12px 0 0"><a class="btn" href="/qna/?from=brain">카드 제안하기</a> <span class="mb-note">제안 → 검토 → 반영 순서로만 바뀝니다.</span></p>
+      </div>
+    </div>
+
+    <div class="mb-box">
+      <h2>카드 전체 <span class="mb-note" id="listN"></span></h2>
+      <input class="mb-search" id="q" type="search" placeholder="카드 찾기 (예: 볼트, 도면, 검증)" aria-label="카드 찾기">
+      <div class="mb-grid" id="list"></div>
+    </div>
+  </div>
+</main>
+
+<script src="/assets/config.js?v=20261120a"></script>
+<script src="/assets/vendor/supabase.js"></script>
+<script src="/assets/site.js?v=20261102b"></script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- 로그인 확인: 사이트 로그인(카카오) 세션을 그대로 씀 ---------- */
+const S = window.COWS;
+await (S && S.ready);
+$('loading').hidden = true;
+if (!S || !S.user) {
+  $('gate').hidden = false;
+  $('gateLogin').onclick = () => S && S.login();
+} else {
+  $('app').hidden = false;
+  start().catch(e => { $('app').insertAdjacentHTML('afterbegin', `<p class="mb-note">불러오지 못했습니다: ${esc(e.message)}</p>`); });
+}
+
+async function start() {
+  const data = await fetch('brain.json?v=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error('카드 자료 ' + r.status); return r.json(); });
+  const KCOL = { bolt: '#f2b84b', pipe: '#4fd1c5', vessel: '#b18cff', safety: '#6fdc8c', draw: '#ff8fb1', filter: '#6aa8ff' };
+  const PCOL = { brain: '#38d6f5', 'design-team': '#ff9f5a', creator: '#ff6fcf' };
+  const PNAME = { brain: '공통 지침', 'design-team': '설계팀', creator: '크리에이터' };
+  const tok = s => Math.max(10, Math.round(String(s || '').length / 1.6 / 10) * 10);
+  const CARDS = [
+    ...data.knowledge.map(k => ({ kind: 'k', id: k.id, short: k.title, col: KCOL[k.cat] || '#38d6f5', group: '지식 카드', tag: k.cat_name, front: k.q, a: k.a,
+      dl: [['왜', k.why], ['조건·예외', k.cond], ['근거', k.src], ['상태', k.status === 'draft' ? '초안 — 엔지니어 검토 전' : k.status]], links: k.links || [],
+      json: { q: k.q, a: k.a, why: k.why, cond: k.cond, src: k.src, tags: [k.cat_name], status: k.status } })),
+    ...data.guides.map(g => ({ kind: 'g', id: g.id, short: g.id, col: PCOL[g.plugin] || '#38d6f5', group: PNAME[g.plugin] || g.plugin, tag: (PNAME[g.plugin] || g.plugin) + ' · ' + (g.cat || ''), front: g.description, a: g.id + '  ' + (g.version || ''),
+      dl: [['플러그인', g.plugin + '@mucca-brain'], ['늘 읽는 양', '이름·설명 한 줄 (약 ' + tok(g.description) + ' 토큰)'], ['펼칠 때', '본문 약 ' + tok('x'.repeat(g.chars)) + ' 토큰'], ['고친 날', g.updated]], links: [],
+      json: { name: g.id, description: g.description, plugin: g.plugin } })),
+    ...(data.agents || []).map(a => ({ kind: 'a', id: a.id, short: a.id, col: '#c9a6ff', group: '설계팀', tag: '에이전트 · ' + (a.model || ''), front: a.description, a: a.id,
+      dl: [['플러그인', a.plugin + '@mucca-brain'], ['모델', a.model], ['카드 분량', '약 ' + tok('x'.repeat(a.chars)) + ' 토큰']], links: [],
+      json: { agent: a.id, description: a.description, model: a.model } })),
+  ];
+  const kindName = { k: '지식 카드 · 앞면 질문', g: '지침 카드 · 언제 꺼내나', a: '에이전트 · 맡는 일' };
+  const backName = { k: '뒷면 · 답', g: '뒷면 · 카드 정보', a: '뒷면 · 정보' };
+
+  // 토큰 한 줄 (지침 카드만)
+  const g = CARDS.filter(c => c.kind === 'g');
+  const always = g.reduce((s, c) => s + tok(c.front), 0), whole = data.guides.reduce((s, x) => s + tok('x'.repeat(x.chars)), 0);
+  $('tokLine').innerHTML = `지침 카드 ${g.length}장 — 늘 읽는 양 약 <b>${always.toLocaleString('ko-KR')}</b> 토큰 / 전부 펼치면 약 <b>${whole.toLocaleString('ko-KR')}</b> 토큰`;
+
+  /* 필터 */
+  const groups = ['전체', '지식 카드', '공통 지침', '설계팀', '크리에이터'];
+  let filter = '전체';
+  groups.forEach(n => { const b = document.createElement('button'); b.type = 'button'; b.className = 'mb-chip'; b.textContent = n; b.setAttribute('aria-pressed', String(n === filter)); b.onclick = () => { filter = n; [...$('filters').children].forEach(x => x.setAttribute('aria-pressed', String(x === b))); renderList(); dim(); }; $('filters').append(b); });
+  const visible = c => filter === '전체' || c.group === filter;
+
+  /* 카드 패널 */
+  const cardEl = $('card'); let cur = -1;
+  function fill(i) {
+    const c = CARDS[i];
+    $('fBar').style.background = $('bBar').style.background = c.col;
+    $('fKind').textContent = kindName[c.kind]; $('bKind').textContent = backName[c.kind];
+    $('fCat').textContent = $('bCat').textContent = c.tag;
+    $('fQ').textContent = c.kind === 'k' ? c.front : c.short + ' — ' + c.front;
+    $('bA').textContent = c.kind === 'k' ? c.a : c.short;
+    $('bDl').innerHTML = c.dl.filter(x => x[1]).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+    $('json').textContent = JSON.stringify(c.json, null, 1);
+    [...$('list').children].forEach(el => el.setAttribute('aria-current', String(+el.dataset.i === i)));
+  }
+  const flip = () => cardEl.classList.toggle('back');
+  cardEl.addEventListener('click', flip);
+  cardEl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
+
+  /* 목록 */
+  function renderList() {
+    const q = $('q').value.trim().toLowerCase();
+    const shown = CARDS.map((c, i) => [c, i]).filter(([c]) => visible(c) && (!q || (c.short + ' ' + c.front + ' ' + (c.a || '') + ' ' + c.tag).toLowerCase().includes(q)));
+    $('listN').textContent = shown.length + '장';
+    $('list').innerHTML = shown.map(([c, i]) => `<button type="button" class="mb-item" data-i="${i}" aria-current="${i === cur}"><span class="k"><i style="background:${c.col}"></i>${esc(c.tag)}</span><b>${esc(c.short)}</b><span class="d">${esc(c.front)}</span></button>`).join('');
+  }
+  $('list').addEventListener('click', e => { const b = e.target.closest('.mb-item'); if (b) { select(+b.dataset.i, true); $('stage').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } });
+  $('q').addEventListener('input', renderList);
+  document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { try { await navigator.clipboard.writeText(b.previousElementSibling.textContent); b.textContent = '복사됨'; setTimeout(() => b.textContent = '복사', 1200); } catch (_) { } });
+
+  /* 3D 전에 목록·첫 카드부터 */
+  let select = (i) => { cur = i; cardEl.classList.remove('back'); fill(i); };
+  let dim = () => { };
+  renderList(); select(0, false);
+  window.__brainReady = { cards: CARDS.length, knowledge: data.knowledge.length, guides: data.guides.length, agents: (data.agents || []).length, three: false };
+
+  /* ---------- 3D 두뇌: 카드가 하나씩 날아와 모임 ---------- */
+  let THREE, OrbitControls;
+  try { THREE = await import('three'); ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js')); }
+  catch (e) { $('stage').insertAdjacentHTML('beforeend', '<p class="mb-note" style="position:absolute;inset:40% 0 auto;text-align:center">3D 두뇌를 불러오지 못했습니다. 아래 목록에서 카드를 보세요.</p>'); return; }
+  const stage = $('stage');
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); stage.prepend(renderer.domElement);
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(42, 1, 0.1, 100); cam.position.set(2.6, 0.9, 2.7);
+  const controls = new OrbitControls(cam, renderer.domElement);
+  controls.enableDamping = true; controls.minDistance = 2.2; controls.maxDistance = 8; controls.enablePan = false;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  controls.autoRotate = !reduce; controls.autoRotateSpeed = 0.8; $('spin').setAttribute('aria-pressed', String(controls.autoRotate));
+  $('spin').onclick = () => { controls.autoRotate = !controls.autoRotate; $('spin').setAttribute('aria-pressed', String(controls.autoRotate)); };
+  const brain = new THREE.Group(); scene.add(brain);
+  const SX = 0.9, SY = 0.8, SZ = 1.34;
+  function surf(d) {
+    const r = 1 + 0.06 * Math.sin(7 * d.x + 3 * d.y) * Math.cos(6 * d.z + 1.3) + 0.035 * Math.sin(13 * d.y + 5 * d.z) + 0.02 * Math.sin(17 * d.z - 9 * d.x);
+    const p = new THREE.Vector3(d.x * SX * r, d.y * SY * r, d.z * SZ * r);
+    p.x += Math.sign(d.x || 1) * 0.12 * Math.exp(-Math.abs(d.x) * 10) * (d.y > -0.3 ? 1 : 0.3);
+    if (p.y < -0.36) p.y = -0.36 + (p.y + 0.36) * 0.35;
+    return { p, n: new THREE.Vector3(p.x / (SX * SX), p.y / (SY * SY), p.z / (SZ * SZ)).normalize() };
+  }
+  const randDir = () => { const u = Math.random() * 2 - 1, t = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u); return new THREE.Vector3(s * Math.cos(t), u, s * Math.sin(t)); };
+  { const N = 5200, pos = new Float32Array(N * 3); for (let i = 0; i < N; i++) { const { p } = surf(randDir()); pos.set([p.x, p.y, p.z], i * 3); }
+    const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    brain.add(new THREE.Points(g2, new THREE.PointsMaterial({ color: 0x5b7fb8, size: 0.012, transparent: true, opacity: 0.5, depthWrite: false }))); }
+
+  function label(c) {
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 320; const x = cv.getContext('2d');
+    x.fillStyle = '#0e1626'; x.fillRect(0, 0, 512, 320); x.strokeStyle = c.col; x.lineWidth = 14; x.strokeRect(7, 7, 498, 306);
+    x.fillStyle = c.col; x.font = '600 32px "IBM Plex Sans KR", sans-serif'; x.fillText(c.kind === 'k' ? c.tag : c.group, 34, 66);
+    x.fillStyle = '#eef3fb'; x.font = (c.kind === 'k' ? '700 50px' : '700 44px') + ' "IBM Plex Sans KR", sans-serif';
+    const words = c.short.split(/(?<=[ -])/); let line = '', y = 160;
+    for (const w of words) { const t = line + w; if (x.measureText(t).width > 444 && line) { x.fillText(line.trim(), 34, y); y += 58; line = w; } else line = t; }
+    x.fillText(line.trim(), 34, y);
+    x.fillStyle = '#93a1b8'; x.font = '400 24px "IBM Plex Sans KR", sans-serif'; x.fillText(c.kind === 'k' ? 'Q · A 지식 카드' : c.kind === 'g' ? '지침 카드 (스킬)' : '에이전트', 34, 286);
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4; return tex;
+  }
+  const golden = Math.PI * (3 - Math.sqrt(5)), meshes = [], anchors = [];
+  CARDS.forEach((c, i) => {
+    const n = CARDS.length, yy = 0.86 - (i / Math.max(1, n - 1)) * 1.3, rr = Math.sqrt(Math.max(0, 1 - yy * yy)), th = golden * i;
+    const { p, n: nn } = surf(new THREE.Vector3(rr * Math.cos(th), yy, rr * Math.sin(th)).normalize());
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(0.27, 0.17), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true }));
+    const home = p.clone().addScaledVector(nn, 0.05);
+    mesh.position.copy(home); mesh.lookAt(home.clone().add(nn));
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(0.33, 0.23), new THREE.MeshBasicMaterial({ color: c.col, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
+    glow.position.copy(home).addScaledVector(nn, -0.004); glow.quaternion.copy(mesh.quaternion);
+    const from = home.clone().addScaledVector(nn, 2.4 + Math.random()).add(new THREE.Vector3((Math.random() - .5), (Math.random() - .5), (Math.random() - .5)));
+    mesh.userData = { i, home, from, glow, nn, t0: 0 }; brain.add(mesh, glow); meshes.push(mesh); anchors.push(home);
+  });
+  document.fonts.ready.then(() => meshes.forEach((m, i) => { m.material.map = label(CARDS[i]); m.material.needsUpdate = true; }));
+  // 지식 카드 사이 연결선
+  { const seen = new Set(); CARDS.forEach((c, i) => c.links.forEach(id => { const j = CARDS.findIndex(x => x.id === id); if (j < 0) return; const key = [i, j].sort().join('-'); if (seen.has(key)) return; seen.add(key);
+      const a = anchors[i], b = anchors[j], mid = a.clone().add(b).multiplyScalar(0.5); mid.setLength(mid.length() + 0.45);
+      brain.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(new THREE.QuadraticBezierCurve3(a, mid, b).getPoints(40)), new THREE.LineBasicMaterial({ color: c.col, transparent: true, opacity: 0.4 }))); })); }
+
+  // 모으기 애니메이션: 카드가 차례로 날아와 붙음
+  let gatherT = performance.now();
+  const STEP = reduce ? 0 : 90, FLY = reduce ? 1 : 700;
+  $('replay').onclick = () => { gatherT = performance.now(); };
+  dim = function () { meshes.forEach((m, k) => { const on = visible(CARDS[k]); m.material.opacity = on ? 1 : 0.12; m.userData.glow.material.opacity = on ? (k === cur ? 0.75 : 0.22) : 0.03; }); }
+
+  const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(); let hover = -1, downAt = null, camGoal = null;
+  function pick(e) { const r = renderer.domElement.getBoundingClientRect(); ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ptr, cam); const h = ray.intersectObjects(meshes.filter((m, k) => visible(CARDS[k])))[0]; return h ? h.object.userData.i : -1; }
+  renderer.domElement.addEventListener('pointermove', e => { hover = pick(e); renderer.domElement.classList.toggle('hot', hover >= 0); });
+  renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener('pointerup', e => { if (!downAt) return; const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]); downAt = null; if (moved > 6) return; const i = pick(e); if (i < 0) return; if (i === cur) flip(); else select(i, true); });
+  select = function (i, turn) {
+    cur = i; cardEl.classList.remove('back'); fill(i); dim();
+    if (turn) { const wp = meshes[i].getWorldPosition(new THREE.Vector3()); camGoal = wp.normalize().multiplyScalar(cam.position.length()); controls.autoRotate = false; $('spin').setAttribute('aria-pressed', 'false'); }
+  }
+  function size() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+  new ResizeObserver(size).observe(stage); size();
+  const ease = t => 1 - Math.pow(1 - t, 3);
+  function tick(t) {
+    let landed = 0;
+    meshes.forEach((m, k) => {
+      const u = Math.min(1, Math.max(0, (t - gatherT - k * STEP) / FLY)); if (u >= 1) landed++;
+      const e = ease(u); m.position.lerpVectors(m.userData.from, m.userData.home, e); m.userData.glow.position.copy(m.position).addScaledVector(m.userData.nn, -0.006);
+      const s = (k === hover || k === cur ? 1.2 : 1) * (0.3 + 0.7 * e); m.scale.setScalar(s); m.userData.glow.scale.setScalar(s); m.visible = u > 0;  m.userData.glow.visible = u > 0;
+    });
+    $('cnt').textContent = landed;
+    if (camGoal) { cam.position.lerp(camGoal, 0.08); if (cam.position.distanceTo(camGoal) < 0.01) camGoal = null; }
+    controls.update(); renderer.render(scene, cam); requestAnimationFrame(tick);
+  }
+  select(cur < 0 ? 0 : cur, false); requestAnimationFrame(tick);
+  window.__brainReady.three = true;
+}
+</script>
+</body>
+</html>
