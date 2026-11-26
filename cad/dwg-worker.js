@@ -106,9 +106,32 @@ function rebuild(src, version, bases) {
       if (!x.attributes.seqend.document) doc._addCadObject(x.attributes.seqend);
     }
   }
+  /* 치수 블록 (v1.10.26, 문의 46): 무카 CAD DXF 는 치수를 DIMENSION + 익명 블록(*D)으로 씀 → DWG 에도 진짜 치수로 옮김.
+     블록은 이름 없는(익명) 치수 블록 그대로 새로 만들고, 치수 스타일은 새 도면의 Standard 로 */
+  const dimBlocks = new Map(); let nd = 0;
+  const dimBlockFor = br => {
+    if (!br) return null;
+    if (dimBlocks.has(br)) return dimBlocks.get(br);
+    let k = dimBlocks.size + 1, name = '*D' + k;
+    while (doc.blockRecords.contains(name)) name = '*D' + (++k);
+    const R = new A.BlockRecord(name);
+    try { R.isAnonymous = true; } catch (_) {}
+    try { R.isExplodable = true; } catch (_) {}
+    doc.blockRecords.add(R); dimBlocks.set(br, R);
+    for (const e of br.entities) { const x = copy(e); if (x) try { put(R.entities, x); } catch (_) { skip(e.constructor.name); } }
+    return R;
+  };
   function copy(e) {
     const t = e.constructor.name;
     try {
+      if (e instanceof A.Dimension) {
+        const R = dimBlockFor(e.block); if (!R) { skip(t); return null; }
+        const x = e.clone();
+        x.block = R;
+        try { x.style = doc.dimensionStyles.get('Standard'); } catch (_) {}
+        try { if (typeof x.text === 'string') x.text = fixStr(x.text); } catch (_) {}
+        nd++; return common(e, x);
+      }
       if (t === 'Polyline2D') {
         /* 2D 폴리선(POLYLINE+VERTEX) → LWPOLYLINE: 정점 연결·레이어 오류를 피함 */
         const vs = [...e.vertices].map(v => { const w = new A.LwPolylineVertex(); w.location = new A.XY(v.location.x, v.location.y); w.bulge = v.bulge || 0; return w; });
@@ -150,7 +173,7 @@ function rebuild(src, version, bases) {
     const x = copy(e); if (!x) continue;
     try { put(doc.modelSpace.entities, x); n++; } catch (_) { skip(e.constructor.name); }
   }
-  return { doc, n, skipped, blocks: nb, inserts: ni, attribs: na };
+  return { doc, n, skipped, blocks: nb, inserts: ni, attribs: na, dims: nd };
 }
 
 /* 진행 알림 (2026-10-25): acad-ts 가 부르는 globalThis.__acadProgress 를 화면으로 전달 (0.12초에 한 번까지) */
@@ -174,9 +197,9 @@ self.onmessage = e => {
       self.postMessage({ ok: true, dxf: blob, ver });
     } else if (op === 'write') {
       const src = A.DxfReader.readFromStream(new TextEncoder().encode(data), () => {});
-      const { doc, n, skipped, blocks, inserts, attribs } = rebuild(src, version || 'AC1027', blockBases(data));
+      const { doc, n, skipped, blocks, inserts, attribs, dims } = rebuild(src, version || 'AC1027', blockBases(data));
       const out = A.DwgWriter.writeToBuffer(doc);
-      self.postMessage({ ok: true, dwg: out, n, skipped, blocks, inserts, attribs }, [out.buffer]);
+      self.postMessage({ ok: true, dwg: out, n, skipped, blocks, inserts, attribs, dims }, [out.buffer]);
     }
   } catch (x) { self.postMessage({ ok: false, error: String(x && x.message || x) }); }
 };

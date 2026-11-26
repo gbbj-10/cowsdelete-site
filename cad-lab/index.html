@@ -270,7 +270,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.25</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.26</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -1800,9 +1800,10 @@ document.getElementById('bDxf').onclick=()=>{let txt;try{txt=exportDXF();if(dl)o
 async function saveDwg(){if(!window.MuccaDWG){log('DWG 변환 도구를 불러오지 못했습니다. [출력 ▾] › DXF 내보내기로 저장한 뒤 AutoCAD에서 여세요.','err');return}
   if(!doc.entities.length){log('저장할 도형이 없습니다.','err');return}
   const t0=performance.now(),first=MuccaDWG.firstTime;log(`DWG로 저장하는 중…${first?' (처음 한 번은 변환 도구 약 250KB를 받습니다)':''}`,'me');
-  try{const bytes=await MuccaDWG.fromDxf(exportDXF({ellipse:true}),'AC1027');
+  try{let bytes,dimX=false;/* v1.10.26: 치수를 진짜 치수(DIMENSION)로 — 변환 도구가 실패하면 예전처럼 선·문자로 풀어서 한 번 더 */
+    try{bytes=await MuccaDWG.fromDxf(exportDXF({ellipse:true}),'AC1027')}catch(e1){if(e1&&(e1.tooBig||e1 instanceof RangeError))throw e1;bytes=await MuccaDWG.fromDxf(exportDXF({ellipse:true,dimExplode:true}),'AC1027');dimX=true;window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE_DIMX'})}
     if(!await offer(fileStem()+'.dwg',new Blob([bytes],{type:'application/acad'})))return;
-    const LS=MuccaDWG.lastSave;log(`DWG 저장 (AutoCAD 2013 형식 · ${(bytes.length/1024).toFixed(0)}KB · ${((performance.now()-t0)/1000).toFixed(1)}초${LS&&LS.inserts?` · 블록 ${LS.blocks}종 · 블록 삽입 ${LS.inserts.toLocaleString('ko-KR')}개${LS.attribs?` · 속성 ${LS.attribs.toLocaleString('ko-KR')}개`:''} 포함`:''}). 해치·여러 줄 문자·치수는 DXF 내보내기와 같이 선·문자로 풀어서 저장됩니다. AutoCAD 2013 이상에서 열립니다. 안 열리면 [출력 ▾] › DXF 내보내기를 쓰세요(DXF가 더 안정적입니다).`,'ok');
+    const LS=MuccaDWG.lastSave;log(`DWG 저장 (AutoCAD 2013 형식 · ${(bytes.length/1024).toFixed(0)}KB · ${((performance.now()-t0)/1000).toFixed(1)}초${LS&&LS.inserts?` · 블록 ${LS.blocks}종 · 블록 삽입 ${LS.inserts.toLocaleString('ko-KR')}개${LS.attribs?` · 속성 ${LS.attribs.toLocaleString('ko-KR')}개`:''} 포함`:''}${!dimX&&LS&&LS.dims?` · 치수 ${LS.dims.toLocaleString('ko-KR')}개 포함`:''}). ${dimX?'치수는 이번에 선·문자로 풀어서 저장됐습니다. ':''}해치·여러 줄 문자·지시선·호 길이 치수는 선·문자로 풀어서 저장됩니다. AutoCAD 2013 이상에서 열립니다. 안 열리면 [출력 ▾] › DXF 내보내기를 쓰세요(DXF가 더 안정적입니다).`,'ok');
     window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE'})}
   catch(e){if(saveTooBig(e,'DWG'))return;log(`DWG 저장 실패 (${String(e&&e.message||e).slice(0,120)}). [출력 ▾] › DXF 내보내기로 저장해 주세요.`,'err');window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'DWG_SAVE_FAIL'})}}
 document.getElementById('bPng').onclick=()=>{const prev=new Set(sel);sel.clear();render();cv.toBlob(b=>{sel=prev;dirty=true;if(b)offer(fileStem()+'.png',b)},'image/png')};
@@ -2618,14 +2619,41 @@ const _renderProps0=renderProps;renderProps=function(){_renderProps0();if(sel.si
 };
 
 /* ----- DXF 내보내기 (R12, 블록 포함) ----- */
+/* v1.10.26 (문의 46): 무카 치수 → DXF R12 DIMENSION 그룹 코드. 읽는 쪽(importDXF 'DIMENSION')과 같은 약속.
+   c: [[코드,값]…] · ds: ACAD DSTYLE 재지정 [[변수코드, 값코드, 값]…] · mu: 무카 전용 값(MUCCACAD XDATA). 지원 안 하는 종류는 null(풀어서 씀) */
+function dimDxfDef(e,g){
+  const P=(c,p)=>[[c,p.x],[c+10,p.y],[c+20,0]],tp=g&&g.text&&g.text.p,c=[],mu={v:1},ds=[];
+  const ok=p=>p&&isFinite(p.x)&&isFinite(p.y);
+  try{
+    if(e.kind==='linear'||e.kind==='aligned'){if(!ok(e.p1)||!ok(e.p2)||!ok(e.at))return null;
+      if(e.kind==='linear'){let dir=e.dir;if(!dir){mu.auto=1;const minY=Math.min(e.p1.y,e.p2.y),maxY=Math.max(e.p1.y,e.p2.y),minX=Math.min(e.p1.x,e.p2.x),maxX=Math.max(e.p1.x,e.p2.x);
+          if(e.at.y>maxY||e.at.y<minY)dir='h';else if(e.at.x>maxX||e.at.x<minX)dir='v';else dir=(maxX-minX>=maxY-minY)?'h':'v'}
+        c.push(...P(10,e.at),...(tp?P(11,tp):[]),[70,32],...P(13,e.p1),...P(14,e.p2),[50,dir==='v'?90:0])}
+      else c.push(...P(10,e.at),...(tp?P(11,tp):[]),[70,33],...P(13,e.p1),...P(14,e.p2))}
+    else if(e.kind==='diameter'||e.kind==='radius'){if(!ok(e.c)||!(e.r>0))return null;const a=e.angle||0,far=polar(e.c,e.r,a);
+      if(e.kind==='diameter'){mu.ang=a;c.push(...P(10,polar(e.c,e.r,a+180)),...(tp?P(11,tp):[]),[70,35],...P(15,far))}
+      else c.push(...P(10,e.c),...(tp?P(11,tp):[]),[70,36],...P(15,far))}
+    else if(e.kind==='angular'){if(!ok(e.c)||!(e.r>0))return null;let a0=n360(e.a0),a1=n360(e.a1);const sw=n360(a1-a0)||360,mid=a0+sw/2;
+      const x1=e.ext&&ok(e.ext[0])?e.ext[0]:polar(e.c,e.r,a0),x2=e.ext&&ok(e.ext[1])?e.ext[1]:polar(e.c,e.r,a1);if(!e.ext)mu.noext=1;
+      c.push(...P(10,polar(e.c,e.r,mid)),...(tp?P(11,tp):[]),[70,37],...P(13,x1),...P(14,x2),...P(15,e.c))}
+    else return null;
+  }catch(_){return null}
+  if(e.se1)ds.push([75,1070,1]);if(e.se2)ds.push([76,1070,1]);if(e.lfac&&e.lfac!==1)ds.push([144,1040,e.lfac]);if(e.prefix)ds.push([3,1000,dxfStr(e.prefix+'<>')]);
+  if(e.tol){const t=e.tol;if(t.m==='lim')ds.push([72,1070,1],[47,1040,+t.u||0],[48,1040,+t.l||0]);else if(t.m==='basic')ds.push([147,1040,-Math.abs(doc.dimScale||1)]);else ds.push([71,1070,1],[47,1040,+t.u||0],[48,1040,+t.l||0]);if(t.f&&t.f!==1)ds.push([146,1040,t.f])}
+  if(e.sd1)mu.sd1=1;if(e.sd2)mu.sd2=1;if(e.st)mu.st=e.st;
+  return {c,ds,mu};
+}
 exportDXF=function(opt){
-  opt=opt||{};const o=[],w=(code,val)=>{o.push(String(code));o.push(typeof val==='number'?(Number.isInteger(val)?String(val):(+val).toFixed(6)):String(val))};
+  opt=opt||{};let o=[];const w=(code,val)=>{o.push(String(code));o.push(typeof val==='number'?(Number.isInteger(val)?String(val):(+val).toFixed(6)):String(val))};
   w(0,'SECTION');w(2,'HEADER');w(9,'$ACADVER');w(1,'AC1009');w(9,'$INSUNITS');w(70,4);w(9,'$LTSCALE');w(40,doc.ltscale||1);w(0,'ENDSEC');
   w(0,'SECTION');w(2,'TABLES');w(0,'TABLE');w(2,'LTYPE');w(70,Object.keys(LT).length);
   for(const v of Object.values(LT)){w(0,'LTYPE');w(2,v.name.toUpperCase());w(70,0);w(3,dxfStr(v.ko));w(72,65);w(73,v.pat.length);w(40,v.pat.reduce((s,x)=>s+Math.abs(x),0));for(const x of v.pat)w(49,x)}
   w(0,'ENDTAB');w(0,'TABLE');w(2,'LAYER');w(70,doc.layers.length);
   for(const l of doc.layers){w(0,'LAYER');w(2,dxfStr(l.name));w(70,(l.frozen?1:0)|(l.locked?4:0));w(62,l.visible?l.aci:-l.aci);w(6,LT[l.lt].name.toUpperCase())}
-  w(0,'ENDTAB');w(0,'ENDSEC');
+  w(0,'ENDTAB');
+  /* v1.10.26: 치수를 DIMENSION 으로 쓰면서 XDATA(ACAD 치수 재지정 · MUCCACAD 무카 전용 값)를 붙이므로 APPID 등록 */
+  w(0,'TABLE');w(2,'APPID');w(70,2);w(0,'APPID');w(2,'ACAD');w(70,0);w(0,'APPID');w(2,'MUCCACAD');w(70,0);w(0,'ENDTAB');
+  w(0,'ENDSEC');
   let OV=null;const w8=lay=>{w(8,lay);if(OV&&OV.color!=null)w(62,OV.color);if(OV&&OV.lt)w(6,LT[OV.lt].name.toUpperCase())};
   const L=(lay,a,b)=>{w(0,'LINE');w8(lay);w(10,a.x);w(20,a.y);w(30,0);w(11,b.x);w(21,b.y);w(31,0)};
   const T=(lay,p,s,h,rot,center)=>{w(0,'TEXT');w8(lay);w(10,p.x);w(20,p.y);w(30,0);w(40,h);w(1,dxfStr(s));if(rot)w(50,rot);if(center){w(72,1);w(11,p.x);w(21,p.y);w(31,0)}};
@@ -2633,6 +2661,7 @@ exportDXF=function(opt){
   const PL=(lay,pts,closed,wd,bs)=>{w(0,'POLYLINE');w8(lay);w(66,1);w(70,closed?1:0);if(wd){w(40,wd);w(41,wd)}w(10,0);w(20,0);w(30,0);pts.forEach((p,i)=>{w(0,'VERTEX');w8(lay);w(10,p.x);w(20,p.y);w(30,0);if(bs&&bs[i])w(42,bs[i])});w(0,'SEQEND');w8(lay)};
   const SOL=(lay,a,b,c2)=>{w(0,'SOLID');w8(lay);w(10,a.x);w(20,a.y);w(30,0);w(11,b.x);w(21,b.y);w(31,0);w(12,c2.x);w(22,c2.y);w(32,0);w(13,c2.x);w(23,c2.y);w(33,0)};
   const vb=bbox(doc.entities.filter(e=>e.type!=='xline'))||{minX:-500,minY:-500,maxX:500,maxY:500},XLL=Math.max(1000,(vb.maxX-vb.minX+vb.maxY-vb.minY)*3);
+  let DN=0;const DB=[];
   const writeEnt=e=>{const lay=dxfStr(e.layer||'0');OV=e;
     switch(e.type){
       case 'line':L(lay,e.a,e.b);break;
@@ -2660,13 +2689,24 @@ exportDXF=function(opt){
       case 'insert':{const ats=flatInsert(e).filter(x=>x._attdef);w(0,'INSERT');w8(lay);if(ats.length)w(66,1);w(2,dxfStr(e.name));w(10,e.p.x);w(20,e.p.y);w(30,0);w(41,e.sx??1);w(42,e.sy??1);w(50,e.rot||0);
         if(ats.length){for(const t of ats){w(0,'ATTRIB');w8(lay);w(10,t.p.x);w(20,t.p.y);w(30,0);w(40,t.h);w(1,dxfStr(t.s));w(2,dxfStr(t._attdef.tag));w(70,0);if(t.rot)w(50,t.rot)}w(0,'SEQEND');w8(lay)}break}
       case 'attdef':w(0,'ATTDEF');w8(lay);w(10,e.p.x);w(20,e.p.y);w(30,0);w(40,e.h||3.5);w(1,dxfStr(e.def||''));w(3,dxfStr(e.prompt||e.tag));w(2,dxfStr(e.tag));w(70,0);if(e.rot)w(50,e.rot);break;
-      case 'dim':{const g=dimGeom(e);for(const [a,b] of g.lines)L(lay,a,b);for(const a of g.arcs||[]){if((n360(a.a1-a.a0)||360)>=359.999){w(0,'CIRCLE');w8(lay);w(10,a.c.x);w(20,a.c.y);w(30,0);w(40,a.r)}else ARC(lay,a.c,a.r,a.a0,a.a1)}for(const x of g.extra||[])T(lay,x.p,x.s,x.h,x.rot,x.align==='center');
+      case 'dim':{const g=dimGeom(e),geo=()=>{for(const [a,b] of g.lines)L(lay,a,b);for(const a of g.arcs||[]){if((n360(a.a1-a.a0)||360)>=359.999){w(0,'CIRCLE');w8(lay);w(10,a.c.x);w(20,a.c.y);w(30,0);w(40,a.r)}else ARC(lay,a.c,a.r,a.a0,a.a1)}for(const x of g.extra||[])T(lay,x.p,x.s,x.h,x.rot,x.align==='center');
         for(const ar of g.arrows)for(const sh of arrowShapes(ar)){if(sh.k==='s')SOL(lay,...sh.pts);else if(sh.k==='l')L(lay,sh.a,sh.b);else ARC(lay,sh.c,sh.r,0,360)}
-        if(g.text&&g.text.s)T(lay,g.text.p,g.text.s,g.text.h,g.text.rot,true);break}
+        if(g.text&&g.text.s)T(lay,g.text.p,g.text.s,g.text.h,g.text.rot,true);};
+        /* v1.10.26 (문의 46): 예전엔 치수를 선·글자·SOLID 로 풀어서 써서 다시 열면 치수가 아니었음 → 종류별 DIMENSION + 같은 모양의 익명 블록(*D)으로 씀.
+           다른 캐드·뷰어는 블록 모양 그대로 보이고, 무카 CAD·AutoCAD 는 치수로 다시 읽음. 호 길이·지시선·기호류는 R12 에 없어 예전처럼 풀어서 씀 */
+        const D=opt.dimExplode?null:dimDxfDef(e,g);if(!D){geo();break}
+        const sv=o;o=[];geo();const body=o;o=sv;const bn='*D'+(++DN);DB.push({bn,body});
+        w(0,'DIMENSION');w8(lay);w(2,bn);for(const [c,v] of D.c)w(c,v);if(e.text!=null&&e.text!=='')w(1,dxfStr(String(e.text)));
+        if(D.ds.length){w(1001,'ACAD');w(1000,'DSTYLE');w(1002,'{');for(const [c,vc,v] of D.ds){w(1070,c);w(vc,v)}w(1002,'}')}
+        w(1001,'MUCCACAD');w(1000,dxfStr(JSON.stringify(D.mu)).slice(0,250));break}
     }};
   const names=Object.keys(BL());
-  if(names.length){w(0,'SECTION');w(2,'BLOCKS');for(const n of names){const b=BL()[n];w(0,'BLOCK');w(8,'0');w(2,dxfStr(n));w(70,0);w(10,b.base.x);w(20,b.base.y);w(30,0);w(3,dxfStr(n));for(const e of b.ents)writeEnt(e);OV=null;w(0,'ENDBLK');w(8,'0')}w(0,'ENDSEC')}
-  w(0,'SECTION');w(2,'ENTITIES');for(const e of doc.entities)writeEnt(e);w(0,'ENDSEC');w(0,'EOF');
+  /* v1.10.26: 치수 블록(*D)은 도형을 쓰는 동안 생기므로 사용자 블록·본문을 먼저 따로 모은 뒤 BLOCKS 에 함께 씀 */
+  const head=o,cat=a=>{for(let k=0;k<a.length;k++)o.push(a[k])};o=[];
+  for(const n of names){const b=BL()[n];w(0,'BLOCK');w(8,'0');w(2,dxfStr(n));w(70,0);w(10,b.base.x);w(20,b.base.y);w(30,0);w(3,dxfStr(n));for(const e of b.ents)writeEnt(e);OV=null;w(0,'ENDBLK');w(8,'0')}
+  const ublk=o;o=[];for(const e of doc.entities)writeEnt(e);const ents=o;o=head;
+  if(names.length||DB.length){w(0,'SECTION');w(2,'BLOCKS');cat(ublk);for(const d of DB){w(0,'BLOCK');w(8,'0');w(2,d.bn);w(70,1);w(10,0);w(20,0);w(30,0);w(3,d.bn);cat(d.body);w(0,'ENDBLK');w(8,'0')}w(0,'ENDSEC')}
+  w(0,'SECTION');w(2,'ENTITIES');cat(ents);w(0,'ENDSEC');w(0,'EOF');
   try{return o.join('\r\n')+'\r\n'}catch(err){if(err instanceof RangeError){const e2=new Error('DXF_TOOBIG');e2.tooBig=true;e2.lines=o.length;throw e2}throw err}
 };
 
@@ -4861,10 +4901,18 @@ importDXF=function(text){
                 e={kind:'angular',c:X,r:dist(arcP,X),a0:r0[0],a1:r1[0],ext:[lim(r0[0],r0[1]),lim(r1[0],r1[1])]};break}}}}
         }catch(_){e=null}
         if(e){const ov=get(g,1,''),TV={};Object.assign(e,{type:'dim',layer:lay});
-          for(let k=0;k+1<g.d.length;k++)if(g.d[k][0]===1071&&g.d[k+1][0]===1072){const c=+g.d[k][1],v=g.d[k+1][1];
+          /* v1.10.26: 표준 DXF XDATA(1001 ACAD · 1000 DSTYLE · 1070 변수코드 + 1070/1040/1000 값)도 1071/1072 짝처럼 읽음 */
+          const XD=[];let app='',inDs=false;for(let k=0;k<g.d.length;k++){const [cc,vv]=g.d[k];if(cc===1001){app=vv;inDs=false;continue}
+            if(app==='ACAD'&&cc===1000&&vv==='DSTYLE'){inDs=true;continue}if(app==='MUCCACAD'&&cc===1000){try{const m=JSON.parse(dxfDecode(vv));e._mu=m}catch(_){}continue}
+            if(inDs&&cc===1070&&k+1<g.d.length&&[1070,1040,1000].includes(g.d[k+1][0])){XD.push([1071,vv],[1072,g.d[k+1][1]]);k++}}
+          const GD=XD.length?g.d.concat(XD):g.d;
+          for(let k=0;k+1<GD.length;k++)if(GD[k][0]===1071&&GD[k+1][0]===1072){const c=+GD[k][1],v=GD[k+1][1];
             if(c===75&&+v)e.se1=true;else if(c===76&&+v)e.se2=true;else if(c===281&&+v)e.sd1=true;else if(c===282&&+v)e.sd2=true;else if(c===144&&+v&&+v!==1)e.lfac=+v;else if(c===3&&v.includes('<>')&&v.split('<>')[0])e.prefix=v.split('<>')[0];else TV[c]=v}
           const TV0=TV;if(+TV0[71]||+TV0[72]){const u=+(TV0[47]||0),l=+(TV0[48]||0);e.tol={m:+TV0[72]?'lim':(Math.abs(u-l)<1e-12?'sym':'dev'),u,l};if(TV0[146]!=null&&+TV0[146]!==1)e.tol.f=+TV0[146]}
-          else if(TV0[147]!=null&&+TV0[147]<0)e.tol={m:'basic',u:0,l:0};if(ov&&ov!=='<>')e.text=mtextPlain(ov);const st=get(g,3,null);if(st)e.st=dxfDecode(st);out.push(e)}
+          else if(TV0[147]!=null&&+TV0[147]<0)e.tol={m:'basic',u:0,l:0};if(ov&&ov!=='<>')e.text=mtextPlain(ov);const st=get(g,3,null);if(st)e.st=dxfDecode(st);
+          /* v1.10.26: 무카가 쓴 DXF 의 무카 전용 값 (치수 스타일·자동 방향·지름 치수 글자 쪽·보조선 없음·치수선 숨김) */
+          const mu=e._mu;delete e._mu;if(mu&&mu.v===1){if(typeof mu.st==='string')e.st=mu.st;if(mu.auto&&e.kind==='linear')delete e.dir;if(e.kind==='diameter'&&isFinite(mu.ang))e.angle=+mu.ang;if(mu.noext&&e.kind==='angular')delete e.ext;if(mu.sd1)e.sd1=true;if(mu.sd2)e.sd2=true}
+          out.push(e)}
         else if(bn)out.push({type:'insert',layer:lay,name:dxfDecode(bn),p:{x:0,y:0},sx:1,sy:1,rot:0});break}
       case 'LEADER':{const pts=[];let cur=null;for(const [cc,vv] of g.d){if(cc===10){cur={x:+vv,y:0};pts.push(cur)}else if(cc===20&&cur)cur.y=+vv}if(pts.length>=2)out.push({type:'dim',kind:'leader',layer:lay,pts,text:''});break}
       case 'HATCH':{const d=g.d.filter(p=>p[0]<30||p[0]>39),Ld=d.length;let j=0,pat='ANSI31',solid=0,scale=1,angle=0;const loops=[];
@@ -4934,7 +4982,7 @@ function acadDialog(){const p=document.createElement('div');p.className='acadhel
   <li>AutoCAD → 무카: 위처럼 한 번 붙여넣으면 <b>그 AutoCAD 를 끌 때까지</b> <code>CC</code> 명령이 생깁니다. <code>CC</code> → 객체 선택 → Enter → 무카에서 <kbd>Ctrl+V</kbd></li></ul>
   <p style="font-size:12px;color:var(--ink-dim)">설치가 아니라 붙여넣을 때마다 그 창에서만 실행됩니다(파일·시작 설정은 건드리지 않음). 정품 AutoCAD(Windows)에서 됩니다 — AutoCAD LT·맥은 안 됩니다. 매번 CC 를 쓰고 싶으면 아래 <code>muccacad.lsp</code> 를 APPLOAD 로 불러 두세요(예전 방식 <code>CV</code> 도 그대로 됩니다).</p>
   <p>치수·해치·블록·문자는 AutoCAD 기본 객체로 만들어지고, 지시선·기하공차처럼 AutoCAD 에 바로 대응하지 않는 주석은 선과 문자로 풀어서 보냅니다.</p>
-  <p><b>DWG 저장</b> — <code>도면 → AutoCAD (.lsp)</code> 파일을 AutoCAD 화면에 끌어다 놓으면 도면이 그대로 만들어집니다. 그다음 <code>다른 이름으로 저장</code> 에서 DWG 로 저장하세요. 무카 CAD 에서 바로 DWG 로 저장하려면 <b>[출력 ▾] › DWG 저장 (AutoCAD 2013)</b> 을 쓰세요(해치·여러 줄 문자·치수는 선·문자로 풀어서 저장됨). AutoCAD 객체 그대로가 필요하면 위 .lsp 방법이 더 정확합니다.</p>`;
+  <p><b>DWG 저장</b> — <code>도면 → AutoCAD (.lsp)</code> 파일을 AutoCAD 화면에 끌어다 놓으면 도면이 그대로 만들어집니다. 그다음 <code>다른 이름으로 저장</code> 에서 DWG 로 저장하세요. 무카 CAD 에서 바로 DWG 로 저장하려면 <b>[출력 ▾] › DWG 저장 (AutoCAD 2013)</b> 을 쓰세요(해치·여러 줄 문자·지시선은 선·문자로 풀어서 저장됨, 치수는 치수 그대로). AutoCAD 객체 그대로가 필요하면 위 .lsp 방법이 더 정확합니다.</p>`;
   const b1=document.createElement('button');b1.className='tbtn primary';b1.textContent='도면 → AutoCAD (.lsp)';b1.onclick=()=>(window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'ACAD_LSP'}),offer(fileStem()+'_acad.lsp',new Blob([acadDrawingLsp()],{type:'text/plain;charset=utf-8'})));
   const b2=document.createElement('button');b2.className='tbtn';b2.textContent='연동 LISP 받기 (muccacad.lsp)';b2.onclick=()=>offer('muccacad.lsp',new Blob(['\uFEFF'+ACAD_LSP.replace(/\r?\n/g,'\r\n')],{type:'text/plain;charset=utf-8'}));
   const b3=document.createElement('button');b3.className='tbtn';b3.textContent='DXF 내보내기';b3.onclick=()=>document.getElementById('bDxf').click();
@@ -5094,7 +5142,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.10.25';
+const APP_VER='v1.10.26';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5344,7 +5392,7 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
   function setState(s,msg){if(s==='on'&&AIC.state!=='on'){window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_ON'});if(AIC.claude)window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_ON_CC'});if(AIC.engines&&AIC.engines.codex)window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_ON_GPT'});if(AIC.engines&&AIC.engines.gemini)window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_ON_GEMINI'})}AIC.state=s;if(top)top.dataset.st=s;if(msg!=null)AIC.err=msg;renderDlg();
     if(!AIC.busy&&!sampleFn)aiSt.textContent=s==='on'?(outdated()?'연결 프로그램 업데이트가 필요합니다 (설치됨 v'+AIC.ver+' → 최신 v'+MUCCA_MCP_VER+'). 아래 [새 연결 파일 받기]를 누르세요.':engList()?'연결됨 · 쓸 수 있는 AI: '+engList()+' · 요청을 쓰고 [그리기]를 누르세요.':'연결됨 · 이 PC에 Claude Code·Codex·Gemini CLI가 없어 입력칸은 쓸 수 없습니다. Claude 앱 대화로 그려 보세요.'):'상단 [AI 연결]을 하면 내 Claude·GPT·Gemini로 그릴 수 있습니다.'}
   /* v1.9.0: 입력칸 AI 고르기 (Claude · GPT(Codex CLI) · Gemini(Gemini CLI)) — 연결 프로그램 v1.0.6 이상 */
-  const ENG={claude:'Claude',codex:'GPT',gemini:'Gemini'};
+  const ENG={claude:'Claude(클로드)',codex:'GPT',gemini:'Gemini'};/* v1.10.26 (문의 45): 'Claude'를 '클라우드'로 읽고 클라우드 저장과 헷갈림 → 화면에는 한글 읽기를 함께 */
   const ENG_INSTALL={claude:'Claude Code: [AI 연결] 창 ③ 참고',codex:'터미널에서 npm i -g @openai/codex 실행 후 codex login (ChatGPT 계정)',gemini:'터미널에서 npm i -g @google/gemini-cli 설치 후 유료 Gemini API 키 등록 (구글 계정 로그인은 2026-06-18부터 막힘)'};
   /* 2026-11-03: 구글이 2026-06-18부터 개인 계정(무료·Google AI Pro·Ultra)의 Gemini CLI 를 막음 → Antigravity CLI 로 옮기라는 IneligibleTierError.
      유료 Gemini API 키·기업용(Code Assist Standard·Enterprise)은 그대로 됨 */
@@ -5869,7 +5917,7 @@ function quickCircleTest(s){const t=s.replace(/\s+/g,'');return /^(\d+(?:\.\d+)?
   const lo=aiSec.querySelector('.liveopt');if(lo){const dt=document.createElement('details');dt.className='aiOpt';dt.innerHTML='<summary>연출 옵션 (과정 보기·자막·녹화)</summary>';lo.before(dt);dt.appendChild(lo)}
   const EX=['바깥지름 120, 안지름 80 플랜지에 볼트 구멍 Ø12 4개를 PCD 100에 배치해줘','가로 300 세로 200 판에 모서리 R10, 구멍 Ø10 네 귀퉁이 20 안쪽','지름 50 길이 200 샤프트에 키홈 넣고 치수까지'];
   function intro(){const on=window.__aic&&window.__aic.state==='on';const d=document.createElement('div');d.className='aiIntro';
-    d.innerHTML=`<b>말로 도면 그리기</b><p>${on?'내 AI가 연결되어 있습니다. 아래 칸에 원하는 도면을 말로 쓰세요.':'상단 <b style="display:inline;font-size:inherit">[AI 연결]</b>로 내 AI(Claude · GPT · Gemini)를 연결하면, 아래 칸에 쓴 말대로 도면을 그려 줍니다.'}</p>
+    d.innerHTML=`<b>말로 도면 그리기</b><p>${on?'내 AI가 연결되어 있습니다. 아래 칸에 원하는 도면을 말로 쓰세요.':'상단 <b style="display:inline;font-size:inherit">[AI 연결]</b>로 내 AI(Claude(클로드) · GPT · Gemini)를 연결하면, 아래 칸에 쓴 말대로 도면을 그려 줍니다. 사진·손그림을 도면으로 바꿀 때도 이 연결이 먼저 필요합니다.<br><span style="font-size:12px">※ Claude(클로드)는 AI 이름입니다. 도면을 보관하는 [클라우드] 저장과는 다릅니다.</span>'}</p>
       <div class="ex">${EX.map(x=>`<button type="button">${x}</button>`).join('')}</div>
       ${on?'':'<button class="tbtn primary cn" type="button">AI 연결하기</button>'}`;
     if(!on){const q=document.createElement('p');q.className='aiNoConn';q.style.cssText='margin:0 0 10px;font-size:12px;line-height:1.5;color:var(--ink);background:rgba(241,194,50,.12);border-radius:7px;padding:5px 8px';q.innerHTML='<b style="display:inline;font-size:inherit">연결 없이도</b> 명령창에 <b style="display:inline;font-size:inherit">가로 300 세로 200</b> · <b style="display:inline;font-size:inherit">30파이</b> 쓰고 클릭';q.title='치수만 쓰고 놓을 곳을 클릭하면 사각형·원이 그려집니다';d.querySelector('b').after(q)}
@@ -5887,7 +5935,7 @@ function quickCircleTest(s){const t=s.replace(/\s+/g,'');return /^(\d+(?:\.\d+)?
     if(can){if(live){live.classList.remove('live')}push('me',req);live=push('bot live','생각하는 중…');started=false}
     const r=await prev.call(bAi,ev);if(can){aiIn.value=''}return r};
   aiIn.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229){e.preventDefault();e.stopPropagation();bAi.click()}});
-  window.__aiChat={nudge(){paintIntro();const i=logEl.querySelector('.aiIntro');if(i){i.classList.remove('nudge');void i.offsetWidth;i.classList.add('nudge')}else push('bot','먼저 상단 [AI 연결]로 내 Claude를 연결하세요.')}};
+  window.__aiChat={nudge(){paintIntro();const i=logEl.querySelector('.aiIntro');if(i){i.classList.remove('nudge');void i.offsetWidth;i.classList.add('nudge')}else push('bot','먼저 상단 [AI 연결]로 내 Claude(클로드) AI를 연결하세요.')}};
   /* 커뮤니티 등에서 ?ai=문장 으로 들어오면 AI 칸에 채움 */
   try{const q=new URLSearchParams(location.search).get('ai');if(q){aiIn.value=q.slice(0,500);setTimeout(()=>{if(matchMedia('(max-width:820px)').matches)side.classList.add('open');aiIn.focus()},400)}}catch(_){}
 })();
@@ -6291,8 +6339,8 @@ window.cad=Object.freeze({
 <script src="../cad/labelev.js?v=1"></script>
 <script src="labsection.js?v=2"></script>
 <script src="labsave.js?v=2"></script>
-<script src="../cad/airef.js?v=2"></script>
-<script src="../cad/dwg.js?v=10"></script>
+<script src="../cad/airef.js?v=3"></script>
+<script src="../cad/dwg.js?v=11"></script>
 <!-- v1.10.8 (11-03): DWG 열기 새 변환기(acadrust · MPL-2.0 · wasm, 실패하면 acad-ts) · 3D 5면 자가검사 · 3D 정답 비교 시험 -->
 <script src="labdwgrs.js?v=2"></script>
 <script src="labcheck3d.js?v=6"></script>
