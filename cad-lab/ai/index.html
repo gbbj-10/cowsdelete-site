@@ -271,7 +271,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:
 <body>
 <div class="app" id="app">
   <div class="top">
-    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.26</small></div>
+    <div class="brand"><img class="brandlogo" src="../assets/mucca-logo.png" srcset="../assets/mucca-logo.png 1x, ../assets/mucca-logo@2x.png 2x" width="26" height="26" alt="">무카 CAD <small>베타 v1.10.27</small></div>
     <button class="tbtn" id="bNew" title="새 도면">새 도면</button>
     <label class="tbtn" title="도면(JSON·DXF) 열기 · 그리기 명령(JSON 배열)은 그리는 과정으로 재생">열기<input type="file" id="fileIn" accept=".json,.dxf,.txt,.dwg,.pdf,.png,.jpg,.jpeg" hidden></label>
     <button class="tbtn" id="bSave" title="JSON 저장">저장</button>
@@ -5143,7 +5143,7 @@ COMMANDS.roughsnap=(c,ctx)=>{const ids=c.ids?resolveIds(c.ids,ctx):doc.entities.
 Object.assign(ALIAS,{RSNAP:'roughsnap',ROUGHSNAP:'roughsnap'});Object.assign(CMD_KO,{roughsnap:'거칠기 기호 붙이기'});Object.assign(CMD_WORD,{roughsnap:['ROUGHSNAP','거칠기 붙이기']});
 TOOLS.roughsnap=()=>{const ids=[...sel].filter(id=>{const e=byId(id);return e&&e.type==='dim'&&e.kind==='rough'});const r=runBatch({cmd:'roughsnap',ids:ids.length?ids:undefined});if(r.ok)log(`거칠기 기호 ${r.results[0].count||0}개를 가까운 선 위로 붙였습니다`,'ok');return null};
 /* ================= v1.6.2 확장 50: 정보·라이선스 창 (베타 배포 준비) — 글꼴 라이선스(SIL OFL 1.1) 고지 · 상표 비제휴 고지 · 베타 면책 ================= */
-const APP_VER='v1.10.26';
+const APP_VER='v1.10.27';
 /* 상단 이름표 버전도 APP_VER 를 따른다 (10-25: v1.9.11 에 멈춰 있었음) */
 try{const _bv=document.querySelector('.brand small');if(_bv)_bv.textContent='베타 '+APP_VER;}catch(_){}
 /* v1.9.11: AI 연결 사용 기록 (세션당 1번) — AI_DLG 연결 창 열기 · AI_ON 연결됨(AI_ON_CC Claude Code · AI_ON_GPT · AI_ON_GEMINI) · AI_ASK 입력칸 요청 · AI_DRAW AI가 그림 */
@@ -5539,21 +5539,38 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
   const TOOLKO={WebSearch:'공개 도면 검색',WebFetch:'공개 자료 읽기',mucca_guide:'명령표 확인',mucca_draw:'그리는 중',mucca_state:'도면 확인',mucca_list:'도형 읽기',mucca_snapshot:'화면 확인',mucca_undo:'되돌리기'};
   function aiEvent(d){try{window.__aiEvtHook&&window.__aiEvtHook(d)}catch(_){}   /* v1.10.10: AI 진행 단계 카드·규격 찾기가 AI 답을 받음 */
     const LB=ENG[d.engine||AIC.engine]||'Claude';
-    if(d.kind==='start'){for(const x of ['aiLoginHelp','aiPlanHelp']){const b=document.getElementById(x);if(b)b.hidden=true}AIC.busy=true;bAi.textContent='중지';aiSt.textContent=LB+'가 도면을 설계하는 중…'}
+    if(d.kind==='start'){for(const x of ['aiLoginHelp','aiPlanHelp','aiInstHelp']){const b=document.getElementById(x);if(b)b.hidden=true}AIC.busy=true;bAi.textContent='중지';aiSt.textContent=LB+'가 도면을 설계하는 중…'}
     else if(d.kind==='tool'){aiSt.textContent=LB+' · '+(TOOLKO[d.name]||d.name)+'…'}
     else if(d.kind==='text'){aiSt.textContent=d.text.slice(0,300)}
     else if(d.kind==='done'||d.kind==='error'){window.AIREF&&AIREF.done();AIC.busy=false;bAi.textContent='그리기';
       const t=(d.text||'').trim().slice(0,400)||(d.kind==='done'&&d.ok?'완료':'실패');
       /* Gemini CLI 가 구글 정책 오류를 '답'으로 내고 끝나는 경우도 있어서(done·ok) 글자로 먼저 거름 */
       if(GEM_TIER_RE.test(String(d.text||''))){geminiPolicyHelp(t);return}
+      /* v1.10.27 (문의 47): Windows 에 claude 명령이 없으면 cmd 가 CP949 로 "내부 또는 외부 명령이 아닙니다"를 내고,
+         연결 프로그램이 이걸 UTF-8 로 읽어 글자가 깨져(�) 그대로 보였음 → 원인을 알아보고 쉬운 설치 안내로 바꿈 + 실패 원인 기록 */
+      if(d.kind!=='done'||!d.ok){const why=aiFailWhy(d);aiFailLog(d.engine||AIC.engine,why);if(why==='NOTFOUND'||why==='GARBLED'){installHelp(d.engine||AIC.engine,why,t);return}}
       aiSt.textContent=t;log((d.kind==='done'&&d.ok?LB+': ':'AI 실패: ')+t,d.kind==='done'&&d.ok?'ok':'err');
       if(d.kind==='done'&&d.ok)return;
       if(d.engine&&d.engine!=='claude'){if(d.code==='login')loginHelp(t,d.engine);return}
       if(d.code==='plan')planHelp(t);
       else if(d.code==='apikey'||/invalid api key|external api key/i.test(t))keyHelp(t);
       else if(d.code==='login'||/authenticat|oauth|\blog ?in\b|401|credential|로그인이 필요/i.test(t))loginHelp(d.code==='login'?t:'')}}
+  /* v1.10.27: AI 실패 원인 가르기 — 글 원문·경로는 기록에 보내지 않고 종류만 */
+  function aiFailWhy(d){const r=String(d.text||'');
+    if(d.code==='install'||/is not recognized as an internal|내부 또는 외부 명령|command not found|not found:|ENOENT|코드 9009|code 9009|\(9009\)/i.test(r))return 'NOTFOUND';
+    if(/\uFFFD/.test(r))return /claude|codex|gemini/i.test(r)?'NOTFOUND':'GARBLED';
+    if(d.code==='plan')return 'PLAN';if(d.code==='apikey')return 'APIKEY';
+    if(d.code==='login'||/authenticat|oauth|\blog ?in\b|401|credential|로그인/i.test(r))return 'LOGIN';
+    if(/중지|abort|cancel/i.test(r))return 'STOP';return 'OTHER'}
+  function aiFailLog(eng,why){try{const E={claude:'CLAUDE',codex:'GPT',gpt:'GPT',gemini:'GEMINI'}[eng]||'CLAUDE';window.__muccaEvt&&window.__muccaEvt('unknown_cmd',{cmd:'AI_FAIL_'+E+'_'+why})}catch(_){}}
+  /* v1.10.27: 이 PC 에서 AI 프로그램(claude·codex·gemini 명령)을 못 찾음 → 깨진 글 대신 설치 순서 */
+  function installHelp(eng,why,t){const NM={claude:'Claude Code(클로드 코드)',codex:'Codex(GPT)',gemini:'Gemini CLI'}[eng]||'Claude Code(클로드 코드)',CMD={claude:'claude',codex:'codex',gemini:'gemini'}[eng]||'claude';
+    const msg=why==='GARBLED'?'AI 실패: PC 프로그램이 낸 오류 글자가 깨져 보입니다. 대부분 이 PC 에서 '+NM+' 를 찾지 못한 경우입니다.':'AI 실패: 무카 CAD 와 연결 프로그램은 연결됐지만, 이 PC 에서 '+NM+' ('+CMD+' 명령)를 찾지 못했습니다.';
+    aiSt.textContent=msg.replace(/^AI 실패: /,'');log(msg,'err');log('  ① '+NM+' 설치 → ② 새 명령 프롬프트(cmd)에서 '+CMD+' 를 한 번 실행해 로그인 → ③ 이 화면 Ctrl+F5 새로고침 뒤 [AI 연결] 다시. 설치했는데도 같으면 PC 를 다시 시작해 보세요.','err');
+    const box=helpBox('aiInstHelp');const a=document.createElement('a');a.className='btn';a.href='/guide/ai-connect/';a.target='_blank';a.rel='noopener';a.textContent='설치 순서 그림 안내 열기';
+    box.replaceChildren(tipEl(NM+' 를 이 PC 에 설치하고 '+CMD+' 명령으로 한 번 로그인해야 무카 CAD 오른쪽 입력칸이 동작합니다.'+(CMD==='claude'?' (Claude 앱 대화창에서 "무카 CAD에 ○○ 그려줘"라고 요청하는 방법은 Claude Code 없이도 됩니다)':'')),a)}
   /* 실패 안내 상자 하나만 보이게 */
-  function helpBox(id){for(const x of ['aiLoginHelp','aiUpdHelp','aiPlanHelp'])if(x!==id){const b=document.getElementById(x);if(b)b.hidden=true}
+  function helpBox(id){for(const x of ['aiLoginHelp','aiUpdHelp','aiPlanHelp','aiInstHelp'])if(x!==id){const b=document.getElementById(x);if(b)b.hidden=true}
     let box=document.getElementById(id);if(!box){box=document.createElement('div');box.id=id;box.style.cssText='margin:6px 0 2px;display:grid;gap:6px';aiSt.after(box)}box.hidden=false;return box}
   const tipEl=txt=>{const tip=document.createElement('div');tip.className='empty';tip.style.cssText='font-size:12px;line-height:1.5';tip.textContent=txt;return tip};
   /* 무료 요금제 등: Claude Code 를 못 씀 → Claude 앱 대화창으로 */
@@ -6321,7 +6338,7 @@ window.cad=Object.freeze({
   }else{if(!window.__aic||window.__aic.state!=='on')aiSt.textContent='상단 [AI 연결]을 하면 내 Claude로 그릴 수 있습니다.'}
 })();
 </script>
-<script src="../assets/config.js?v=20261127a"></script>
+<script src="../assets/config.js?v=20261128a"></script>
 <script>window.COWS_CONFIG&&(COWS_CONFIG.appVer="aiteam-"+COWS_CONFIG.appVer)</script>
 <script src="../assets/ads.js?v=20261122a"></script>
 <script src="../assets/vendor/supabase.js"></script>
