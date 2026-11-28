@@ -5535,7 +5535,10 @@ const AIC={base:'http://127.0.0.1:17337',state:'off',claude:null,engines:null,en
 
   /* --- 4) 오른쪽 AI 입력칸: 연결되면 내 Claude Code 로 --- */
   const TOOLKO={WebSearch:'공개 도면 검색',WebFetch:'공개 자료 읽기',mucca_guide:'명령표 확인',mucca_draw:'그리는 중',mucca_state:'도면 확인',mucca_list:'도형 읽기',mucca_snapshot:'화면 확인',mucca_undo:'되돌리기'};
-  function aiEvent(d){try{window.__aiEvtHook&&window.__aiEvtHook(d)}catch(_){}   /* v1.10.10: AI 진행 단계 카드·규격 찾기가 AI 답을 받음 */
+  function aiEvent(d){
+    /* v1.10.27: 진행 단계 카드에도 깨진 글자 대신 읽을 수 있는 실패 문구를 넘김 */
+    let dh=d;try{if(d&&d.kind==='error'){const w=aiFailWhy(d);if(w==='NOTFOUND'||w==='GARBLED')dh=Object.assign({},d,{text:'이 PC 에서 '+({codex:'Codex(GPT)',gemini:'Gemini CLI'}[d.engine||AIC.engine]||'Claude Code(claude 명령)')+'를 찾지 못했습니다 — 명령줄 아래 설치 안내를 보세요.'})}}catch(_){}
+    try{window.__aiEvtHook&&window.__aiEvtHook(dh)}catch(_){}   /* v1.10.10: AI 진행 단계 카드·규격 찾기가 AI 답을 받음 */
     const LB=ENG[d.engine||AIC.engine]||'Claude';
     if(d.kind==='start'){for(const x of ['aiLoginHelp','aiPlanHelp','aiInstHelp']){const b=document.getElementById(x);if(b)b.hidden=true}AIC.busy=true;bAi.textContent='중지';aiSt.textContent=LB+'가 도면을 설계하는 중…'}
     else if(d.kind==='tool'){aiSt.textContent=LB+' · '+(TOOLKO[d.name]||d.name)+'…'}
@@ -5919,6 +5922,7 @@ function quickCircleTest(s){const t=s.replace(/\s+/g,'');return /^(\d+(?:\.\d+)?
 @media (prefers-reduced-motion:reduce){.aiIntro.nudge{animation:none;border-color:#f1c232}}
 .side.ai-full .sec.ai textarea{min-height:76px;font-size:13px}
 .side.ai-full #aiSt{font-size:12px;color:var(--ink-dim);margin-top:6px;min-height:1em}
+/* v1.10.27: 오른쪽 칸이 꽉 차면 상태 글이 12px 로 눌려 아래 안내 상자와 겹치던 것 */#aiSt,#aiLoginHelp,#aiUpdHelp,#aiPlanHelp,#aiInstHelp{flex-shrink:0}
 .aiHint{font-size:11.5px;color:var(--ink-dim);margin-top:4px}
 .side.ai-full .sec.ai{overflow-y:auto}.aiOpt{margin-top:6px}.aiOpt summary{cursor:pointer;font-size:12px;color:var(--ink-dim)}.aiOpt[open] summary{margin-bottom:4px}`;document.head.appendChild(st);
   side.classList.add('ai-full');
